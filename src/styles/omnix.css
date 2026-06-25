@@ -277,6 +277,47 @@ section {
   border-color: var(--white);
 }
 
+/* ── Compat button aliases (transition glue) ──────────────────────────
+   Omnix-era components still reference .btn-primary/.btn-secondary and the
+   block/size modifiers. Mapped to the Maison look so they stay usable until
+   each component is migrated to .btn-solid/.btn-outline/.btn-accent. */
+.btn-primary {
+  background: var(--text);
+  color: var(--white);
+  border: 1.5px solid var(--text);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1.5px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--text);
+  color: var(--white);
+  border-color: var(--text);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-sm {
+  padding: 10px 20px;
+  font-size: 11px;
+}
+
+.btn-lg {
+  padding: 15px 28px;
+  border-radius: 10px;
+}
+
 /* ══════════════════════════════════════════════════
    06. SECTION HEADER ROW
 ══════════════════════════════════════════════════ */

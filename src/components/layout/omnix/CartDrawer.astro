@@ -165,39 +165,514 @@ function quickAdd(p: ProductCard) {
     </div>
     <div class="cart-trust">
       <span><Icon name="check" size={13} stroke={2.4} /> Secure checkout</span>
-      <span><Icon name="check" size={13} stroke={2.4} /> Free returns</span>
-      <span><Icon name="check" size={13} stroke={2.4} /> 2-year warranty</span>
+      <span><Icon name="check" size={13} stroke={2.4} /> Free 30-day returns</span>
+      <span><Icon name="check" size={13} stroke={2.4} /> Crafted to last</span>
     </div>
   </div>
 </aside>
 
 <style>
+  /* ── Overlay + drawer shell (Maison skin) ───────────────────────── */
+  .cart-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .44);
+    z-index: 1098;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s ease;
+  }
+
+  .cart-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .cart-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 440px;
+    max-width: 100vw;
+    background: var(--white);
+    z-index: 1099;
+    transform: translateX(100%);
+    transition: transform .35s cubic-bezier(.25, .46, .45, .94);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cart-drawer.is-open {
+    transform: translateX(0);
+  }
+
+  /* ── Header ──────────────────────────────────────────────────────── */
+  .cart-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    gap: 8px;
+  }
+
+  .cart-header h5 {
+    font-family: var(--fh);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -.3px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .cart-count-chip {
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 999px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cart-x {
+    width: 34px;
+    height: 34px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    transition: all .2s ease;
+  }
+
+  .cart-x:hover {
+    background: var(--card);
+    color: var(--text);
+  }
+
+  /* ── Error / status ──────────────────────────────────────────────── */
   .cart-error {
-    margin: 12px 20px 0;
+    margin: 12px 22px 0;
     padding: 10px 12px;
-    background: color-mix(in srgb, var(--danger, #d92d20) 8%, #fff);
-    color: var(--danger, #b42318);
-    border: 1px solid color-mix(in srgb, var(--danger, #d92d20) 28%, #fff);
-    border-radius: var(--r-lg, 10px);
+    background: color-mix(in srgb, var(--rust) 8%, #fff);
+    color: var(--rust);
+    border: 1px solid color-mix(in srgb, var(--rust) 28%, #fff);
+    border-radius: 8px;
     font-size: 13px;
     line-height: 1.4;
   }
+
+  /* ── Body + empty state ──────────────────────────────────────────── */
+  .cart-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+
+  .cart-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    gap: 14px;
+    text-align: center;
+    padding: 40px 24px;
+  }
+
+  .cart-empty .empty-ic {
+    color: var(--border);
+  }
+
+  .cart-empty h6 {
+    font-family: var(--fh);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .cart-empty p {
+    font-size: 14px;
+    color: var(--muted);
+    max-width: 240px;
+  }
+
+  /* ── Cart line (markup generated in the script) ──────────────────── */
+  .cart-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 22px;
+    border-bottom: 1px solid rgba(216, 213, 206, .45);
+    transition: background .15s ease, opacity .15s ease;
+  }
+
+  .cart-item:hover {
+    background: rgba(240, 238, 233, .3);
+  }
+
   .cart-item.is-busy {
     opacity: 0.5;
     pointer-events: none;
   }
+
   .cart-item.is-soldout .ci-name {
     color: var(--muted);
   }
-  .ci-soldout {
-    font-size: 12px;
+
+  .ci-img {
+    width: 76px;
+    height: 96px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--card);
+    flex-shrink: 0;
+  }
+
+  .ci-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+  }
+
+  .ci-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .ci-brand {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  .ci-name {
+    font-size: 13px;
     font-weight: 600;
-    color: var(--danger, #b42318);
+    line-height: 1.35;
+    color: var(--text);
+  }
+
+  .ci-soldout {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--rust);
     margin: 2px 0;
   }
+
+  .ci-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-top: 4px;
+  }
+
+  .ci-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    gap: 8px;
+  }
+
+  .ci-qty {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ci-qty button {
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    background: none;
+    color: var(--text);
+    transition: background .15s ease, border-color .15s ease;
+  }
+
+  .ci-qty button:hover:not(:disabled) {
+    background: var(--bg2);
+    border-color: var(--muted);
+  }
+
   .ci-qty button:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+  }
+
+  .ci-qty span {
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .ci-remove {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    transition: color .15s ease;
+  }
+
+  .ci-remove:hover {
+    color: var(--rust);
+  }
+
+  /* ── Upsell ──────────────────────────────────────────────────────── */
+  .cart-upsell {
+    padding: 16px 22px;
+    border-top: 1px solid var(--border);
+  }
+
+  .cart-upsell-head {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .cart-upsell-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .cart-upsell-card {
+    flex: 0 0 130px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .cart-upsell-card .cu-img {
+    display: block;
+    aspect-ratio: 3/4;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--card);
+  }
+
+  .cart-upsell-card .cu-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .cu-name {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .cu-price {
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .cu-add {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    color: var(--text);
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    text-align: center;
+    transition: all .15s ease;
+  }
+
+  .cu-add:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* ── Coupon ──────────────────────────────────────────────────────── */
+  .cart-coupon {
+    padding: 14px 22px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .cart-coupon-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  #couponForm {
+    display: flex;
+    gap: 8px;
+  }
+
+  #couponInput {
+    flex: 1;
+    padding: 9px 12px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg2);
+    color: var(--text);
+    transition: border-color .2s ease;
+  }
+
+  #couponInput:focus {
+    border-color: var(--accent);
+  }
+
+  .cc-apply {
+    padding: 9px 14px;
+    background: var(--text);
+    color: #fff;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: background .2s ease;
+  }
+
+  .cc-apply:hover:not(:disabled) {
+    background: var(--accent);
+  }
+
+  .cart-coupon-codes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .coupon-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 10px;
+  }
+
+  .coupon-chip button {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1;
+  }
+
+  .coupon-chip button:hover {
+    color: var(--rust);
+  }
+
+  .cart-coupon-msg {
+    font-size: 11px;
+    margin-top: 8px;
+  }
+
+  .cart-coupon-msg.is-ok {
+    color: var(--accent);
+  }
+
+  .cart-coupon-msg.is-err {
+    color: var(--rust);
+  }
+
+  .cart-coupon-msg.is-info {
+    color: var(--muted);
+  }
+
+  /* ── Summary + CTAs + trust ──────────────────────────────────────── */
+  .cart-summary {
+    padding: 16px 22px 4px;
+    border-top: 1px solid var(--border);
+  }
+
+  .cs-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .cs-row.total {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    border-top: 1px solid var(--border);
+    margin-top: 6px;
+    padding-top: 10px;
+  }
+
+  .cs-row.total span:last-child {
+    font-family: var(--fh);
+  }
+
+  .cart-ctas {
+    padding: 8px 22px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .cart-trust {
+    padding: 0 22px 18px;
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .cart-trust span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .cart-trust span svg {
+    color: var(--accent);
+  }
+
+  @media (max-width: 768px) {
+    .cart-drawer {
+      width: 100vw;
+    }
   }
 </style>
 
