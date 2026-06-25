@@ -1,785 +1,1825 @@
 ---
 // ============================================================
-//  Shop (OMNIX) — all-products PLP. Server-rendered grid wired to
-//  real Shopify products with sort + cursor pagination. Filter
-//  facets (category, brand, price, colour, rating, availability,
-//  features) are DERIVED from the products on the current page and
-//  applied client-side by a controller script. Search + grid/list
-//  view toggle are functional. (Filtering scopes to the current
-//  page because pagination is server-side, 12 products per page.)
+//  Shop — the all-products listing. Maison's static "Shop" layout
+//  (header block + filter sidebar + toolbar + grid + pagination)
+//  ported onto real Shopify products. Cards carry data-* facets so
+//  the sidebar filters, sort and view controls work entirely
+//  client-side over the server-rendered grid.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
 import { getProducts, PRODUCT_SORT_OPTIONS, resolveSort } from '~/lib/shopify';
 import { applyMarketCache } from '~/lib/market';
 import type { ProductCard as TProductCard } from '~/lib/shopify/types';
 import ProductCard from '~/components/product/omnix/ProductCard.astro';
-import '~/styles/shop.css';
+
+export const prerender = false;
 
 const url = Astro.url;
 const sortValue = url.searchParams.get('sort') ?? PRODUCT_SORT_OPTIONS[0].value;
 const sort = resolveSort(PRODUCT_SORT_OPTIONS, sortValue);
 
 let products: TProductCard[] = [];
-let hasMore = false;
 let loadError = false;
-
 try {
-  // Fetch a single large page so facet filtering works across the loaded set
-  // client-side. Capped at 100 (not 250) to keep the Storefront query cost in
-  // bounds now that each card carries its variants. `hasMore` flags when the
-  // catalogue exceeds the loaded set so the counts don't claim to be the total.
   const page = await getProducts(
-    {
-      pageSize: 100,
-      sortKey: sort.sortKey,
-      reverse: sort.reverse,
-    },
+    { pageSize: 48, sortKey: sort.sortKey, reverse: sort.reverse },
     Astro.locals.market,
   );
   products = page.items;
-  hasMore = page.pageInfo?.hasNextPage ?? false;
 } catch (err) {
-  console.error('[products] load failed:', (err as Error).message);
+  console.error('[shop] load failed:', (err as Error).message);
   loadError = true;
 }
-const countLabel = `${products.length}${hasMore ? '+' : ''}`;
+if (!loadError) applyMarketCache(Astro.response.headers, Astro.locals.market);
 
-// Edge-cache the listing HTML (cart is client-side). Market-aware.
-if (!loadError) {
-  applyMarketCache(Astro.response.headers, Astro.locals.market);
-}
+const MATERIALS = ['linen', 'wool', 'cotton', 'silk', 'leather', 'cashmere'];
+const OCCASIONS = ['everyday', 'work', 'weekend', 'evening', 'resort'];
 
-// ---- Facets derived from the real products on this page ----
-const slug = (s: string) =>
-  s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-
-function countBy(values: string[]): [string, number][] {
-  const m = new Map<string, number>();
-  for (const v of values) {
-    const k = v?.trim();
-    if (k) m.set(k, (m.get(k) ?? 0) + 1);
-  }
-  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-}
-
-const categories = countBy(products.map((p) => p.productType ?? ''));
-const brands = countBy(products.map((p) => p.vendor ?? ''));
-
-const colorMap = new Map<string, string>();
-for (const p of products)
-  for (const s of p.swatches ?? []) if (s?.name && s?.color) colorMap.set(s.name.toLowerCase(), s.color);
-const colors = [...colorMap.entries()]; // [name, cssColor]
-
-const features = countBy(products.flatMap((p) => p.tags ?? [])).slice(0, 8);
-
-const priceNums = products
-  .map((p) => Number(p.priceRange.minVariantPrice.amount))
-  .filter((n) => Number.isFinite(n));
-const priceFloor = priceNums.length ? Math.floor(Math.min(...priceNums)) : 0;
-const priceCeil = priceNums.length ? Math.max(10, Math.ceil(Math.max(...priceNums))) : 1000;
-
-const hasAnyRating = products.some((p) => (p.rating ?? 0) > 0);
-
-// Per-card data-* attributes the controller filters on.
 function cardAttrs(p: TProductCard): Record<string, string> {
-  const price = Number(p.priceRange.minVariantPrice.amount) || 0;
+  const price = Math.round(Number(p.priceRange.minVariantPrice.amount) || 0);
   const compare = Number(p.compareAtPriceRange?.minVariantPrice?.amount) || 0;
+  const tags = (p.tags ?? []).map((t) => t.toLowerCase());
+  const sizeOpt = (p.options ?? []).find((o) => /size/i.test(o.name));
+  const sizes = (sizeOpt?.optionValues ?? []).map((v) => v.name.toLowerCase());
   return {
-    'data-title': p.title.toLowerCase(),
-    'data-price': String(Math.round(price)),
-    'data-brand': p.vendor ?? '',
-    'data-cat': p.productType ?? '',
-    'data-colors': (p.swatches ?? []).map((s) => s.name.toLowerCase()).join(' '),
-    'data-tags': (p.tags ?? []).map((t) => slug(t)).join(' '),
-    'data-sale': compare > price ? '1' : '0',
-    'data-instock': p.availableForSale ? '1' : '0',
+    'data-cat': (p.productType ?? '').toLowerCase(),
+    'data-price': String(price),
     'data-rating': String(p.rating ?? 0),
+    'data-badge': p.isNew ? 'new' : compare > price ? 'sale' : 'none',
+    'data-colors': (p.swatches ?? []).map((s) => s.name.toLowerCase()).join(','),
+    'data-sizes': sizes.join(','),
+    'data-mat': tags.filter((t) => MATERIALS.includes(t)).join(','),
+    'data-occ': tags.filter((t) => OCCASIONS.includes(t)).join(','),
+    'data-instock': p.availableForSale ? '1' : '0',
+    'data-sale': compare > price ? '1' : '0',
   };
 }
 
-const chev = `<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
-const check = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-const star = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+const total = products.length;
 ---
 
-<Layout title="Shop" description="Browse the full OMNIX catalogue — every product, hand-tested and spec-checked.">
-  <main class="shop-main" id="shopModern">
-    <div class="sm-wrap">
-      <nav class="sm-crumb" aria-label="Breadcrumb">
-        <a href="/">Home</a><span>/</span><span class="cur">Shop</span>
-      </nav>
+<Layout title="Shop" description="Browse the full Maison collection — refined wardrobe essentials.">
+  <main class="shop-page">
 
-      <div class="sm-head">
-        <div>
-          <h1 class="sm-title">All Tech, Curated</h1>
-          <p class="sm-sub">Every product hand-tested and spec-checked by our editors. Filter your way to the gear that actually fits.</p>
+    <div class="shop-hd-block">
+      <div class="shop-hd-inner">
+
+        <!-- Top row: Breadcrumb + perks -->
+        <div class="shd-toprow">
+          <nav class="shd-bc" aria-label="breadcrumb">
+            <a href="/">Home</a>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+            <a href="/">Collections</a>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+            <span class="shd-bc-cur">All Products</span>
+          </nav>
+          <div class="shd-perks">
+            <span class="shd-perk">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round">
+                <path
+                  d="M5 8h14M5 8a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"
+                ></path>
+              </svg>
+              Free Shipping over $120
+            </span>
+            <span class="shd-perk-div"></span>
+            <span class="shd-perk">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round">
+                <path d="M9 14 4 9l5-5"></path>
+                <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path>
+              </svg>
+              Free Returns
+            </span>
+            <span class="shd-perk-div"></span>
+            <span class="shd-perk shd-perk--live">
+              <span class="shd-live-dot"></span>
+              SS26 — Live Now
+            </span>
+          </div>
         </div>
-        <div class="sm-head-stats">
-          <div class="sm-stat"><b>{countLabel}</b><span>Products</span></div>
-          <div class="sm-stat"><b>{categories.length || brands.length}</b><span>{categories.length ? 'Categories' : 'Brands'}</span></div>
-          <div class="sm-stat"><b>${priceFloor}+</b><span>From</span></div>
+
+        <!-- Main hero row -->
+        <div class="shd-hero">
+          <div class="shd-hero-left">
+            <div class="shd-eyebrow">SS26 Collection</div>
+            <h1 class="shd-title">Shop Collection</h1>
+            <p class="shd-sub">Refined wardrobe essentials, crafted for everyday confidence.</p>
+          </div>
+          <div class="shd-hero-stats">
+            <div class="shd-stat">
+              <div class="shd-stat-num" id="prod-count-hd">{total}</div>
+              <div class="shd-stat-lbl">Products</div>
+            </div>
+            <div class="shd-stat-div"></div>
+            <div class="shd-stat">
+              <div class="shd-stat-num">5</div>
+              <div class="shd-stat-lbl">Categories</div>
+            </div>
+            <div class="shd-stat-div"></div>
+            <div class="shd-stat">
+              <div class="shd-stat-num">7</div>
+              <div class="shd-stat-lbl">New Arrivals</div>
+            </div>
+          </div>
         </div>
+
       </div>
+    </div>
 
-      <div class="sm-layout" id="smLayout">
-        <aside class="sm-filters" id="smFilters">
-          <div class="sm-fhead">
-            <span class="sm-ftitle">Filters <span class="sm-activecount" id="smActiveCount" style="display:none;">0</span></span>
-            <button class="sm-clear" id="smClear" type="button">Clear all</button>
-            <button class="sm-fclose" id="smFClose" type="button" aria-label="Close filters"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+
+    <div class="shop-wrap">
+      <!-- Active filter chips -->
+      <div class="chips-bar" id="chips-bar"></div>
+
+      <!-- Sidebar + Products grid -->
+      <div class="shop-body">
+
+
+        <aside class="sidebar">
+
+          <!-- Header -->
+          <div class="sb-hd">
+            <h3>Filters</h3>
+            <button class="sb-clear" data-action="reset-all">Clear All</button>
           </div>
 
-          <div class="sm-active" id="smActive"></div>
+          <!-- CATEGORY -->
+          <div class="sb-group" id="grp-cat">
+            <div class="sb-group-hd" data-toggle="grp-cat">
+              <span class="sb-group-label">Category</span>
+              <svg class="sb-toggle-icon open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </div>
+            <div class="sb-group-body sb-cats" id="grp-cat-body">
+              <button class="sb-cat active" data-fcat="">All Products <span class="sb-cat-ct">{total}</span></button>
+              <button class="sb-cat" data-fcat="women">Women <span class="sb-cat-ct">9</span></button>
+              <button class="sb-cat" data-fcat="men">Men <span class="sb-cat-ct">7</span></button>
+              <button class="sb-cat" data-fcat="bags">Bags <span class="sb-cat-ct">5</span></button>
+              <button class="sb-cat" data-fcat="accessories">Accessories <span class="sb-cat-ct">4</span></button>
+              <button class="sb-cat" data-fcat="new" data-special="new">New Arrivals <span class="sb-cat-ct">7</span
+                ></button>
+              <button class="sb-cat" data-fcat="sale" data-special="sale">On Sale <span class="sb-cat-ct">3</span
+                ></button>
+            </div>
+          </div>
 
-          <div class="sm-group">
-            <div class="sm-gbody sm-gbody-pad">
-              <div class="sm-search">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="smSearch" placeholder="Search products..." autocomplete="off">
+          <!-- COLOR -->
+          <div class="sb-group" id="grp-color">
+            <div class="sb-group-hd" data-toggle="grp-color">
+              <span class="sb-group-label">Color</span>
+              <svg class="sb-toggle-icon open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </div>
+            <div class="sb-group-body sb-colors" id="grp-color-body">
+              <div class="sb-swatch-wrap" data-color="ivory">
+                <div class="sb-swatch" style="background:#F5F0E8;border-color:#D8D5CE"></div>
+              </div>
+              <div class="sb-swatch-wrap" data-color="stone">
+                <div class="sb-swatch" style="background:#D4C5A9"></div>
+              </div>
+              <div class="sb-swatch-wrap" data-color="camel">
+                <div class="sb-swatch" style="background:#C8B8A2"></div>
+              </div>
+              <div class="sb-swatch-wrap" data-color="black">
+                <div class="sb-swatch" style="background:#1D1D1B"></div>
+              </div>
+              <div class="sb-swatch-wrap" data-color="charcoal">
+                <div class="sb-swatch" style="background:#3D3D3B"></div>
+              </div>
+              <div class="sb-swatch-wrap" data-color="slate">
+                <div class="sb-swatch" style="background:#6B7FA3"></div>
+              </div>
+              <div class="sb-swatch-wrap" data-color="olive">
+                <div class="sb-swatch" style="background:#7A8F3A"></div>
+              </div>
+              <div class="sb-swatch-wrap" data-color="rust">
+                <div class="sb-swatch" style="background:#B4573F"></div>
               </div>
             </div>
           </div>
 
-          {
-            categories.length > 0 && (
-              <div class="sm-group">
-                <button class="sm-gtitle" type="button">Category <Fragment set:html={chev} /></button>
-                <div class="sm-gbody">
-                  {categories.map(([cat, n]) => (
-                    <label class="sm-check">
-                      <input type="checkbox" data-filter="cat" value={cat} />
-                      <span class="sm-box"><Fragment set:html={check} /></span> {cat} <span class="cnt">{n}</span>
-                    </label>
-                  ))}
+          <!-- SIZE -->
+          <div class="sb-group" id="grp-size">
+            <div class="sb-group-hd" data-toggle="grp-size">
+              <span class="sb-group-label">Size</span>
+              <svg class="sb-toggle-icon open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </div>
+            <div class="sb-group-body sb-sizes" id="grp-size-body">
+              <button class="sb-size">XS</button>
+              <button class="sb-size">S</button>
+              <button class="sb-size">M</button>
+              <button class="sb-size">L</button>
+              <button class="sb-size">XL</button>
+              <button class="sb-size">XXL</button>
+              <button class="sb-size">28</button>
+              <button class="sb-size">30</button>
+              <button class="sb-size">32</button>
+              <button class="sb-size">34</button>
+            </div>
+          </div>
+
+          <!-- PRICE -->
+          <div class="sb-group" id="grp-price">
+            <div class="sb-group-hd" data-toggle="grp-price">
+              <span class="sb-group-label">Price Range</span>
+              <svg class="sb-toggle-icon open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </div>
+            <div class="sb-group-body sb-price" id="grp-price-body">
+              <div class="sb-price-inputs">
+                <div class="sb-price-input-wrap">
+                  <span>$</span>
+                  <input
+                    type="number"
+                    class="sb-price-input"
+                    id="price-min-input"
+                    min="60"
+                    max="300"
+                    value="60"
+                    placeholder="60"
+                    data-price-box="min"
+                  />
+                </div>
+                <span class="sb-price-sep">—</span>
+                <div class="sb-price-input-wrap">
+                  <span>$</span>
+                  <input
+                    type="number"
+                    class="sb-price-input"
+                    id="price-max-input"
+                    min="60"
+                    max="300"
+                    value="300"
+                    placeholder="300"
+                    data-price-box="max"
+                  />
                 </div>
               </div>
-            )
-          }
-
-          <div class="sm-group">
-            <button class="sm-gtitle" type="button">Price <Fragment set:html={chev} /></button>
-            <div class="sm-gbody">
-              <div class="sm-range">
-                <div class="sm-range-track"><div class="sm-range-fill" id="smRangeFill"></div></div>
-                <input type="range" id="smRangeMin" min={priceFloor} max={priceCeil} step="10" value={priceFloor} aria-label="Minimum price">
-                <input type="range" id="smRangeMax" min={priceFloor} max={priceCeil} step="10" value={priceCeil} aria-label="Maximum price">
-              </div>
-              <div class="sm-price-inputs">
-                <input type="number" id="smMin" placeholder="Min" min={priceFloor} max={priceCeil}>
-                <span>&ndash;</span>
-                <input type="number" id="smMax" placeholder="Max" min={priceFloor} max={priceCeil}>
-              </div>
-              <div class="sm-chips" id="smPriceChips">
-                <button class="sm-chip" type="button" data-min="0" data-max="100">Under $100</button>
-                <button class="sm-chip" type="button" data-min="100" data-max="300">$100&ndash;300</button>
-                <button class="sm-chip" type="button" data-min="300" data-max="600">$300&ndash;600</button>
-                <button class="sm-chip" type="button" data-min="600" data-max="">$600+</button>
+              <div class="sb-slider-track">
+                <div class="sb-slider-fill" id="slider-fill"></div>
+                <input
+                  type="range"
+                  class="sb-slider"
+                  id="sb-slider-min-r"
+                  min="60"
+                  max="300"
+                  value="60"
+                  step="5"
+                  data-price-slider
+                />
+                <input
+                  type="range"
+                  class="sb-slider"
+                  id="sb-slider-max-r"
+                  min="60"
+                  max="300"
+                  value="300"
+                  step="5"
+                  data-price-slider
+                />
               </div>
             </div>
           </div>
 
-          {
-            brands.length > 0 && (
-              <div class="sm-group">
-                <button class="sm-gtitle" type="button">Brand <Fragment set:html={chev} /></button>
-                <div class="sm-gbody">
-                  {brands.map(([brand, n]) => (
-                    <label class="sm-check">
-                      <input type="checkbox" data-filter="brand" value={brand} />
-                      <span class="sm-box"><Fragment set:html={check} /></span> {brand} <span class="cnt">{n}</span>
-                    </label>
-                  ))}
-                </div>
+          <!-- RATING -->
+          <div class="sb-group" id="grp-rating">
+            <div class="sb-group-hd" data-toggle="grp-rating">
+              <span class="sb-group-label">Rating</span>
+              <svg class="sb-toggle-icon open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </div>
+            <div class="sb-group-body sb-ratings" id="grp-rating-body">
+              <div class="sb-rating" data-rating="4.5" data-rating-lbl="4.5+ Stars">
+                <div class="sb-rating-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                <span class="sb-rating-lbl">4.5 &amp; above</span>
+                <span class="sb-rating-check"></span>
               </div>
-            )
-          }
-
-          {
-            hasAnyRating && (
-              <div class="sm-group">
-                <button class="sm-gtitle" type="button">Rating <Fragment set:html={chev} /></button>
-                <div class="sm-gbody">
-                  {[
-                    { v: '4.5', label: '4.5 & up' },
-                    { v: '4', label: '4.0 & up' },
-                    { v: '3', label: '3.0 & up' },
-                    { v: '0', label: 'Any rating' },
-                  ].map((r, i) => (
-                    <label class="sm-check is-radio">
-                      <input type="radio" name="smRate" data-filter="rate" value={r.v} checked={i === 3} />
-                      <span class="sm-box"><Fragment set:html={check} /></span>{' '}
-                      <span class="sm-rate">{r.v !== '0' && <span class="stars"><Fragment set:html={star} /></span>} {r.label}</span>
-                    </label>
-                  ))}
-                </div>
+              <div class="sb-rating" data-rating="4.0" data-rating-lbl="4.0+ Stars">
+                <div class="sb-rating-stars">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
+                <span class="sb-rating-lbl">4.0 &amp; above</span>
+                <span class="sb-rating-check"></span>
               </div>
-            )
-          }
-
-          {
-            colors.length > 0 && (
-              <div class="sm-group">
-                <button class="sm-gtitle" type="button">Color <Fragment set:html={chev} /></button>
-                <div class="sm-gbody">
-                  <div class="sm-swatches">
-                    {colors.map(([name, css]) => (
-                      <span
-                        class="sm-sw"
-                        data-color={name}
-                        title={name}
-                        style={`background:${css}`}
-                        role="checkbox"
-                        aria-checked="false"
-                        aria-label={name}
-                        tabindex="0"
-                      />
-                    ))}
-                  </div>
-                </div>
+              <div class="sb-rating" data-rating="3.5" data-rating-lbl="3.5+ Stars">
+                <div class="sb-rating-stars">&#9733;&#9733;&#9733;&#9734;&#9734;</div>
+                <span class="sb-rating-lbl">3.5 &amp; above</span>
+                <span class="sb-rating-check"></span>
               </div>
-            )
-          }
-
-          <div class="sm-group">
-            <button class="sm-gtitle" type="button">Availability <Fragment set:html={chev} /></button>
-            <div class="sm-gbody">
-              <div class="sm-toggle">In stock only <span class="sm-switch" id="smInStock" role="switch" tabindex="0"></span></div>
-              <div class="sm-toggle">Out of stock <span class="sm-switch" id="smOutStock" role="switch" tabindex="0"></span></div>
             </div>
           </div>
 
-          <div class="sm-group">
-            <button class="sm-gtitle" type="button">Offers <Fragment set:html={chev} /></button>
-            <div class="sm-gbody">
-              <div class="sm-toggle">On sale <span class="sm-switch" id="smOnSale" role="switch" tabindex="0"></span></div>
+          <!-- MATERIAL -->
+          <div class="sb-group" id="grp-mat">
+            <div class="sb-group-hd" data-toggle="grp-mat">
+              <span class="sb-group-label">Material</span>
+              <svg class="sb-toggle-icon open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </div>
+            <div class="sb-group-body sb-mats" id="grp-mat-body">
+              <button class="sb-pill" data-fmat="linen" data-pill-type="mat" data-pill-val="linen">Linen</button>
+              <button class="sb-pill" data-fmat="wool" data-pill-type="mat" data-pill-val="wool">Wool</button>
+              <button class="sb-pill" data-fmat="cotton" data-pill-type="mat" data-pill-val="cotton">Cotton</button>
+              <button class="sb-pill" data-fmat="silk" data-pill-type="mat" data-pill-val="silk">Silk</button>
+              <button class="sb-pill" data-fmat="leather" data-pill-type="mat" data-pill-val="leather">Leather</button>
+              <button class="sb-pill" data-fmat="cashmere" data-pill-type="mat" data-pill-val="cashmere"
+                >Cashmere</button
+              >
             </div>
           </div>
 
-          {
-            features.length > 0 && (
-              <div class="sm-group">
-                <button class="sm-gtitle" type="button">Features <Fragment set:html={chev} /></button>
-                <div class="sm-gbody">
-                  {features.map(([tag, n]) => (
-                    <label class="sm-check">
-                      <input type="checkbox" data-filter="feature" value={slug(tag)} />
-                      <span class="sm-box"><Fragment set:html={check} /></span> {tag} <span class="cnt">{n}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )
-          }
-
-          <div class="sm-apply-row">
-            <button class="sm-apply" id="smApply" type="button">Show results</button>
+          <!-- OCCASION -->
+          <div class="sb-group" id="grp-occ">
+            <div class="sb-group-hd" data-toggle="grp-occ">
+              <span class="sb-group-label">Occasion</span>
+              <svg class="sb-toggle-icon open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </div>
+            <div class="sb-group-body sb-occs" id="grp-occ-body">
+              <button class="sb-pill" data-pill-type="occ" data-pill-val="everyday">Everyday</button>
+              <button class="sb-pill" data-pill-type="occ" data-pill-val="work">Work</button>
+              <button class="sb-pill" data-pill-type="occ" data-pill-val="weekend">Weekend</button>
+              <button class="sb-pill" data-pill-type="occ" data-pill-val="evening">Evening</button>
+              <button class="sb-pill" data-pill-type="occ" data-pill-val="resort">Resort</button>
+            </div>
           </div>
+
+          <!-- AVAILABILITY -->
+          <div class="sb-group" id="grp-avl">
+            <div class="sb-group-hd" data-toggle="grp-avl">
+              <span class="sb-group-label">Availability</span>
+              <svg class="sb-toggle-icon open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </div>
+            <div class="sb-group-body sb-avails" id="grp-avl-body">
+              <button class="sb-pill" data-pill-type="avail" data-pill-val="sale">On Sale</button>
+              <button class="sb-pill" data-pill-type="avail" data-pill-val="new">New Arrivals</button>
+              <button class="sb-pill" data-pill-type="avail" data-pill-val="bestseller">Best Sellers</button>
+            </div>
+          </div>
+
         </aside>
 
-        <div class="sm-results">
-          <div class="sm-toolbar">
-            <button class="sm-filterbtn" id="smFilterBtn" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg> Filters</button>
-            <span class="sm-count" id="smCount">Showing <b>{products.length}</b> products</span>
-            {hasMore && <span class="sm-count-note">Browsing the latest {products.length} — refine with filters or search for more.</span>}
-            <div class="sm-tools">
-              <div class="sm-view" role="group" aria-label="View mode">
-                <button class="sm-viewbtn is-active" id="smGridBtn" type="button" aria-label="Grid view"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
-                <button class="sm-viewbtn" id="smListBtn" type="button" aria-label="List view"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3.5" y1="6" x2="3.51" y2="6"/><line x1="3.5" y1="12" x2="3.51" y2="12"/><line x1="3.5" y1="18" x2="3.51" y2="18"/></svg></button>
-              </div>
-              <form class="sm-sortwrap" method="get" id="smSortForm">
-                <label for="smSort">Sort by</label>
-                <select class="sm-sort" id="smSort" name="sort">
-                  {PRODUCT_SORT_OPTIONS.map((o) => (
-                    <option value={o.value} selected={o.value === sort.value}>{o.label}</option>
-                  ))}
+
+        <!-- PRODUCT AREA -->
+        <section class="prod-area">
+          <!-- Count + Controls row -->
+          <div class="prod-head">
+            <div class="prod-count" id="prod-count">{total} products</div>
+            <div class="shd-controls">
+              <div class="shd-sort">
+                <select id="sort-sel">
+                  <option value="default">Sort: Featured</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="rating">Top Rated</option>
+                  <option value="newest">Newest First</option>
+                  <option value="bestseller">Best Sellers</option>
                 </select>
-              </form>
+              </div>
+              <div class="view-btns">
+                <button class="view-btn active" id="vb3" data-view="3" aria-label="3-column grid">
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                    <rect x="1" y="1" width="3.5" height="4.5" rx="1" fill="currentColor"></rect>
+                    <rect x="5.75" y="1" width="3.5" height="4.5" rx="1" fill="currentColor"></rect>
+                    <rect x="10.5" y="1" width="3.5" height="4.5" rx="1" fill="currentColor"></rect>
+                    <rect x="1" y="7" width="3.5" height="4.5" rx="1" fill="currentColor"></rect>
+                    <rect x="5.75" y="7" width="3.5" height="4.5" rx="1" fill="currentColor"></rect>
+                    <rect x="10.5" y="7" width="3.5" height="4.5" rx="1" fill="currentColor"></rect>
+                  </svg>
+                </button>
+                <button class="view-btn" id="vb2" data-view="2" aria-label="2-column grid">
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                    <rect x="1" y="1" width="5.5" height="5.5" rx="1" fill="currentColor"></rect>
+                    <rect x="8.5" y="1" width="5.5" height="5.5" rx="1" fill="currentColor"></rect>
+                    <rect x="1" y="8.5" width="5.5" height="5.5" rx="1" fill="currentColor"></rect>
+                    <rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1" fill="currentColor"></rect>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
           {
             loadError ? (
-              <div class="sm-empty">
-                <b>We hit a connection snag</b>
-                The catalogue couldn't load right now. Please try again shortly.
+              <div class="no-results">
+                <h3>Unable to load products</h3>
+                <p>Something went wrong fetching the collection. Please try again shortly.</p>
               </div>
-            ) : products.length === 0 ? (
-              <div class="sm-empty">
-                <b>No products found</b>
-                Try a different sort or check back soon.
+            ) : total === 0 ? (
+              <div class="no-results">
+                <h3>No products yet</h3>
+                <p>Check back soon — new pieces are on their way.</p>
               </div>
             ) : (
-              <>
-                <div class="sm-grid" id="smGrid">
-                  {products.map((p, i) => <ProductCard product={p} eager={i < 3} attrs={cardAttrs(p)} />)}
-                </div>
-                <div class="sm-empty" id="smNoMatch" style="display:none;">
-                  <b>No matches</b>
-                  No products on this page match your filters. Try clearing some.
-                </div>
-              </>
-            )
-          }
-
-          {
-            !loadError && products.length > 0 && (
-              <div class="sm-more" id="smPagerWrap">
-                <button class="sm-morebtn" id="smMore" type="button">Load more <span id="smMoreCount">+4</span></button>
-                <p class="sm-moremeta" id="smMoreMeta">You've viewed {Math.min(8, products.length)} of {products.length} products</p>
+              <div class="pg" id="prod-grid">
+                {products.map((p, i) => (
+                  <ProductCard product={p} eager={i < 4} attrs={cardAttrs(p)} />
+                ))}
               </div>
             )
           }
-        </div>
-      </div>
 
-      <div class="sm-overlay" id="smOverlay"></div>
-    </div>
+          <!-- Empty-state shown by the filter engine when nothing matches -->
+          <div class="no-results" id="no-match" style="display:none">
+            <h3>No matches</h3>
+            <p>Try clearing a filter or two to see more pieces.</p>
+          </div>
+
+        </section>
+      </div><!-- /shop-body -->
+    </div><!-- /shop-wrap -->
   </main>
 </Layout>
 
 <style>
-  .sm-pager { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; }
-  .sm-count-note { display: block; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+  .shop-page {
+    background: var(--bg);
+    min-height: 100vh;
+    padding-top: 110px;
+  }
+
+  .shop-wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 44px;
+  }
+
+  /* ═══════════════════════════ SHOP HEADER BLOCK ═══════════════════════════ */
+  .shop-hd-block {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* subtle decorative accent line at top */
+  .shop-hd-block::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+  }
+
+  .shop-hd-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 44px;
+  }
+
+  /* ── Top row: breadcrumb + perks ── */
+  .shd-toprow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .shd-bc {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--fb);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .shd-bc a {
+    color: var(--muted);
+    text-decoration: none;
+    transition: color .18s;
+  }
+
+  .shd-bc a:hover {
+    color: var(--text);
+  }
+
+  .shd-bc svg {
+    opacity: .4;
+    flex-shrink: 0;
+  }
+
+  .shd-bc-cur {
+    color: var(--text);
+    font-weight: 600;
+    letter-spacing: .1px;
+  }
+
+  .shd-perks {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .shd-perk {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .shd-perk svg {
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .shd-perk-div {
+    width: 1px;
+    height: 12px;
+    background: var(--border);
+  }
+
+  .shd-perk--live {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .shd-live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: .5;
+      transform: scale(1.3);
+    }
+  }
+
+  /* ── Main hero row ── */
+  .shd-hero {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
+    padding: 28px 0 32px;
+  }
+
+  .shd-hero-left {
+    flex: 1;
+  }
+
+  .shd-eyebrow {
+    font-family: var(--fb);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  .shd-title {
+    font-family: var(--fh);
+    font-size: 48px;
+    font-weight: 700;
+    line-height: .95;
+    letter-spacing: -2px;
+    color: var(--text);
+    margin: 0 0 12px;
+  }
+
+  .shd-sub {
+    font-family: var(--fb);
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.5;
+    max-width: 400px;
+  }
+
+  .shd-hero-stats {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-shrink: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .shd-stat {
+    padding: 16px 28px;
+    text-align: center;
+  }
+
+  .shd-stat-num {
+    font-family: var(--fh);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .shd-stat-lbl {
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: .4px;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+
+  .shd-stat-div {
+    width: 1px;
+    background: var(--border);
+    align-self: stretch;
+  }
+
+  /* Sort + view controls (in prod-head) */
+  .shd-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .shd-sort select {
+    font-family: var(--fb);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 30px 9px 14px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    letter-spacing: .1px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    min-width: 172px;
+    transition: border-color .18s;
+  }
+
+  .shd-sort select:hover {
+    border-color: var(--text);
+  }
+
+  .shd-sort select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .view-btns {
+    display: flex;
+    gap: 2px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .view-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all .18s;
+  }
+
+  .view-btn.active {
+    background: var(--text);
+    color: var(--bg);
+  }
+
+  .view-btn:hover:not(.active) {
+    background: var(--card);
+    color: var(--text);
+  }
+
+  /* ═══════════════════════════ ACTIVE CHIPS ═══════════════════════════════ */
+  .chips-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 14px 0;
+    min-height: 50px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--fb);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+
+  .chip:hover {
+    border-color: var(--text);
+    background: var(--card);
+  }
+
+  .chip-x {
+    font-size: 14px;
+    color: var(--muted);
+    margin-left: 2px;
+  }
+
+  .chips-reset {
+    font-family: var(--fb);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--rust);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    letter-spacing: .3px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    margin-left: 4px;
+  }
+
+  .chips-reset:hover {
+    color: var(--text);
+  }
+
+  /* ═══════════════════════════ SHOP BODY LAYOUT ════════════════════════════ */
+  .shop-body {
+    display: grid;
+    grid-template-columns: 252px 1fr;
+    gap: 0 52px;
+    align-items: start;
+    padding-bottom: 100px;
+  }
+
+  /* ═══════════════════════════ SIDEBAR ════════════════════════════════════ */
+  .sidebar {
+    position: sticky;
+    top: 106px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding: 28px 0 20px;
+  }
+
+  .sidebar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sb-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .sb-hd h3 {
+    font-family: var(--fh);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -.4px;
+    color: var(--text);
+  }
+
+  .sb-clear {
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: color .2s;
+  }
+
+  .sb-clear:hover {
+    color: var(--rust);
+  }
+
+  .sb-group {
+    border-top: 1px solid var(--border);
+    padding: 18px 0 4px;
+  }
+
+  .sb-group-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    margin-bottom: 14px;
+  }
+
+  .sb-group-hd span {
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .sb-toggle-icon {
+    width: 14px;
+    height: 14px;
+    color: var(--muted);
+    transition: transform .2s;
+  }
+
+  .sb-toggle-icon.open {
+    transform: rotate(180deg);
+  }
+
+  /* Category pills */
+  .sb-cats {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 12px;
+  }
+
+  .sb-cat {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--fb);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 6px;
+    text-align: left;
+    transition: all .2s;
+  }
+
+  .sb-cat:hover {
+    background: var(--bg2);
+    color: var(--text);
+  }
+
+  .sb-cat.active {
+    background: var(--text);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .sb-cat-ct {
+    font-size: 11px;
+    opacity: .6;
+  }
+
+  .sb-cat.active .sb-cat-ct {
+    opacity: .7;
+  }
+
+  /* Color swatches filter */
+  .sb-colors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .sb-swatch-wrap {
+    cursor: pointer;
+  }
+
+  .sb-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all .2s;
+    position: relative;
+  }
+
+  .sb-swatch-wrap:hover .sb-swatch {
+    transform: scale(1.12);
+  }
+
+  .sb-swatch-wrap.active .sb-swatch {
+    border-color: var(--text);
+    transform: scale(1.12);
+  }
+
+  .sb-swatch-wrap.active .sb-swatch::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1.5px solid var(--text);
+  }
+
+  /* Size pills */
+  .sb-sizes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .sb-size {
+    font-family: var(--fb);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--muted);
+    transition: all .2s;
+    letter-spacing: .2px;
+  }
+
+  .sb-size:hover {
+    border-color: var(--text);
+    color: var(--text);
+  }
+
+  .sb-size.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+
+  /* ── Price range ── */
+  .sb-price {
+    padding: 4px 0 30px;
+  }
+
+  /* Input boxes row */
+  .sb-price-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .sb-price-input-wrap {
+    flex: 1;
+    position: relative;
+  }
+
+  .sb-price-input-wrap span {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--fb);
+    font-size: 12px;
+    color: var(--muted);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .sb-price-input {
+    width: 100%;
+    font-family: var(--fb);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 9px 10px 9px 22px;
+    transition: border-color .18s;
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  .sb-price-input::-webkit-inner-spin-button,
+  .sb-price-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .sb-price-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .sb-price-input:hover {
+    border-color: var(--muted);
+  }
+
+  .sb-price-sep {
+    font-family: var(--fb);
+    font-size: 13px;
+    color: var(--border);
+    flex-shrink: 0;
+    font-weight: 500;
+  }
+
+  /* Dual-range slider track */
+  .sb-slider-track {
+    position: relative;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 8px 24px;
+  }
+
+  .sb-slider-fill {
+    position: absolute;
+    height: 100%;
+    background: var(--text);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
+  /* Both range inputs overlap the track */
+  .sb-slider {
+    position: absolute;
+    width: calc(100% + 16px);
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    height: 24px;
+    cursor: pointer;
+    margin: 0;
+    pointer-events: none;
+  }
+
+  .sb-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text);
+    border: 3px solid var(--bg);
+    box-shadow: 0 0 0 1.5px var(--text), 0 2px 5px rgba(0, 0, 0, .12);
+    cursor: pointer;
+    pointer-events: all;
+    transition: transform .15s;
+  }
+
+  .sb-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+
+  .sb-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text);
+    border: 3px solid var(--bg);
+    box-shadow: 0 0 0 1.5px var(--text);
+    cursor: pointer;
+    pointer-events: all;
+  }
+
+  #sb-slider-min-r {
+    z-index: 3;
+  }
+
+  #sb-slider-max-r {
+    z-index: 4;
+  }
+
+  /* Rating filter */
+  .sb-ratings {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+
+  .sb-rating {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 5px;
+    transition: background .15s;
+  }
+
+  .sb-rating:hover {
+    background: var(--bg2);
+  }
+
+  .sb-rating.active {
+    background: var(--bg2);
+  }
+
+  .sb-rating-stars {
+    display: flex;
+    gap: 2px;
+    color: #E8A838;
+  }
+
+  .sb-rating-lbl {
+    font-family: var(--fb);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .sb-rating.active .sb-rating-lbl {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* Material / occasion / availability pills */
+  .sb-mats,
+  .sb-occs,
+  .sb-avails {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .sb-pill {
+    font-family: var(--fb);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--muted);
+    transition: all .2s;
+  }
+
+  .sb-pill:hover {
+    border-color: var(--text);
+    color: var(--text);
+  }
+
+  .sb-pill.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+
+  /* ═══════════════════════════ PRODUCT AREA ═══════════════════════════════ */
+  .prod-area {
+    padding-top: 28px;
+  }
+
+  .prod-count {
+    font-family: var(--fb);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  /* Product grid */
+  .pg {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px 20px;
+    transition: grid-template-columns .25s;
+  }
+
+  .pg.cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* ─── empty state ─── */
+  .no-results {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 80px 20px;
+  }
+
+  .no-results h3 {
+    font-family: var(--fh);
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -.5px;
+    margin-bottom: 10px;
+  }
+
+  .no-results p {
+    font-family: var(--fb);
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  /* ═══ PROD HEAD (count + controls row) ════════════════════════════════════ */
+  .prod-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .prod-head .prod-count {
+    margin-bottom: 0;
+  }
+
+  .prod-head .shd-controls {
+    flex-shrink: 0;
+  }
+
+  /* ═══ SMOOTH CARD TRANSITIONS ════════════════════════════════════════════ */
+  @keyframes cardIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* ═══════════════════════════ RESPONSIVE ══════════════════════════════════ */
+  @media (max-width: 1024px) {
+    .shop-body {
+      grid-template-columns: 220px 1fr;
+      gap: 0 36px;
+    }
+
+    .pg {
+      gap: 28px 16px;
+    }
+  }
+
+  @media (max-width: 860px) {
+    .shop-wrap,
+    .shop-hd-inner {
+      padding: 0 24px;
+    }
+
+    .shd-toprow {
+      flex-wrap: wrap;
+    }
+
+    .shd-hero {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 24px;
+    }
+
+    .shd-title {
+      font-size: 38px;
+    }
+
+    .shop-body {
+      grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+      position: static;
+      max-height: none;
+      overflow: visible;
+      padding-bottom: 8px;
+    }
+
+    .prod-head {
+      flex-wrap: wrap;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .shd-perks {
+      display: none;
+    }
+
+    .shd-hero-stats {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .pg {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 22px 12px;
+    }
+
+    .pg.cols-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
 </style>
 
 <script>
   // ============================================================
-  //  Shop filter controller — client-side filtering of the current
-  //  page's product cards by data-* attributes, plus search,
-  //  collapse, mobile drawer, and grid/list view.
+  //  Shop filter / sort / view controller — operates on the
+  //  server-rendered ProductCard grid (.prod-card). All filtering,
+  //  chip rendering, sorting and view-switching happen client-side
+  //  over the cards' data-* facet attributes. Wishlist / quick-view /
+  //  quick-add are handled by the global Overlays controller.
   // ============================================================
-  const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) =>
-    r.querySelector<T>(s);
-  const $$ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) =>
-    Array.from(r.querySelectorAll<T>(s));
+  type PillType = 'mat' | 'occ' | 'avail';
 
-  const grid = $<HTMLElement>('#smGrid');
-  const layout = $<HTMLElement>('#smLayout');
-  if (grid && layout) {
-    const cards = $$('.prod-card', grid);
-    const noMatch = $<HTMLElement>('#smNoMatch');
-    const countEl = $<HTMLElement>('#smCount b') ?? $<HTMLElement>('#smCount');
-    const activeWrap = $<HTMLElement>('#smActive');
-    const activeCount = $<HTMLElement>('#smActiveCount');
-    const search = $<HTMLInputElement>('#smSearch');
-    const minIn = $<HTMLInputElement>('#smMin');
-    const maxIn = $<HTMLInputElement>('#smMax');
-    const rMin = $<HTMLInputElement>('#smRangeMin');
-    const rMax = $<HTMLInputElement>('#smRangeMax');
-    const fill = $<HTMLElement>('#smRangeFill');
-    const FLOOR = rMin ? Number(rMin.min) : 0;
-    const CEIL = rMin ? Number(rMin.max) : 1000;
-
-    type Active = { type: string; value: string; label: string };
-
-    const titleCase = (s: string) =>
-      s.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-
-    function readState() {
-      const checked = (filter: string) =>
-        $$<HTMLInputElement>(`input[data-filter="${filter}"]:checked`).map((i) => i.value);
-      const rate = $<HTMLInputElement>('input[data-filter="rate"]:checked');
-      return {
-        q: (search?.value ?? '').trim().toLowerCase(),
-        cat: checked('cat').map((v) => v.toLowerCase()),
-        brand: checked('brand').map((v) => v.toLowerCase()),
-        feature: checked('feature'),
-        colors: $$('.sm-sw.is-active').map((s) => (s as HTMLElement).dataset.color ?? ''),
-        rate: rate ? Number(rate.value) : 0,
-        inStock: $<HTMLElement>('#smInStock')?.classList.contains('is-on') ?? false,
-        outStock: $<HTMLElement>('#smOutStock')?.classList.contains('is-on') ?? false,
-        onSale: $<HTMLElement>('#smOnSale')?.classList.contains('is-on') ?? false,
-        pMin: minIn?.value ? Number(minIn.value) : FLOOR,
-        pMax: maxIn?.value ? Number(maxIn.value) : CEIL,
-      };
-    }
-
-    const INITIAL = 8;
-    const STEP = 4;
-    let shown = INITIAL;
-    const moreWrap = $<HTMLElement>('#smPagerWrap');
-    const moreBtn = $<HTMLElement>('#smMore');
-    const moreCount = $<HTMLElement>('#smMoreCount');
-    const moreMeta = $<HTMLElement>('#smMoreMeta');
-
-    function matchedCards() {
-      const s = readState();
-      const matched = cards.filter((card) => {
-        const d = card.dataset;
-        const price = Number(d.price ?? 0);
-        const cardColors = (d.colors ?? '').split(/\s+/).filter(Boolean);
-        const cardTags = (d.tags ?? '').split(/\s+/).filter(Boolean);
-        return (
-          (!s.q || (d.title ?? '').includes(s.q)) &&
-          (!s.cat.length || s.cat.includes((d.cat ?? '').toLowerCase())) &&
-          (!s.brand.length || s.brand.includes((d.brand ?? '').toLowerCase())) &&
-          (!s.feature.length || s.feature.every((f) => cardTags.includes(f))) &&
-          (!s.colors.length || s.colors.some((c) => cardColors.includes(c))) &&
-          (!s.rate || Number(d.rating ?? 0) >= s.rate) &&
-          (!s.inStock || d.instock === '1') &&
-          (!s.outStock || d.instock === '0') &&
-          (!s.onSale || d.sale === '1') &&
-          price >= s.pMin &&
-          price <= s.pMax
-        );
-      });
-      return { matched, s };
-    }
-
-    // Render the current filter + reveal state (does NOT reset `shown`).
-    function render() {
-      const { matched, s } = matchedCards();
-      const matchedSet = new Set(matched);
-      const limit = Math.min(shown, matched.length);
-      let revealed = 0;
-      for (const card of cards) {
-        const show = matchedSet.has(card) && revealed < limit;
-        card.style.display = show ? '' : 'none';
-        if (show) revealed++;
-      }
-      if (countEl) countEl.textContent = String(matched.length);
-      if (noMatch) noMatch.style.display = matched.length === 0 ? '' : 'none';
-
-      // Load-more controls
-      const remaining = matched.length - limit;
-      if (moreWrap) moreWrap.style.display = matched.length === 0 ? 'none' : '';
-      if (moreBtn) moreBtn.style.display = remaining > 0 ? '' : 'none';
-      if (moreCount) moreCount.textContent = '+' + Math.min(STEP, remaining);
-      if (moreMeta)
-        moreMeta.textContent =
-          remaining > 0
-            ? `You've viewed ${limit} of ${matched.length} products`
-            : `Showing all ${matched.length} product${matched.length === 1 ? '' : 's'}`;
-      renderActive(s);
-    }
-
-    // Apply a filter change — resets the reveal window to the first page.
-    function apply() {
-      shown = INITIAL;
-      render();
-    }
-
-    function renderActive(s: ReturnType<typeof readState>) {
-      const chips: Active[] = [];
-      s.cat.forEach((v) => chips.push({ type: 'cat', value: v, label: titleCase(v) }));
-      s.brand.forEach((v) => chips.push({ type: 'brand', value: v, label: titleCase(v) }));
-      s.feature.forEach((v) => chips.push({ type: 'feature', value: v, label: titleCase(v) }));
-      s.colors.forEach((v) => chips.push({ type: 'color', value: v, label: titleCase(v) }));
-      if (s.rate) chips.push({ type: 'rate', value: String(s.rate), label: `${s.rate}★ & up` });
-      if (s.inStock) chips.push({ type: 'instock', value: '1', label: 'In stock' });
-      if (s.outStock) chips.push({ type: 'outstock', value: '1', label: 'Out of stock' });
-      if (s.onSale) chips.push({ type: 'onsale', value: '1', label: 'On sale' });
-      if (s.pMin > FLOOR || s.pMax < CEIL) chips.push({ type: 'price', value: '', label: `$${s.pMin}–$${s.pMax}` });
-      if (s.q) chips.push({ type: 'q', value: '', label: `“${s.q}”` });
-
-      if (activeWrap) {
-        activeWrap.innerHTML = chips
-          .map(
-            (c) =>
-              `<button class="sm-achip" data-clear="${c.type}" data-val="${c.value}">${c.label} ✕</button>`,
-          )
-          .join('');
-        activeWrap.style.display = chips.length ? 'flex' : 'none';
-      }
-      if (activeCount) {
-        activeCount.textContent = String(chips.length);
-        activeCount.style.display = chips.length ? '' : 'none';
-      }
-    }
-
-    // -- price slider <-> number inputs --
-    function paintFill() {
-      if (!fill || !rMin || !rMax) return;
-      const lo = ((Number(rMin.value) - FLOOR) / (CEIL - FLOOR)) * 100;
-      const hi = ((Number(rMax.value) - FLOOR) / (CEIL - FLOOR)) * 100;
-      fill.style.left = lo + '%';
-      fill.style.right = 100 - hi + '%';
-    }
-    function syncFromRange() {
-      if (!rMin || !rMax) return;
-      let lo = Number(rMin.value);
-      let hi = Number(rMax.value);
-      if (lo > hi) [lo, hi] = [hi, lo];
-      if (minIn) minIn.value = String(lo);
-      if (maxIn) maxIn.value = String(hi);
-      paintFill();
-      apply();
-    }
-    rMin?.addEventListener('input', syncFromRange);
-    rMax?.addEventListener('input', syncFromRange);
-    function syncFromNumber() {
-      if (rMin && minIn?.value) rMin.value = String(Math.max(FLOOR, Number(minIn.value)));
-      if (rMax && maxIn?.value) rMax.value = String(Math.min(CEIL, Number(maxIn.value)));
-      paintFill();
-      apply();
-    }
-    minIn?.addEventListener('change', syncFromNumber);
-    maxIn?.addEventListener('change', syncFromNumber);
-
-    // price quick-chips
-    $$('#smPriceChips .sm-chip').forEach((chip) =>
-      chip.addEventListener('click', () => {
-        const lo = Number((chip as HTMLElement).dataset.min || FLOOR);
-        const hi = (chip as HTMLElement).dataset.max ? Number((chip as HTMLElement).dataset.max) : CEIL;
-        const active = chip.classList.contains('is-active');
-        $$('#smPriceChips .sm-chip').forEach((c) => c.classList.remove('is-active'));
-        if (active) {
-          if (minIn) minIn.value = '';
-          if (maxIn) maxIn.value = '';
-          if (rMin) rMin.value = String(FLOOR);
-          if (rMax) rMax.value = String(CEIL);
-        } else {
-          chip.classList.add('is-active');
-          if (minIn) minIn.value = String(lo);
-          if (maxIn) maxIn.value = String(hi);
-          if (rMin) rMin.value = String(lo);
-          if (rMax) rMax.value = String(Math.min(CEIL, hi));
-        }
-        paintFill();
-        apply();
-      }),
-    );
-
-    // checkboxes / radios
-    $$<HTMLInputElement>('input[data-filter]').forEach((i) => i.addEventListener('change', apply));
-    // search
-    search?.addEventListener('input', apply);
-    // colour swatches (mouse + keyboard; reflect state on aria-checked)
-    const toggleSwatch = (sw: Element) => {
-      const on = sw.classList.toggle('is-active');
-      sw.setAttribute('aria-checked', on ? 'true' : 'false');
-      apply();
-    };
-    $$('.sm-sw').forEach((sw) => {
-      sw.addEventListener('click', () => toggleSwatch(sw));
-      sw.addEventListener('keydown', (e) => {
-        const k = (e as KeyboardEvent).key;
-        if (k === 'Enter' || k === ' ') {
-          e.preventDefault();
-          toggleSwatch(sw);
-        }
-      });
-    });
-    // availability + offers toggles
-    ['#smInStock', '#smOutStock', '#smOnSale'].forEach((sel) => {
-      const el = $<HTMLElement>(sel);
-      const toggle = () => {
-        const turningOn = !el?.classList.contains('is-on');
-        el?.classList.toggle('is-on');
-        // "In stock only" and "Out of stock" are mutually exclusive.
-        if (turningOn && sel === '#smInStock') $<HTMLElement>('#smOutStock')?.classList.remove('is-on');
-        if (turningOn && sel === '#smOutStock') $<HTMLElement>('#smInStock')?.classList.remove('is-on');
-        apply();
-      };
-      el?.addEventListener('click', toggle);
-      el?.addEventListener('keydown', (e) => {
-        if ((e as KeyboardEvent).key === 'Enter' || (e as KeyboardEvent).key === ' ') {
-          e.preventDefault();
-          toggle();
-        }
-      });
-    });
-
-    // active-chip removal
-    activeWrap?.addEventListener('click', (e) => {
-      const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-clear]');
-      if (!btn) return;
-      clearOne(btn.dataset.clear ?? '', btn.dataset.val ?? '');
-    });
-
-    function clearOne(type: string, val: string) {
-      const v = val.toLowerCase();
-      if (['cat', 'brand', 'feature'].includes(type)) {
-        $$<HTMLInputElement>(`input[data-filter="${type}"]`).forEach((i) => {
-          if (i.value.toLowerCase() === v) i.checked = false;
-        });
-      } else if (type === 'color') {
-        $$('.sm-sw').forEach((s) => {
-          if ((s as HTMLElement).dataset.color === val) s.classList.remove('is-active');
-        });
-      } else if (type === 'rate') {
-        const any = $<HTMLInputElement>('input[data-filter="rate"][value="0"]');
-        if (any) any.checked = true;
-      } else if (type === 'instock') {
-        $<HTMLElement>('#smInStock')?.classList.remove('is-on');
-      } else if (type === 'outstock') {
-        $<HTMLElement>('#smOutStock')?.classList.remove('is-on');
-      } else if (type === 'onsale') {
-        $<HTMLElement>('#smOnSale')?.classList.remove('is-on');
-      } else if (type === 'price') {
-        resetPrice();
-      } else if (type === 'q') {
-        if (search) search.value = '';
-      }
-      apply();
-    }
-
-    function resetPrice() {
-      if (minIn) minIn.value = '';
-      if (maxIn) maxIn.value = '';
-      if (rMin) rMin.value = String(FLOOR);
-      if (rMax) rMax.value = String(CEIL);
-      $$('#smPriceChips .sm-chip').forEach((c) => c.classList.remove('is-active'));
-      paintFill();
-    }
-
-    // clear all
-    $('#smClear')?.addEventListener('click', () => {
-      $$<HTMLInputElement>('input[data-filter]').forEach((i) => {
-        if (i.type === 'radio') i.checked = i.value === '0';
-        else i.checked = false;
-      });
-      $$('.sm-sw').forEach((s) => s.classList.remove('is-active'));
-      $<HTMLElement>('#smInStock')?.classList.remove('is-on');
-      $<HTMLElement>('#smOutStock')?.classList.remove('is-on');
-      $<HTMLElement>('#smOnSale')?.classList.remove('is-on');
-      if (search) search.value = '';
-      resetPrice();
-      apply();
-    });
-
-    // group collapse
-    $$('.sm-gtitle').forEach((t) =>
-      t.addEventListener('click', () => t.closest('.sm-group')?.classList.toggle('is-collapsed')),
-    );
-
-    // load more (progressive reveal of the already-fetched catalogue)
-    moreBtn?.addEventListener('click', () => {
-      shown += STEP;
-      render();
-    });
-
-    // grid / list view
-    const gridBtn = $<HTMLElement>('#smGridBtn');
-    const listBtn = $<HTMLElement>('#smListBtn');
-    gridBtn?.addEventListener('click', () => {
-      grid.classList.remove('is-list');
-      gridBtn.classList.add('is-active');
-      listBtn?.classList.remove('is-active');
-    });
-    listBtn?.addEventListener('click', () => {
-      grid.classList.add('is-list');
-      listBtn.classList.add('is-active');
-      gridBtn?.classList.remove('is-active');
-    });
-
-    // mobile filter drawer (≤980px) / desktop hide filters
-    const filters = $<HTMLElement>('#smFilters');
-    const overlay = $<HTMLElement>('#smOverlay');
-    const isMobile = () => window.matchMedia('(max-width: 980px)').matches;
-    const openDrawer = () => {
-      filters?.classList.add('is-open');
-      overlay?.classList.add('is-open');
-    };
-    const closeDrawer = () => {
-      filters?.classList.remove('is-open');
-      overlay?.classList.remove('is-open');
-    };
-    $('#smFilterBtn')?.addEventListener('click', () => {
-      if (isMobile()) openDrawer();
-      else {
-        const hidden = layout.classList.toggle('filters-hidden');
-        $('#smFilterBtn')?.classList.toggle('is-off', hidden);
-      }
-    });
-    $('#smFClose')?.addEventListener('click', closeDrawer);
-    overlay?.addEventListener('click', closeDrawer);
-    $('#smApply')?.addEventListener('click', closeDrawer);
-
-    // -- URL query-param sync — filter state lives in the address bar so it is
-    //    shareable, bookmarkable, and survives the sort reload (real-store
-    //    behaviour). replaceState (not push) keeps history clean while the
-    //    shopper tweaks facets; the lone `sort` param is preserved untouched. --
-    const FILTER_PARAMS = ['cat', 'brand', 'feature', 'color', 'rate', 'instock', 'outstock', 'sale', 'min', 'max', 'q'];
-
-    function writeUrl() {
-      const s = readState();
-      const url = new URL(window.location.href);
-      const p = url.searchParams;
-      FILTER_PARAMS.forEach((k) => p.delete(k));
-      if (s.cat.length) p.set('cat', s.cat.join(','));
-      if (s.brand.length) p.set('brand', s.brand.join(','));
-      if (s.feature.length) p.set('feature', s.feature.join(','));
-      if (s.colors.length) p.set('color', s.colors.join(','));
-      if (s.rate) p.set('rate', String(s.rate));
-      if (s.inStock) p.set('instock', '1');
-      if (s.outStock) p.set('outstock', '1');
-      if (s.onSale) p.set('sale', '1');
-      if (s.pMin > FLOOR) p.set('min', String(s.pMin));
-      if (s.pMax < CEIL) p.set('max', String(s.pMax));
-      if (s.q) p.set('q', s.q);
-      const qs = p.toString();
-      window.history.replaceState(null, '', url.pathname + (qs ? '?' + qs : ''));
-    }
-
-    // Hydrate the filter UI from the URL on load (back/forward + shared links).
-    function applyUrl() {
-      const p = new URL(window.location.href).searchParams;
-      const list = (k: string) => (p.get(k) ?? '').split(',').map((x) => x.trim()).filter(Boolean);
-      const q = p.get('q');
-      if (search && q) search.value = q;
-      const setChecks = (filter: string, vals: string[]) =>
-        $$<HTMLInputElement>(`input[data-filter="${filter}"]`).forEach((i) => {
-          if (vals.includes(i.value.toLowerCase()) || vals.includes(i.value)) i.checked = true;
-        });
-      setChecks('cat', list('cat'));
-      setChecks('brand', list('brand'));
-      setChecks('feature', list('feature'));
-      list('color').forEach((c) =>
-        $$('.sm-sw').forEach((sw) => {
-          if (((sw as HTMLElement).dataset.color ?? '').toLowerCase() === c) {
-            sw.classList.add('is-active');
-            sw.setAttribute('aria-checked', 'true');
-          }
-        }),
-      );
-      const rate = p.get('rate');
-      if (rate) {
-        const r = $<HTMLInputElement>(`input[data-filter="rate"][value="${rate}"]`);
-        if (r) r.checked = true;
-      }
-      if (p.get('instock') === '1') $<HTMLElement>('#smInStock')?.classList.add('is-on');
-      if (p.get('outstock') === '1') $<HTMLElement>('#smOutStock')?.classList.add('is-on');
-      if (p.get('sale') === '1') $<HTMLElement>('#smOnSale')?.classList.add('is-on');
-      const min = p.get('min');
-      const max = p.get('max');
-      if (min && minIn && rMin) { minIn.value = min; rMin.value = String(Math.max(FLOOR, Number(min))); }
-      if (max && maxIn && rMax) { maxIn.value = max; rMax.value = String(Math.min(CEIL, Number(max))); }
-    }
-
-    // Mirror state into the URL on every change (render is the single funnel).
-    const _render = render;
-    render = function () {
-      _render();
-      writeUrl();
-    };
-
-    // Sort change → reload preserving the current filter params (a plain GET
-    // submit would rebuild the query from the lone <select> and drop them).
-    $<HTMLSelectElement>('#smSort')?.addEventListener('change', (e) => {
-      const url = new URL(window.location.href);
-      url.searchParams.set('sort', (e.target as HTMLSelectElement).value);
-      window.location.assign(url.pathname + url.search);
-    });
-
-    // Back/forward between filter states → re-sync the UI without a full reload.
-    window.addEventListener('popstate', () => {
-      $$<HTMLInputElement>('input[data-filter]').forEach((i) => {
-        if (i.type === 'radio') i.checked = i.value === '0';
-        else i.checked = false;
-      });
-      $$('.sm-sw').forEach((s) => { s.classList.remove('is-active'); s.setAttribute('aria-checked', 'false'); });
-      $<HTMLElement>('#smInStock')?.classList.remove('is-on');
-      $<HTMLElement>('#smOutStock')?.classList.remove('is-on');
-      $<HTMLElement>('#smOnSale')?.classList.remove('is-on');
-      if (search) search.value = '';
-      resetPrice();
-      applyUrl();
-      _render();
-    });
-
-    applyUrl();
-    paintFill();
-    apply();
+  interface FilterState {
+    cat: string;
+    catSpecial: string;
+    colors: string[];
+    sizes: string[];
+    mats: string[];
+    occs: string[];
+    avails: string[];
+    prMin: number;
+    prMax: number;
+    rating: number;
+    ratingLbl: string;
   }
+
+  const FLOOR = 60;
+  const CEIL = 300;
+
+  function freshState(): FilterState {
+    return {
+      cat: '',
+      catSpecial: '',
+      colors: [],
+      sizes: [],
+      mats: [],
+      occs: [],
+      avails: [],
+      prMin: FLOOR,
+      prMax: CEIL,
+      rating: 0,
+      ratingLbl: '',
+    };
+  }
+
+  let F: FilterState = freshState();
+
+  const grid = document.getElementById('prod-grid');
+  const chipsBar = document.getElementById('chips-bar');
+  const noMatch = document.getElementById('no-match');
+
+  // Snapshot the server order so "default"/newest sorts can be restored.
+  const originalOrder: HTMLElement[] = grid
+    ? Array.from(grid.querySelectorAll<HTMLElement>('.prod-card'))
+    : [];
+
+  function cards(): HTMLElement[] {
+    return grid ? Array.from(grid.querySelectorAll<HTMLElement>('.prod-card')) : [];
+  }
+
+  // ── Filter engine ─────────────────────────────────────────────────────────
+  function matchCard(c: HTMLElement): boolean {
+    const ds = c.dataset;
+    // Category
+    if (F.catSpecial === 'new') {
+      if ((ds.badge || '') !== 'new') return false;
+    } else if (F.catSpecial === 'sale') {
+      if ((ds.sale || '0') !== '1' && (ds.badge || '') !== 'sale') return false;
+    } else if (F.cat) {
+      if ((ds.cat || '') !== F.cat) return false;
+    }
+    // Colors (OR within)
+    if (F.colors.length) {
+      const cc = (ds.colors || '').split(',').map((s) => s.trim()).filter(Boolean);
+      if (!F.colors.some((col) => cc.indexOf(col) > -1)) return false;
+    }
+    // Sizes (OR within)
+    if (F.sizes.length) {
+      const cs = (ds.sizes || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (!F.sizes.some((sz) => cs.indexOf(sz) > -1)) return false;
+    }
+    // Price
+    const p = parseFloat(ds.price || '0');
+    if (p < F.prMin || p > F.prMax) return false;
+    // Rating
+    if (F.rating > 0 && parseFloat(ds.rating || '0') < F.rating) return false;
+    // Material (card data-mat is a comma list; OR within)
+    if (F.mats.length) {
+      const cm = (ds.mat || '').split(',').map((s) => s.trim()).filter(Boolean);
+      if (!F.mats.some((m) => cm.indexOf(m) > -1)) return false;
+    }
+    // Occasion
+    if (F.occs.length) {
+      const co = (ds.occ || '').split(',').map((s) => s.trim()).filter(Boolean);
+      if (!F.occs.some((o) => co.indexOf(o) > -1)) return false;
+    }
+    // Availability
+    if (F.avails.length) {
+      const ok = F.avails.some((a) => {
+        if (a === 'sale') return (ds.sale || '0') === '1';
+        if (a === 'new') return (ds.badge || '') === 'new';
+        // "bestseller" has no card data → treat as match-all (no-op).
+        if (a === 'bestseller') return true;
+        return false;
+      });
+      if (!ok) return false;
+    }
+    return true;
+  }
+
+  function updateCount(n: number): void {
+    const el = document.getElementById('prod-count');
+    if (el) el.textContent = n + ' product' + (n === 1 ? '' : 's');
+    const elh = document.getElementById('prod-count-hd');
+    if (elh) elh.textContent = String(n);
+  }
+
+  function doFilter(): void {
+    let shown = 0;
+    cards().forEach((c) => {
+      if (matchCard(c)) {
+        if (c.style.display === 'none') {
+          c.style.display = '';
+          c.style.animation = 'cardIn .28s ease forwards';
+          window.setTimeout(() => { c.style.animation = ''; }, 300);
+        }
+        shown++;
+      } else {
+        c.style.display = 'none';
+        c.style.animation = '';
+      }
+    });
+    if (noMatch) noMatch.style.display = shown === 0 && originalOrder.length > 0 ? '' : 'none';
+    updateCount(shown);
+    renderChips();
+  }
+
+  // ── Category ────────────────────────────────────────────────────────────────
+  function setCategory(btn: HTMLElement): void {
+    document.querySelectorAll<HTMLElement>('.sb-cat').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    F.catSpecial = btn.dataset.special || '';
+    F.cat = F.catSpecial ? '' : (btn.dataset.fcat || '');
+    doFilter();
+  }
+
+  // ── Price ───────────────────────────────────────────────────────────────────
+  function updateSliderFill(a: number, b: number): void {
+    const fill = document.getElementById('slider-fill');
+    if (!fill) return;
+    const pct1 = ((a - FLOOR) / (CEIL - FLOOR)) * 100;
+    const pct2 = ((b - FLOOR) / (CEIL - FLOOR)) * 100;
+    fill.style.left = pct1 + '%';
+    fill.style.width = (pct2 - pct1) + '%';
+  }
+
+  function onPriceSlider(): void {
+    const mn = document.getElementById('sb-slider-min-r') as HTMLInputElement | null;
+    const mx = document.getElementById('sb-slider-max-r') as HTMLInputElement | null;
+    if (!mn || !mx) return;
+    let a = parseFloat(mn.value);
+    let b = parseFloat(mx.value);
+    if (a > b) { const t = a; a = b; b = t; }
+    F.prMin = a;
+    F.prMax = b;
+    const minBox = document.getElementById('price-min-input') as HTMLInputElement | null;
+    const maxBox = document.getElementById('price-max-input') as HTMLInputElement | null;
+    if (minBox) minBox.value = String(a);
+    if (maxBox) maxBox.value = String(b);
+    updateSliderFill(a, b);
+    doFilter();
+  }
+
+  function onPriceBox(el: HTMLInputElement, which: 'min' | 'max'): void {
+    const val = Math.min(CEIL, Math.max(FLOOR, parseFloat(el.value) || FLOOR));
+    if (which === 'min') {
+      F.prMin = val;
+      const mn = document.getElementById('sb-slider-min-r') as HTMLInputElement | null;
+      if (mn) mn.value = String(val);
+    } else {
+      F.prMax = val;
+      const mx = document.getElementById('sb-slider-max-r') as HTMLInputElement | null;
+      if (mx) mx.value = String(val);
+    }
+    updateSliderFill(F.prMin, F.prMax);
+    doFilter();
+  }
+
+  function resetPriceUI(): void {
+    const mn = document.getElementById('sb-slider-min-r') as HTMLInputElement | null;
+    const mx = document.getElementById('sb-slider-max-r') as HTMLInputElement | null;
+    if (mn) mn.value = String(FLOOR);
+    if (mx) mx.value = String(CEIL);
+    F.prMin = FLOOR;
+    F.prMax = CEIL;
+    const minBox = document.getElementById('price-min-input') as HTMLInputElement | null;
+    const maxBox = document.getElementById('price-max-input') as HTMLInputElement | null;
+    if (minBox) minBox.value = String(FLOOR);
+    if (maxBox) maxBox.value = String(CEIL);
+    updateSliderFill(FLOOR, CEIL);
+  }
+
+  // ── Rating ──────────────────────────────────────────────────────────────────
+  function toggleRating(el: HTMLElement): void {
+    const val = parseFloat(el.dataset.rating || '0');
+    const lbl = el.dataset.ratingLbl || '';
+    if (F.rating === val) {
+      F.rating = 0;
+      F.ratingLbl = '';
+      el.classList.remove('active');
+    } else {
+      document.querySelectorAll<HTMLElement>('.sb-rating').forEach((r) => r.classList.remove('active'));
+      el.classList.add('active');
+      F.rating = val;
+      F.ratingLbl = lbl;
+    }
+    doFilter();
+  }
+
+  // ── Pills (material / occasion / availability) ──────────────────────────────
+  function togglePill(el: HTMLElement, type: PillType, val: string): void {
+    el.classList.toggle('active');
+    const arr: string[] = type === 'mat' ? F.mats : type === 'occ' ? F.occs : F.avails;
+    const idx = arr.indexOf(val);
+    if (idx > -1) arr.splice(idx, 1);
+    else arr.push(val);
+    doFilter();
+  }
+
+  const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+
+  // ── Chips ───────────────────────────────────────────────────────────────────
+  function renderChips(): void {
+    if (!chipsBar) return;
+    chipsBar.innerHTML = '';
+    let any = false;
+
+    const addChip = (label: string, clearFn: () => void): void => {
+      any = true;
+      const c = document.createElement('span');
+      c.className = 'chip';
+      c.innerHTML = label + '<span class="chip-x">&times;</span>';
+      const x = c.querySelector('.chip-x');
+      if (x) x.addEventListener('click', clearFn);
+      chipsBar.appendChild(c);
+    };
+
+    if (F.cat || F.catSpecial) {
+      const lbl = F.catSpecial === 'new'
+        ? 'New Arrivals'
+        : F.catSpecial === 'sale'
+          ? 'On Sale'
+          : cap(F.cat);
+      addChip(lbl, () => {
+        F.cat = '';
+        F.catSpecial = '';
+        document.querySelectorAll<HTMLElement>('.sb-cat').forEach((b) => b.classList.remove('active'));
+        const all = document.querySelector<HTMLElement>('.sb-cat[data-fcat=""]');
+        if (all) all.classList.add('active');
+        doFilter();
+      });
+    }
+    F.colors.forEach((col) => {
+      addChip(cap(col), () => {
+        F.colors.splice(F.colors.indexOf(col), 1);
+        document.querySelectorAll<HTMLElement>('.sb-swatch-wrap[data-color="' + col + '"]')
+          .forEach((s) => s.classList.remove('active'));
+        doFilter();
+      });
+    });
+    F.sizes.forEach((sz) => {
+      addChip(sz.toUpperCase(), () => {
+        F.sizes.splice(F.sizes.indexOf(sz), 1);
+        document.querySelectorAll<HTMLElement>('.sb-size').forEach((s) => {
+          if ((s.textContent || '').trim().toLowerCase() === sz) s.classList.remove('active');
+        });
+        doFilter();
+      });
+    });
+    if (F.prMin > FLOOR || F.prMax < CEIL) {
+      addChip('$' + F.prMin + '–$' + F.prMax, () => { resetPriceUI(); doFilter(); });
+    }
+    if (F.rating > 0) {
+      addChip(F.ratingLbl, () => {
+        F.rating = 0;
+        F.ratingLbl = '';
+        document.querySelectorAll<HTMLElement>('.sb-rating').forEach((r) => r.classList.remove('active'));
+        doFilter();
+      });
+    }
+    F.mats.forEach((m) => {
+      addChip(cap(m), () => {
+        F.mats.splice(F.mats.indexOf(m), 1);
+        document.querySelectorAll<HTMLElement>('.sb-pill[data-pill-type="mat"][data-pill-val="' + m + '"]')
+          .forEach((p) => p.classList.remove('active'));
+        doFilter();
+      });
+    });
+    F.occs.forEach((o) => {
+      addChip(cap(o), () => {
+        F.occs.splice(F.occs.indexOf(o), 1);
+        document.querySelectorAll<HTMLElement>('.sb-pill[data-pill-type="occ"][data-pill-val="' + o + '"]')
+          .forEach((p) => p.classList.remove('active'));
+        doFilter();
+      });
+    });
+    F.avails.forEach((a) => {
+      addChip(cap(a), () => {
+        F.avails.splice(F.avails.indexOf(a), 1);
+        document.querySelectorAll<HTMLElement>('.sb-pill[data-pill-type="avail"][data-pill-val="' + a + '"]')
+          .forEach((p) => p.classList.remove('active'));
+        doFilter();
+      });
+    });
+
+    if (any) {
+      const btn = document.createElement('button');
+      btn.className = 'chips-reset';
+      btn.textContent = 'Clear all';
+      btn.addEventListener('click', resetAll);
+      chipsBar.appendChild(btn);
+    }
+  }
+
+  // ── Reset ───────────────────────────────────────────────────────────────────
+  function resetAll(): void {
+    F = freshState();
+    document.querySelectorAll<HTMLElement>('.sb-cat').forEach((b) => b.classList.remove('active'));
+    const allCat = document.querySelector<HTMLElement>('.sb-cat[data-fcat=""]');
+    if (allCat) allCat.classList.add('active');
+    document.querySelectorAll<HTMLElement>('.sb-swatch-wrap,.sb-size,.sb-rating,.sb-pill')
+      .forEach((el) => el.classList.remove('active'));
+    resetPriceUI();
+    doFilter();
+  }
+
+  // ── Sort ────────────────────────────────────────────────────────────────────
+  function doSort(): void {
+    if (!grid) return;
+    const sel = document.getElementById('sort-sel') as HTMLSelectElement | null;
+    const val = sel ? sel.value : 'default';
+    let ordered: HTMLElement[];
+    if (val === 'price-asc') {
+      ordered = cards().sort(
+        (a, b) => parseFloat(a.dataset.price || '0') - parseFloat(b.dataset.price || '0'),
+      );
+    } else if (val === 'price-desc') {
+      ordered = cards().sort(
+        (a, b) => parseFloat(b.dataset.price || '0') - parseFloat(a.dataset.price || '0'),
+      );
+    } else if (val === 'rating') {
+      ordered = cards().sort(
+        (a, b) => parseFloat(b.dataset.rating || '0') - parseFloat(a.dataset.rating || '0'),
+      );
+    } else if (val === 'newest') {
+      ordered = cards().sort(
+        (a, b) =>
+          (b.dataset.badge === 'new' ? 1 : 0) - (a.dataset.badge === 'new' ? 1 : 0),
+      );
+    } else {
+      // default / bestseller → restore the server order.
+      ordered = originalOrder.slice();
+    }
+    ordered.forEach((c) => grid.appendChild(c));
+  }
+
+  // ── View toggle ─────────────────────────────────────────────────────────────
+  function setView(n: number): void {
+    if (grid) grid.classList.toggle('cols-2', n === 2);
+    const vb3 = document.getElementById('vb3');
+    const vb2 = document.getElementById('vb2');
+    if (vb3) vb3.classList.toggle('active', n === 3);
+    if (vb2) vb2.classList.toggle('active', n === 2);
+  }
+
+  // ── Sidebar group collapse ──────────────────────────────────────────────────
+  function toggleGroup(id: string): void {
+    const body = document.getElementById(id + '-body');
+    const icon = document.querySelector<HTMLElement>('#' + id + ' .sb-toggle-icon');
+    if (!body) return;
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : '';
+    if (icon) icon.classList.toggle('open', !isOpen);
+  }
+
+  // ── Wiring (event delegation + listeners) ───────────────────────────────────
+  // Group collapse
+  document.querySelectorAll<HTMLElement>('.sb-group-hd[data-toggle]').forEach((hd) => {
+    hd.addEventListener('click', () => toggleGroup(hd.dataset.toggle || ''));
+  });
+
+  // Clear-all buttons
+  document.querySelectorAll<HTMLElement>('[data-action="reset-all"]').forEach((b) => {
+    b.addEventListener('click', resetAll);
+  });
+
+  // Category
+  document.querySelectorAll<HTMLElement>('.sb-cat').forEach((b) => {
+    b.addEventListener('click', () => setCategory(b));
+  });
+
+  // Colors
+  document.querySelectorAll<HTMLElement>('.sb-swatch-wrap').forEach((el) => {
+    el.addEventListener('click', () => {
+      el.classList.toggle('active');
+      const c = el.dataset.color || '';
+      const idx = F.colors.indexOf(c);
+      if (idx > -1) F.colors.splice(idx, 1);
+      else F.colors.push(c);
+      doFilter();
+    });
+  });
+
+  // Sizes
+  document.querySelectorAll<HTMLElement>('.sb-size').forEach((el) => {
+    el.addEventListener('click', () => {
+      el.classList.toggle('active');
+      const s = (el.textContent || '').trim().toLowerCase();
+      const idx = F.sizes.indexOf(s);
+      if (idx > -1) F.sizes.splice(idx, 1);
+      else F.sizes.push(s);
+      doFilter();
+    });
+  });
+
+  // Price
+  document.querySelectorAll<HTMLInputElement>('[data-price-slider]').forEach((el) => {
+    el.addEventListener('input', onPriceSlider);
+  });
+  document.querySelectorAll<HTMLInputElement>('[data-price-box]').forEach((el) => {
+    el.addEventListener('input', () => onPriceBox(el, el.dataset.priceBox === 'max' ? 'max' : 'min'));
+  });
+
+  // Rating
+  document.querySelectorAll<HTMLElement>('.sb-rating').forEach((el) => {
+    el.addEventListener('click', () => toggleRating(el));
+  });
+
+  // Pills (material / occasion / availability)
+  document.querySelectorAll<HTMLElement>('.sb-pill[data-pill-type]').forEach((el) => {
+    el.addEventListener('click', () =>
+      togglePill(el, el.dataset.pillType as PillType, el.dataset.pillVal || ''),
+    );
+  });
+
+  // Sort
+  const sortSel = document.getElementById('sort-sel');
+  if (sortSel) sortSel.addEventListener('change', doSort);
+
+  // View
+  document.querySelectorAll<HTMLElement>('.view-btn[data-view]').forEach((b) => {
+    b.addEventListener('click', () => setView(parseInt(b.dataset.view || '3', 10)));
+  });
+
+  // Initial paint
+  updateSliderFill(FLOOR, CEIL);
+  renderChips();
 </script>
