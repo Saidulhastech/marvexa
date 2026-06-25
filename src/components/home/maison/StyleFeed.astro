@@ -1,0 +1,555 @@
+---
+---
+
+  <section class="stylefeed" aria-labelledby="sf-h">
+    <div class="wrap">
+
+      <div class="sf-head">
+        <div class="sf-head__eyebrow">Our Community</div>
+        <h2 class="sf-head__title" id="sf-h">Styled by You</h2>
+      </div>
+
+      <div class="sf-grid" id="sfGrid">
+        <!-- populated by JS -->
+      </div>
+
+      <div class="sf-tag-strip">
+        <span class="sf-tag-strip__hashtag">#MaisonStyle</span>
+        <span class="sf-tag-strip__dot"></span>
+        <span class="sf-tag-strip__sub">Tag us on Instagram to be featured</span>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Style Feed Lightbox -->
+  <div class="sf-lb" id="sfLb" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <div class="sf-lb__backdrop" id="sfLbBackdrop"></div>
+    <div class="sf-lb__inner">
+      <img class="sf-lb__img" id="sfLbImg" src="" alt="" />
+      <div class="sf-lb__meta">
+        <span class="sf-lb__handle" id="sfLbHandle"></span>
+        <span class="sf-lb__counter" id="sfLbCounter"></span>
+      </div>
+    </div>
+    <button class="sf-lb__close" id="sfLbClose" aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+    </button>
+    <button class="sf-lb__prev" id="sfLbPrev" aria-label="Previous image">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+    </button>
+    <button class="sf-lb__next" id="sfLbNext" aria-label="Next image">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
+    </button>
+  </div>
+
+<style>
+    .stylefeed {
+      padding: 0 120px 120px 120px;
+      background: var(--bg);
+    }
+
+    .sf-head {
+      text-align: center;
+      margin-bottom: 52px;
+    }
+
+    .sf-head__eyebrow {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      font-family: var(--fb);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .sf-head__eyebrow::before,
+    .sf-head__eyebrow::after {
+      content: '';
+      display: block;
+      width: 20px;
+      height: 1px;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .sf-head__title {
+      font-family: var(--fh);
+      font-size: clamp(32px, 4vw, 52px);
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -2px;
+      line-height: 1;
+      margin: 0;
+    }
+
+    /* ── Grid ── */
+    .sf-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: 320px 320px;
+      gap: 6px;
+    }
+
+    .sf-item {
+      position: relative;
+      overflow: hidden;
+      background: var(--card);
+      opacity: 0;
+      transform: translateY(14px);
+      transition:
+        opacity 0.55s ease calc(var(--si, 0) * 80ms),
+        transform 0.55s ease calc(var(--si, 0) * 80ms);
+    }
+
+    .sf-item.sf-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* explicit placement — prevents auto-flow ambiguity */
+    .sf-item:nth-child(1) {
+      grid-column: 1;
+      grid-row: 1 / 3;
+    }
+
+    .sf-item:nth-child(2) {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .sf-item:nth-child(3) {
+      grid-column: 3;
+      grid-row: 1;
+    }
+
+    .sf-item:nth-child(4) {
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    .sf-item:nth-child(5) {
+      grid-column: 3;
+      grid-row: 2;
+    }
+
+    .sf-item:nth-child(6) {
+      grid-column: 4;
+      grid-row: 1 / 3;
+    }
+
+    .sf-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.62s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .sf-item:hover img {
+      transform: scale(1.07);
+    }
+
+    /* ── Overlay ── */
+    .sf-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg,
+          rgba(17, 17, 17, 0.12) 0%,
+          rgba(17, 17, 17, 0.55) 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sf-item:hover .sf-overlay {
+      opacity: 1;
+    }
+
+    .sf-view-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(255, 255, 255, 0.95);
+      color: var(--text);
+      font-family: var(--fb);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      transition: background 0.2s, color 0.2s, transform 0.18s;
+    }
+
+    .sf-view-btn:hover {
+      background: var(--text);
+      color: #fff;
+      transform: scale(1.05);
+    }
+
+    .sf-overlay__handle {
+      position: absolute;
+      bottom: 14px;
+      left: 16px;
+      font-family: var(--fb);
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.82);
+      letter-spacing: 0.2px;
+      pointer-events: none;
+    }
+
+    /* ── Tag strip ── */
+    .sf-tag-strip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 32px;
+    }
+
+    .sf-tag-strip__hashtag {
+      font-family: var(--fh);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+
+    .sf-tag-strip__dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .sf-tag-strip__sub {
+      font-family: var(--fb);
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── Lightbox ── */
+    .sf-lb {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 10, 10, 0.94);
+      backdrop-filter: blur(4px);
+    }
+
+    .sf-lb.sf-lb--open {
+      display: flex;
+    }
+
+    .sf-lb__backdrop {
+      position: absolute;
+      inset: 0;
+      cursor: zoom-out;
+    }
+
+    .sf-lb__inner {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      max-width: min(90vw, 960px);
+      width: 100%;
+    }
+
+    .sf-lb__img {
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 76vh;
+      object-fit: contain;
+      display: block;
+      border-radius: 2px;
+      transition: opacity 0.22s ease;
+    }
+
+    .sf-lb__meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 2px;
+    }
+
+    .sf-lb__handle {
+      font-family: var(--fb);
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .sf-lb__counter {
+      font-family: var(--fb);
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.35);
+      letter-spacing: 0.5px;
+    }
+
+    .sf-lb__close {
+      position: fixed;
+      top: 22px;
+      right: 26px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.07);
+      color: rgba(255, 255, 255, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      z-index: 2;
+    }
+
+    .sf-lb__close:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+
+    .sf-lb__prev,
+    .sf-lb__next {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.07);
+      color: rgba(255, 255, 255, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      z-index: 2;
+    }
+
+    .sf-lb__prev {
+      left: 22px;
+    }
+
+    .sf-lb__next {
+      right: 22px;
+    }
+
+    .sf-lb__prev:hover,
+    .sf-lb__next:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+</style>
+
+<script>
+  // ─── STYLE FEED ──────────────────────────────────────────────────────────
+  (function () {
+    interface SfPhoto { thumb: string; full: string; handle: string; alt: string; }
+
+    var sfPhotos: SfPhoto[] = [
+      {
+        thumb: 'https://images.unsplash.com/photo-1608748010899-18f300247112?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        full: 'https://images.unsplash.com/photo-1608748010899-18f300247112?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        handle: '@alicemartin', alt: 'Community look — minimal linen set'
+      },
+      {
+        thumb: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=700&q=82',
+        full: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=1400&q=90',
+        handle: '@sofiablanc', alt: 'Community look — summer dress'
+      },
+      {
+        thumb: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=700&q=82',
+        full: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1400&q=90',
+        handle: '@emmakirk', alt: 'Community look — monochrome coat'
+      },
+      {
+        thumb: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=700&q=82',
+        full: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=1400&q=90',
+        handle: '@laurenchen', alt: 'Community look — casual layers'
+      },
+      {
+        thumb: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=700&q=82',
+        full: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1400&q=90',
+        handle: '@ninalevi', alt: 'Community look — tailored trousers'
+      },
+      {
+        thumb: 'https://images.unsplash.com/photo-1632149877166-f75d49000351?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        full: 'https://images.unsplash.com/photo-1632149877166-f75d49000351?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        handle: '@zoepark', alt: 'Community look — street style'
+      }
+    ];
+
+    var sfActive = 0;
+
+    /* ── Render grid ── */
+    function sfRender() {
+      var grid = document.getElementById('sfGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('sf-visible');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.08, rootMargin: '0px 0px -20px 0px' });
+
+      sfPhotos.forEach(function (p, i) {
+        var item = document.createElement('div');
+        item.className = 'sf-item';
+        item.style.setProperty('--si', String(i));
+        item.innerHTML =
+          '<img src="' + p.thumb + '" alt="' + p.alt + '" loading="lazy" />' +
+          '<div class="sf-overlay">' +
+          '<button class="sf-view-btn">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>' +
+          'View' +
+          '</button>' +
+          '<span class="sf-overlay__handle">' + p.handle + '</span>' +
+          '</div>';
+
+        var viewBtn = item.querySelector('.sf-view-btn');
+        if (viewBtn) {
+          viewBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            sfOpen(i);
+          });
+        }
+
+        grid.appendChild(item);
+        io.observe(item);
+      });
+
+      /* tag strip reveal */
+      var strip = document.querySelector('.sf-tag-strip') as HTMLElement | null;
+      if (strip) {
+        var sio = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) { strip!.classList.add('sf-visible'); sio.disconnect(); }
+          });
+        }, { threshold: 0.1 });
+        strip.style.opacity = '0';
+        strip.style.transform = 'translateY(10px)';
+        strip.style.transition = 'opacity .5s ease .4s, transform .5s ease .4s';
+        sio.observe(strip);
+        strip.classList.add = (function (orig) {
+          return function (cls: string) {
+            orig.call(strip!.classList, cls);
+            if (cls === 'sf-visible') {
+              strip!.style.opacity = '1';
+              strip!.style.transform = 'translateY(0)';
+            }
+          };
+        }(strip.classList.add)) as typeof strip.classList.add;
+      }
+    }
+
+    /* ── Lightbox ── */
+    function sfOpen(idx: number) {
+      sfActive = idx;
+      sfUpdate();
+      var lb = document.getElementById('sfLb');
+      if (lb) lb.classList.add('sf-lb--open');
+      document.body.style.overflow = 'hidden';
+      var close = document.getElementById('sfLbClose');
+      if (close) close.focus();
+    }
+
+    function sfClose() {
+      var lb = document.getElementById('sfLb');
+      if (lb) lb.classList.remove('sf-lb--open');
+      document.body.style.overflow = '';
+    }
+
+    function sfNav(dir: number) {
+      sfActive = (sfActive + dir + sfPhotos.length) % sfPhotos.length;
+      sfUpdate();
+    }
+
+    function sfUpdate() {
+      var p = sfPhotos[sfActive];
+      var img = document.getElementById('sfLbImg') as HTMLImageElement | null;
+      if (img) {
+        img.style.opacity = '0';
+        img.onload = function () { img!.style.opacity = '1'; };
+        img.src = p.full;
+        img.alt = p.alt;
+      }
+      var handle = document.getElementById('sfLbHandle');
+      if (handle) handle.textContent = p.handle;
+      var counter = document.getElementById('sfLbCounter');
+      if (counter) counter.textContent = (sfActive + 1) + ' / ' + sfPhotos.length;
+    }
+
+    /* ── Touch swipe ── */
+    var sfTouchX: number | null = null;
+    var lbEl = document.getElementById('sfLb');
+    if (lbEl) {
+      lbEl.addEventListener('touchstart', function (e) {
+        sfTouchX = e.touches[0].clientX;
+      }, { passive: true });
+      lbEl.addEventListener('touchend', function (e) {
+        if (sfTouchX === null) return;
+        var dx = e.changedTouches[0].clientX - sfTouchX;
+        if (Math.abs(dx) > 48) sfNav(dx < 0 ? 1 : -1);
+        sfTouchX = null;
+      }, { passive: true });
+    }
+
+    /* ── Keyboard ── */
+    document.addEventListener('keydown', function (e) {
+      var lb = document.getElementById('sfLb');
+      if (!lb || !lb.classList.contains('sf-lb--open')) return;
+      if (e.key === 'Escape') sfClose();
+      if (e.key === 'ArrowLeft') sfNav(-1);
+      if (e.key === 'ArrowRight') sfNav(1);
+    });
+
+    /* ── Wire buttons ── */
+    var sfLbBackdrop = document.getElementById('sfLbBackdrop');
+    if (sfLbBackdrop) sfLbBackdrop.addEventListener('click', sfClose);
+    var sfLbClose = document.getElementById('sfLbClose');
+    if (sfLbClose) sfLbClose.addEventListener('click', sfClose);
+    var sfLbPrev = document.getElementById('sfLbPrev');
+    if (sfLbPrev) sfLbPrev.addEventListener('click', function () { sfNav(-1); });
+    var sfLbNext = document.getElementById('sfLbNext');
+    if (sfLbNext) sfLbNext.addEventListener('click', function () { sfNav(1); });
+
+    sfRender();
+  }());
+</script>

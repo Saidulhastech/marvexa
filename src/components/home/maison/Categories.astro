@@ -1,0 +1,337 @@
+---
+---
+
+<section class="cat3" aria-label="Browse collections">
+
+  <!-- Centered header, 1-line title -->
+  <div class="cat3__head rv">
+    <div class="cat3__eyebrow">Collections</div>
+    <h2 class="cat3__title">Shop by Category</h2>
+    <p class="cat3__desc">From everyday essentials to standout pieces — discover your style.</p>
+  </div>
+
+  <!-- 4 equal cards -->
+  <div class="cat3__grid rv d1">
+
+    <!-- Women -->
+    <a class="cat3__card" href="/collections/women">
+      <div class="cat3__cimg"
+        style="background-image:url('https://images.unsplash.com/photo-1612215327100-60fc5c4d7938?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); background-position: center 8%;">
+      </div>
+      <div class="cat3__cshade"></div>
+      <div class="cat3__cbody">
+        <span class="cat3__cname">Women</span>
+        <span class="cat3__ccount">214 styles</span>
+        <span class="cat3__csub">Dresses · Tops · Outerwear</span>
+        <span class="cat3__cbtn">Shop Now</span>
+      </div>
+    </a>
+
+    <!-- Men -->
+    <a class="cat3__card" href="/collections/men">
+      <div class="cat3__cimg"
+        style="background-image:url('https://images.unsplash.com/photo-1496345875659-11f7dd282d1d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); background-position: center 18%;">
+      </div>
+      <div class="cat3__cshade"></div>
+      <div class="cat3__cbody">
+        <span class="cat3__cname">Men</span>
+        <span class="cat3__ccount">178 styles</span>
+        <span class="cat3__csub">Shirts · Trousers · Jackets</span>
+        <span class="cat3__cbtn">Shop Now</span>
+      </div>
+    </a>
+
+    <!-- Bags -->
+    <a class="cat3__card" href="/collections/bags">
+      <div class="cat3__cimg"
+        style="background-image:url('https://images.unsplash.com/photo-1751107386020-f8f69ae5c16c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); background-position: center 42%;">
+      </div>
+      <div class="cat3__cshade"></div>
+      <div class="cat3__cbody">
+        <span class="cat3__cname">Bags</span>
+        <span class="cat3__ccount">96 styles</span>
+        <span class="cat3__csub">Tote · Crossbody · Clutch</span>
+        <span class="cat3__cbtn">Shop Now</span>
+      </div>
+    </a>
+
+    <!-- Accessories -->
+    <a class="cat3__card" href="/collections/accessories">
+      <div class="cat3__cimg"
+        style="background-image:url('https://images.unsplash.com/photo-1571582665859-4a5f472ee21b?q=80&w=1934&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); background-position: center 35%;">
+      </div>
+      <div class="cat3__cshade"></div>
+      <div class="cat3__cbody">
+        <span class="cat3__cname">Accessories</span>
+        <span class="cat3__ccount">88 styles</span>
+        <span class="cat3__csub">Jewellery · Belts · Scarves</span>
+        <span class="cat3__cbtn">Shop Now</span>
+      </div>
+    </a>
+
+  </div>
+
+</section>
+
+<style>
+  .cat3 {
+    background: var(--bg);
+    padding: 120px 0 108px;
+  }
+
+  /* ── Centered header ── */
+  .cat3__head {
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 var(--gutter) 56px;
+  }
+
+  .cat3__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  .cat3__eyebrow::before,
+  .cat3__eyebrow::after {
+    content: '';
+    display: block;
+    width: 28px;
+    height: 1px;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* Single-line title */
+  .cat3__title {
+    font-family: var(--fh);
+    font-size: clamp(32px, 4vw, 52px);
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 18px;
+    white-space: nowrap;
+  }
+
+  .cat3__desc {
+    font-family: var(--fb);
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  /* ── Equal cards grid ── */
+  .cat3__grid {
+    max-width: var(--container);
+    margin: 0 auto;
+    padding: 0 var(--gutter);
+    display: flex;
+    gap: 14px;
+  }
+
+  .cat3__card {
+    flex: 1;
+    height: 350px;
+    /* all same height */
+    position: relative;
+    overflow: hidden;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  /* Photo */
+  .cat3__cimg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center 12%;
+    filter: brightness(.76) saturate(.88);
+    transition: transform .65s cubic-bezier(.25, .46, .45, .94),
+      filter .55s ease;
+  }
+
+  /* On hover: zoom + darken a touch for button contrast */
+  .cat3__card:hover .cat3__cimg {
+    transform: scale(1.07);
+    filter: brightness(.65) saturate(1.0);
+  }
+
+  /* Gradient shade */
+  .cat3__cshade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top,
+        rgba(0, 0, 0, .90) 0%,
+        rgba(0, 0, 0, .58) 30%,
+        rgba(0, 0, 0, .10) 58%,
+        transparent 100%);
+    z-index: 1;
+    transition: opacity .45s ease;
+  }
+
+  .cat3__card:hover .cat3__cshade {
+    opacity: 1;
+  }
+
+  /* Top accent line */
+  .cat3__card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform .4s cubic-bezier(.4, 0, .2, 1);
+    z-index: 4;
+  }
+
+  .cat3__card:hover::before {
+    transform: scaleX(1);
+  }
+
+  /* Content block — bottom-center */
+  .cat3__cbody {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0 18px 28px;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* Category name — always visible */
+  .cat3__cname {
+    font-family: var(--fh);
+    font-size: clamp(18px, 1.9vw, 24px);
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -.5px;
+    line-height: 1;
+    margin-bottom: 7px;
+    transition: transform .38s cubic-bezier(.25, .46, .45, .94);
+  }
+
+  .cat3__card:hover .cat3__cname {
+    transform: translateY(-2px);
+  }
+
+  /* Item count — always visible */
+  .cat3__ccount {
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, .45);
+    letter-spacing: .4px;
+    margin-bottom: 10px;
+  }
+
+  /* Sub-category hints — always visible */
+  .cat3__csub {
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, .55);
+    letter-spacing: .3px;
+    line-height: 1;
+    margin-bottom: 18px;
+    transition: color .3s ease;
+  }
+
+  .cat3__card:hover .cat3__csub {
+    color: rgba(255, 255, 255, .75);
+  }
+
+  /* Button — hidden by default, smooth reveal on hover */
+  .cat3__cbtn {
+    display: inline-block;
+    font-family: var(--fb);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--white);
+    padding: 9px 24px;
+    border: 1px solid rgba(255, 255, 255, .5);
+    background: transparent;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity .35s ease .04s,
+      transform .35s cubic-bezier(.25, .46, .45, .94) .04s,
+      background .22s ease,
+      border-color .22s ease,
+      color .22s ease;
+  }
+
+  .cat3__card:hover .cat3__cbtn {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .cat3__cbtn:hover {
+    background: var(--white);
+    color: var(--text);
+    border-color: var(--white);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 1024px) {
+    .cat3__card {
+      height: 460px;
+    }
+
+    .cat3__grid {
+      gap: 10px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .cat3__title {
+      font-size: 30px;
+      letter-spacing: -1.2px;
+      white-space: normal;
+    }
+
+    .cat3__desc {
+      display: none;
+    }
+
+    .cat3__card {
+      height: 380px;
+    }
+
+    .cat3__grid {
+      gap: 8px;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .cat3__grid {
+      flex-wrap: wrap;
+    }
+
+    .cat3__card {
+      flex: calc(50% - 4px);
+      min-width: calc(50% - 4px);
+      height: 260px;
+    }
+  }
+</style>

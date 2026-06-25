@@ -1,0 +1,161 @@
+---
+---
+
+<section class="campaign" aria-label="Seasonal campaign banner">
+  <div class="wrap">
+    <div class="campaign__card">
+      <!-- Left: text panel -->
+      <div class="campaign__text-panel">
+        <p class="campaign__label">Spring Summer 2026</p>
+        <h2 class="campaign__h">The New<br>Essentials</h2>
+        <p class="campaign__sub">Designed for life in motion. Light layers, natural tones, effortless silhouettes —
+          ready now.</p>
+        <a href="#" class="btn btn-solid"
+          style="background:var(--accent);border-color:var(--accent);align-self:flex-start;">
+          Shop the Collection
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </a>
+        <div class="campaign__meta">
+          <div class="campaign__meta-item"><span class="campaign__meta-n">200+</span> new designs</div>
+          <div class="campaign__meta-div"></div>
+          <div class="campaign__meta-item"><span class="campaign__meta-n">100%</span> organic</div>
+          <div class="campaign__meta-div"></div>
+          <div class="campaign__meta-item"><span class="campaign__meta-n">Free</span> shipping $150+</div>
+        </div>
+      </div>
+      <!-- Right: image panel -->
+      <div class="campaign__img-panel">
+        <img
+          src="https://images.unsplash.com/photo-1612731486606-2614b4d74921?q=80&w=2020&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          alt="SS 2026 Campaign" class="campaign__img" loading="lazy" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .campaign {
+    padding: 120px 0;
+    background: var(--bg2);
+  }
+
+  .campaign__card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-radius: 16px;
+    overflow: hidden;
+    min-height: 440px;
+  }
+
+  .campaign__text-panel {
+    background: var(--dark);
+    padding: 56px 52px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .campaign__img-panel {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .campaign__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: brightness(.9);
+    transition: transform .6s cubic-bezier(.25, .46, .45, .94);
+  }
+
+  .campaign__card:hover .campaign__img {
+    transform: scale(1.04);
+  }
+
+  .campaign__label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .campaign__label::before {
+    content: '';
+    width: 24px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .campaign__h {
+    font-family: var(--fh);
+    font-size: clamp(32px, 4vw, 52px);
+    font-weight: 800;
+    line-height: 1.0;
+    letter-spacing: -2px;
+    color: var(--white);
+    margin-bottom: 16px;
+  }
+
+  .campaign__sub {
+    font-size: 14px;
+    color: rgba(255, 255, 255, .55);
+    margin-bottom: 32px;
+    max-width: 340px;
+    line-height: 1.65;
+  }
+
+  .campaign__meta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+  }
+
+  .campaign__meta-item {
+    font-size: 11px;
+    color: rgba(255, 255, 255, .4);
+    font-weight: 500;
+  }
+
+  .campaign__meta-n {
+    font-family: var(--fh);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -.5px;
+  }
+
+  .campaign__meta-div {
+    width: 1px;
+    height: 16px;
+    background: rgba(255, 255, 255, .1);
+  }
+
+  @media(max-width:768px) {
+    .campaign__card {
+      grid-template-columns: 1fr;
+    }
+
+    .campaign__img-panel {
+      min-height: 240px;
+    }
+
+    .campaign__h {
+      font-size: clamp(28px, 7vw, 44px)
+    }
+  }
+</style>

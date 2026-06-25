@@ -90,5 +90,26 @@ const allJsonLd = [...baseJsonLd, ...pageJsonLd];
     {/* Global cart drawer (nanostore-driven) + secondary overlays */}
     <CartDrawer />
     <Overlays />
+
+    {/* Reveal-on-scroll: adds .on to any .rv element as it enters view. */}
+    <script>
+      const els = document.querySelectorAll('.rv');
+      if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        els.forEach((el) => el.classList.add('on'));
+      } else {
+        const io = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((e) => {
+              if (e.isIntersecting) {
+                e.target.classList.add('on');
+                io.unobserve(e.target);
+              }
+            });
+          },
+          { rootMargin: '0px 0px -10% 0px', threshold: 0.05 },
+        );
+        els.forEach((el) => io.observe(el));
+      }
+    </script>
   </body>
 </html>

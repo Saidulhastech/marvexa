@@ -1,0 +1,271 @@
+---
+---
+
+<section class="hero" aria-label="Hero — MAISON SS 2026">
+  <div class="hero__bg">
+    <img
+      src="https://images.unsplash.com/photo-1627489105008-063e31b2dbcd?q=80&w=1932&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+      alt="High Fashion Editorial Model" loading="eager">
+  </div>
+  <div class="hero__overlay"></div>
+
+  <div class="hero__container">
+    <div class="hero__content">
+      <div class="hero__eyebrow">Spring Summer 2026 Collection</div>
+      <h1 class="hero__title">
+        <span>REDEFINING</span>
+        <span class="outline">ELEGANCE</span>
+        <span>DAILY.</span>
+      </h1>
+      <p class="hero__desc">
+        Sophisticated essentials designed for the contemporary individual. Experience the perfect blend of
+        high-fashion aesthetics and daily comfort.
+      </p>
+      <div class="hero__actions">
+        <a href="#" class="btn btn-accent">Shop Collection</a>
+        <a href="#" class="btn btn-outline-w">Watch Film</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero__scroll">Scroll to explore</div>
+
+  <div class="hero__stats">
+    <div class="hero-stat">
+      <span class="hero-stat__n">100%</span>
+      <span class="hero-stat__l">Organic Linen</span>
+    </div>
+    <div class="hero-stat">
+      <span class="hero-stat__n">12+</span>
+      <span class="hero-stat__l">New Silhouettes</span>
+    </div>
+    <div class="hero-stat">
+      <span class="hero-stat__n">SS26</span>
+      <span class="hero-stat__l">Live Now</span>
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    height: 100vh;
+    min-height: 750px;
+    background: var(--dark);
+    color: var(--white);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+
+  .hero__bg {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .hero__bg img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 20%;
+    filter: brightness(0.7);
+    transform: scale(1.05);
+    animation: hero-zoom 24s ease-out infinite alternate;
+  }
+
+  @keyframes hero-zoom {
+    from {
+      transform: scale(1.05);
+    }
+
+    to {
+      transform: scale(1.15);
+    }
+  }
+
+  .hero__overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(75deg, rgba(17, 17, 17, 0.9) 0%, rgba(17, 17, 17, 0.4) 40%, rgba(17, 17, 17, 0) 80%);
+    z-index: 2;
+  }
+
+  .hero__container {
+    max-width: var(--container);
+    margin: 0 auto;
+    padding: 0 var(--gutter);
+    width: 100%;
+    position: relative;
+    z-index: 10;
+  }
+
+  .hero__content {
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .hero__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+
+  .hero__eyebrow::before {
+    content: '';
+    width: 32px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .hero__title {
+    font-family: var(--fh);
+    font-size: clamp(52px, 8.5vw, 110px);
+    font-weight: 700;
+    line-height: 0.9;
+    letter-spacing: -3.5px;
+    margin-bottom: 32px;
+    color: var(--white);
+  }
+
+  .hero__title span {
+    display: block;
+  }
+
+  .hero__title .outline {
+    -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.4);
+    color: transparent;
+  }
+
+  .hero__desc {
+    font-family: var(--fb);
+    font-size: clamp(16px, 1.5vw, 19px);
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.7);
+    max-width: 480px;
+    margin-bottom: 48px;
+  }
+
+  .hero__actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .hero__actions .btn {
+    padding: 16px 36px;
+    font-size: 11px;
+    border-radius: 2px;
+  }
+
+  .hero__scroll {
+    position: absolute;
+    bottom: 80px;
+    left: var(--gutter);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.4);
+    transform: rotate(-90deg) translate(-50%, -100%);
+    transform-origin: left bottom;
+    z-index: 10;
+  }
+
+  .hero__scroll::after {
+    content: '';
+    width: 50px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .hero__stats {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 44px 56px;
+    display: flex;
+    gap: 56px;
+    border-top-left-radius: 32px;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 10;
+  }
+
+  .hero-stat__n {
+    font-family: var(--fh);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--white);
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .hero-stat__l {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  @media(max-width:1100px) {
+    .hero__title {
+      font-size: clamp(44px, 7.5vw, 82px)
+    }
+
+    .hero__stats {
+      padding: 32px 40px;
+      gap: 40px
+    }
+  }
+
+  @media(max-width:768px) {
+    .hero__title {
+      font-size: clamp(38px, 10vw, 56px);
+      letter-spacing: -2px
+    }
+
+    .hero__desc {
+      font-size: 15px;
+      margin-bottom: 32px
+    }
+
+    .hero__stats {
+      position: relative;
+      border-radius: 0;
+      border: none;
+      background: rgba(17, 17, 17, 0.3);
+      width: 100%;
+      justify-content: space-between;
+      padding: 24px var(--gutter);
+      gap: 12px
+    }
+
+    .hero-stat__n {
+      font-size: 24px
+    }
+
+    .hero-stat__l {
+      font-size: 9px
+    }
+
+    .hero__scroll {
+      display: none
+    }
+  }
+</style>
