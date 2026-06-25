@@ -25,12 +25,12 @@ export const DEFAULT_LANGUAGE = "EN";
 export const MARKET_COUNTRY = DEFAULT_COUNTRY;
 
 export const BRAND = {
-  name: "Omnix",
+  name: "Maison",
   /** Shown in the <title> default and OG site name. */
-  legalName: "Omnix Electronics",
-  tagline: "Premium Consumer Electronics",
+  legalName: "Maison",
+  tagline: "Modern Fashion",
   description:
-    "Omnix — premium consumer electronics. Audio, wearables, mobile, cameras, gaming. 30-day return promise and a 2-year warranty.",
+    "Maison — modern fashion. Clean, refined, everyday confidence. Quality materials, considered design, easy shopping.",
   /**
    * Free-shipping threshold — drives the cart "Add $X more to unlock FREE
    * shipping" meter. Set to a number (e.g. 99) to show it; set to 0 (or null)
