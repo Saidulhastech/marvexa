@@ -1,57 +1,176 @@
 ---
 // ============================================================
-//  Announcement bar — rotating top ticker (OMNIX).
-//  Copy from the `announcements` content collection; rotation is
-//  a tiny vanilla script (no framework).
+//  Announcement bar (Maison) — fixed top ticker that rotates the
+//  `announcements` collection messages. Close button collapses the
+//  bar and drops the header to top:0 (toggles #siteHeader.ann-hidden).
 // ============================================================
-import { getCollection, getEntry } from 'astro:content';
-import Icon from '~/components/ui/omnix/Icon.astro';
-import MarketSelector from '~/components/layout/omnix/MarketSelector.astro';
+import { getCollection } from 'astro:content';
 
 const slides = (await getCollection('announcements')).sort((a, b) =>
   a.id.localeCompare(b.id),
 );
-const nav = await getEntry('navigation', 'main');
-const meta = nav?.data.metaLinks ?? [];
-// The live market selector takes the first slot (was the static "EN / USD").
-const left = meta.slice(0, 1);
-const right = meta.slice(1);
 ---
 
-<div class="announce">
-  <div class="container">
-    <div class="announce-meta">
-      <MarketSelector />
-      {left.map((l) => <a href={l.href}>{l.label}</a>)}
-    </div>
-    <div class="announce-msg" id="announceMsg">
-      <div class="announce-slides">
-        {
-          slides.map((s, i) => (
-            <div class:list={['announce-slide', { 'is-active': i === 0 }]}>
-              <Icon name={s.data.icon} size={13} />
-              <span set:html={s.data.text} />
-            </div>
-          ))
-        }
-      </div>
-    </div>
-    <div class="announce-meta">
-      {right.map((l) => <a href={l.href}>{l.label}</a>)}
-    </div>
+<div class="ann-bar" id="annBar" role="region" aria-label="Announcements">
+  <div class="ann-bar__wrap">
+    {
+      slides.map((s, i) => (
+        <div class:list={['ann-msg', { active: i === 0 }]} set:html={s.data.text} />
+      ))
+    }
   </div>
+  <button class="ann-bar__close" id="annClose" aria-label="Close announcement">
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  </button>
 </div>
 
+<style>
+  .ann-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1001;
+    background: var(--dark);
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: height .35s cubic-bezier(.25, .46, .45, .94), opacity .35s ease;
+  }
+
+  .ann-bar.hidden {
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ann-bar__wrap {
+    position: relative;
+    flex: 1;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .ann-msg {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .68);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transform: translateY(100%);
+    opacity: 0;
+    transition: transform .5s cubic-bezier(.25, .46, .45, .94), opacity .45s ease;
+    padding: 0 48px;
+  }
+
+  .ann-msg.active {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .ann-msg.exit {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  .ann-msg::before {
+    content: '✦';
+    font-size: 7px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .ann-msg :global(a) {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .ann-msg :global(a:hover) {
+    text-decoration: underline;
+  }
+
+  .ann-msg :global(strong) {
+    color: var(--white);
+    font-weight: 700;
+  }
+
+  .ann-bar__close {
+    position: absolute;
+    right: 16px;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 50%;
+    color: rgba(255, 255, 255, .38);
+    cursor: pointer;
+    transition: all .2s ease;
+  }
+
+  .ann-bar__close:hover {
+    background: rgba(255, 255, 255, .13);
+    color: var(--white);
+  }
+
+  @media (max-width: 768px) {
+    .ann-bar__close {
+      display: none;
+    }
+
+    .ann-msg {
+      font-size: 10px;
+      letter-spacing: 1px;
+      padding: 0 16px;
+    }
+  }
+</style>
+
 <script>
-  // Rotate the active announcement slide on an interval.
-  const slides = document.querySelectorAll<HTMLElement>('.announce-slide');
-  if (slides.length > 1) {
-    let current = 0;
-    const goTo = (i: number) => {
-      slides[current].classList.remove('is-active');
-      current = (i + slides.length) % slides.length;
-      slides[current].classList.add('is-active');
-    };
-    setInterval(() => goTo(current + 1), 3500);
+  // Rotate the active announcement message; close collapses the bar and
+  // lifts the header to the top (header watches #siteHeader.ann-hidden).
+  const annBar = document.getElementById('annBar');
+  const annClose = document.getElementById('annClose');
+  if (annBar) {
+    const msgs = Array.from(annBar.querySelectorAll<HTMLElement>('.ann-msg'));
+    let cur = 0;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    function nextMsg() {
+      if (msgs.length < 2) return;
+      msgs[cur].classList.remove('active');
+      msgs[cur].classList.add('exit');
+      const prev = cur;
+      setTimeout(() => {
+        msgs[prev].classList.remove('exit');
+        cur = (cur + 1) % msgs.length;
+        msgs[cur].classList.add('active');
+      }, 500);
+    }
+
+    if (msgs.length > 1) timer = setInterval(nextMsg, 4000);
+
+    annClose?.addEventListener('click', () => {
+      if (timer) clearInterval(timer);
+      annBar.classList.add('hidden');
+      document.getElementById('siteHeader')?.classList.add('ann-hidden');
+    });
   }
 </script>

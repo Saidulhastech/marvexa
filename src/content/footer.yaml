@@ -1,39 +1,36 @@
-# Footer (OMNIX). Columns + brand blurb + legal + payment chips.
+# Footer (Maison). Columns + brand blurb + legal + payment chips.
 - id: main
-  blurb: "Premium consumer electronics, engineered for the next decade of listening, working, and creating. 30-day returns, 2-year warranty."
+  blurb: "Modern fashion for everyday life. Crafted with intention, built to last."
   columns:
     - title: "Shop"
       links:
-        - { label: "All Products", href: "/products" }
         - { label: "New Arrivals", href: "/products?sort=newest" }
-        - { label: "Best Sellers", href: "/products" }
-        - { label: "Bundles", href: "/collections" }
-        - { label: "Deals", href: "/collections/sale" }
-        - { label: "Gift Cards", href: "#" }
-    - title: "Help"
+        - { label: "Women", href: "/collections/women" }
+        - { label: "Men", href: "/collections/men" }
+        - { label: "Bags & Accessories", href: "/collections/accessories" }
+        - { label: "Sale", href: "/collections/sale" }
+        - { label: "Lookbook", href: "/products" }
+    - title: "Customer Care"
       links:
-        - { label: "Track Order", href: "/account" }
+        - { label: "Shipping & Returns", href: "/pages/shipping-returns" }
+        - { label: "Size Guide", href: "/pages/size-guide" }
+        - { label: "Track My Order", href: "/account" }
         - { label: "FAQ", href: "/pages/faq" }
-        - { label: "Compare", href: "/compare" }
-        - { label: "Support Center", href: "/contact" }
-        - { label: "Wishlist", href: "/wishlist" }
         - { label: "Contact Us", href: "/contact" }
-    - title: "Company"
+        - { label: "Gift Cards", href: "#" }
+    - title: "About"
       links:
-        - { label: "About Omnix", href: "/about" }
-        - { label: "Our Team", href: "/about#abTeamSec" }
-        - { label: "Careers", href: "#" }
+        - { label: "Our Story", href: "/about" }
+        - { label: "Sustainability", href: "/pages/sustainability" }
+        - { label: "Craftsmanship", href: "/pages/craftsmanship" }
+        - { label: "Journal", href: "/blog" }
         - { label: "Press", href: "#" }
-        - { label: "Affiliates", href: "#" }
-        - { label: "Investor Info", href: "#" }
-    - title: "Get the app"
+        - { label: "Careers", href: "#" }
+    - title: "Contact"
       links:
-        - { label: "Terms of Service", href: "/pages/terms-and-conditions" }
-        - { label: "Privacy Policy", href: "/pages/privacy-policy" }
-        - { label: "Accessibility", href: "#" }
-  # App-store badges — rendered under the last footer column.
-  app:
-    - { icon: "apple", sub: "Download on the", label: "App Store", href: "#" }
-    - { icon: "play", sub: "Get it on", label: "Google Play", href: "#" }
-  legal: "© 2026 Omnix Electronics. All rights reserved."
-  payments: ["VISA", "MC", "AMEX", "PayPal", "Apple Pay", "Shop Pay", "Klarna"]
+        - { label: "hello@maison.com", href: "mailto:hello@maison.com" }
+        - { label: "+44 20 7946 0958", href: "tel:+442079460958" }
+  # App-store badges — unused in the Maison footer.
+  app: []
+  legal: "© 2026 MAISON. All rights reserved."
+  payments: ["Visa", "Mastercard", "Amex", "PayPal", "Klarna"]
