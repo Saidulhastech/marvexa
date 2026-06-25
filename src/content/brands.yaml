@@ -1,0 +1,15 @@
+# Brand strip (OMNIX). Scrolling partner names.
+- { id: b01, name: "SONY" }
+- { id: b02, name: "BOSE" }
+- { id: b03, name: "JBL" }
+- { id: b04, name: "Apple" }
+- { id: b05, name: "Samsung" }
+- { id: b06, name: "Canon" }
+- { id: b07, name: "DJI" }
+- { id: b08, name: "Logitech" }
+- { id: b09, name: "Sennheiser" }
+- { id: b10, name: "Nikon" }
+- { id: b11, name: "B&W" }
+- { id: b12, name: "Microsoft" }
+- { id: b13, name: "Jabra" }
+- { id: b14, name: "GoPro" }

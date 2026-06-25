@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Don't crawl account/auth or API routes
+Disallow: /account
+Disallow: /api/
+
+Sitemap: https://omnix.store/sitemap-index.xml

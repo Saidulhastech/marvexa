@@ -1,0 +1,392 @@
+---
+// ============================================================
+//  Blog detail (OMNIX) — a single journal post. Editorial layout:
+//  reading-progress bar, hero, sticky table of contents (from the
+//  MDX headings), author byline, share row, end CTA, and related
+//  posts. SSR: looks the post up by slug, 404 if missing.
+// ============================================================
+import Layout from '~/layouts/Layout.astro';
+import PostCard from '~/components/blog/PostCard.astro';
+import { Image } from 'astro:assets';
+import { getEntry, getCollection, render } from 'astro:content';
+import { resolveImage } from '~/lib/asset';
+import { BRAND } from '~/config/omnix';
+
+const { slug } = Astro.params;
+const post = slug ? await getEntry('blog', slug) : undefined;
+
+if (!post) {
+  Astro.response.status = 404;
+}
+
+const fmt = (d: Date) =>
+  d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+let Content: Awaited<ReturnType<typeof render>>['Content'] | undefined;
+let headings: Awaited<ReturnType<typeof render>>['headings'] = [];
+let related: Awaited<ReturnType<typeof getCollection<'blog'>>> = [];
+let author: Awaited<ReturnType<typeof getEntry<'authors', string>>> | undefined;
+
+if (post) {
+  const rendered = await render(post);
+  Content = rendered.Content;
+  headings = rendered.headings.filter((h) => h.depth === 2 || h.depth === 3);
+  author = post.data.author ? await getEntry('authors', post.data.author) : undefined;
+  related = (await getCollection('blog'))
+    .filter((p) => p.id !== post.id)
+    .sort((a, b) => a.data.order - b.data.order)
+    .slice(0, 3);
+}
+
+const canonical = new URL(Astro.url.pathname, Astro.url.origin).href;
+const shareText = post ? encodeURIComponent(post.data.title) : '';
+const shareUrl = encodeURIComponent(canonical);
+
+// ---- Article JSON-LD + OG image for rich results ----
+const heroImg = post ? resolveImage(post.data.image) : null;
+const ogImage = heroImg ? new URL(heroImg.src, Astro.site ?? Astro.url.origin).href : undefined;
+const articleJsonLd = post
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: post.data.title,
+      description: post.data.excerpt,
+      ...(ogImage ? { image: [ogImage] } : {}),
+      datePublished: post.data.date.toISOString(),
+      ...(author ? { author: { '@type': 'Person', name: author.data.name } } : {}),
+      publisher: { '@type': 'Organization', name: BRAND.legalName },
+      mainEntityOfPage: canonical,
+    }
+  : undefined;
+---
+
+{
+  post && Content ? (
+    <Layout title={post.data.title} description={post.data.excerpt} type="article" image={ogImage} jsonLd={articleJsonLd}>
+      {/* Reading progress */}
+      <div class="post-progress"><span id="readBar"></span></div>
+
+      <article class="post">
+        {/* ---- Editorial header ---- */}
+        <header class="post-hdr">
+          <div class="container post-hdr-wrap">
+            <a class="post-back" href="/blog">← The journal</a>
+
+            {post.data.tags.length > 0 && (
+              <div class="post-tags">
+                {post.data.tags.map((t) => <span class="blog-tag">{t}</span>)}
+              </div>
+            )}
+
+            <h1 class="post-title">{post.data.title}</h1>
+            <p class="post-excerpt">{post.data.excerpt}</p>
+
+            <div class="post-meta">
+              {author ? (
+                <a class="post-author" href={`/blog/author/${post.data.author}`}>
+                  {author.data.avatar && <img src={author.data.avatar} alt={author.data.name} />}
+                  <span>
+                    <b>{author.data.name}</b>
+                    <em>
+                      {fmt(post.data.date)}
+                      {post.data.readingTime && <> · {post.data.readingTime}</>}
+                    </em>
+                  </span>
+                </a>
+              ) : (
+                <span class="post-date">
+                  {fmt(post.data.date)}
+                  {post.data.readingTime && <> · {post.data.readingTime}</>}
+                </span>
+              )}
+
+              <div class="post-share" aria-label="Share">
+                <button class="post-share-btn" id="copyLink" type="button" aria-label="Copy link">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                </button>
+                <a class="post-share-btn" href={`https://twitter.com/intent/tweet?url=${shareUrl}&text=${shareText}`} target="_blank" rel="noopener" aria-label="Share on X">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M18.9 2H22l-7.5 8.6L23 22h-6.9l-5.4-7-6.2 7H1.4l8-9.2L1 2h7l4.9 6.5L18.9 2Zm-2.4 18h1.9L7.6 4H5.6l10.9 16Z"/></svg>
+                </a>
+                <a class="post-share-btn" href={`https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}`} target="_blank" rel="noopener" aria-label="Share on LinkedIn">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6.94 5a2 2 0 1 1-4-.002 2 2 0 0 1 4 .002ZM7 8.48H3V21h4V8.48Zm6.32 0H9.34V21h3.94v-6.57c0-3.66 4.77-4 4.77 0V21H22v-7.93c0-6.17-7.06-5.94-8.72-2.91l.04-1.68Z"/></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* ---- Hero ---- */}
+        <div class="container">
+          <div class="post-hero">
+            <Image src={resolveImage(post.data.image)} alt={post.data.title} width={1280} height={680} />
+          </div>
+        </div>
+
+        {/* ---- Body + TOC ---- */}
+        <div class="container post-layout">
+          <div class="rte post-body">
+            <Content />
+
+            {author && (
+              <aside class="post-authorcard">
+                {author.data.avatar && <img src={author.data.avatar} alt={author.data.name} />}
+                <div>
+                  <div class="pa-by">Written by</div>
+                  <a class="pa-name" href={`/blog/author/${post.data.author}`}>{author.data.name}</a>
+                  {author.data.role && <div class="pa-role">{author.data.role}</div>}
+                  {author.data.bio && <p class="pa-bio">{author.data.bio}</p>}
+                  <a class="pa-link" href={`/blog/author/${post.data.author}`}>More from {author.data.name} →</a>
+                </div>
+              </aside>
+            )}
+          </div>
+
+          {headings.length > 0 && (
+            <aside class="post-toc" aria-label="On this page">
+              <div class="post-toc-inner">
+                <div class="post-toc-h">On this page</div>
+                <nav>
+                  {headings.map((h) => (
+                    <a href={`#${h.slug}`} class:list={['post-toc-link', { sub: h.depth === 3 }]} data-toc={h.slug}>
+                      {h.text}
+                    </a>
+                  ))}
+                </nav>
+              </div>
+            </aside>
+          )}
+        </div>
+
+        {/* ---- End CTA ---- */}
+        <div class="container">
+          <section class="post-cta">
+            <div>
+              <h3>Enjoyed the read?</h3>
+              <p>Get our buying guides and gear stories — no spam, just the good stuff.</p>
+            </div>
+            <form class="post-cta-form" id="postCtaForm" novalidate>
+              <input type="email" placeholder="your@email.com" required aria-label="Email" />
+              <button class="btn btn-primary" type="submit">Subscribe</button>
+            </form>
+          </section>
+        </div>
+
+        {/* ---- Related ---- */}
+        {related.length > 0 && (
+          <div class="container">
+            <h2 class="post-related-h">More from the journal</h2>
+            <div class="blog-grid">
+              {related.map((p) => <PostCard post={p} />)}
+            </div>
+          </div>
+        )}
+      </article>
+
+      <script>
+        // Reading progress bar.
+        const bar = document.getElementById('readBar');
+        const article = document.querySelector('.post-body');
+        function onScroll() {
+          if (!bar || !article) return;
+          const rect = (article as HTMLElement).getBoundingClientRect();
+          const total = (article as HTMLElement).offsetHeight - window.innerHeight;
+          const scrolled = Math.min(Math.max(-rect.top, 0), Math.max(total, 1));
+          bar.style.width = `${(scrolled / Math.max(total, 1)) * 100}%`;
+        }
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll);
+        onScroll();
+
+        // Copy link.
+        document.getElementById('copyLink')?.addEventListener('click', async (e) => {
+          const btn = e.currentTarget as HTMLElement;
+          try {
+            await navigator.clipboard.writeText(window.location.href);
+            btn.classList.add('is-copied');
+            setTimeout(() => btn.classList.remove('is-copied'), 1500);
+          } catch {}
+        });
+
+        // TOC scroll-spy.
+        const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-toc]'));
+        const ids = links.map((l) => l.dataset.toc!).filter(Boolean);
+        const targets = ids.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
+        if (targets.length) {
+          const spy = new IntersectionObserver(
+            (entries) => {
+              entries.forEach((en) => {
+                if (en.isIntersecting) {
+                  links.forEach((l) => l.classList.toggle('is-active', l.dataset.toc === en.target.id));
+                }
+              });
+            },
+            { rootMargin: '-80px 0px -70% 0px' },
+          );
+          targets.forEach((t) => spy.observe(t));
+        }
+
+        // CTA (UI only).
+        document.getElementById('postCtaForm')?.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const f = e.currentTarget as HTMLFormElement;
+          f.innerHTML = '<p class="post-cta-done">Thanks — you’re on the list. ✓</p>';
+        });
+      </script>
+    </Layout>
+  ) : (
+    <Layout title="Post not found" description="We couldn’t find that journal entry." noindex>
+      <section class="sec">
+        <div class="container nf2">
+          <p class="nf2-eyebrow">Error 404</p>
+          <h1 class="h1">Post not found</h1>
+          <p>We couldn't find that journal entry.</p>
+          <a class="btn btn-primary" href="/blog">All posts</a>
+        </div>
+      </section>
+    </Layout>
+  )
+}
+
+<style>
+  /* Reading progress */
+  .post-progress { position: sticky; top: 0; z-index: 30; height: 3px; background: transparent; }
+  .post-progress span { display: block; height: 100%; width: 0; background: var(--electric); transition: width .1s linear; }
+
+  .post { padding-bottom: 72px; }
+
+  /* Shared centered content band so header / hero / body / cta align. */
+  .post-hdr-wrap,
+  .post-hero,
+  .post-layout,
+  .post-cta,
+  .post-related-h,
+  .post .blog-grid { max-width: 1120px; margin-inline: auto; }
+
+  /* Header */
+  .post-hdr { padding: 40px 0 28px; }
+  .post-hdr-wrap .post-title,
+  .post-hdr-wrap .post-excerpt { max-width: 760px; }
+  .post-back { display: inline-block; font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-bottom: 22px; }
+  .post-back:hover { color: var(--electric); }
+  .post-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .post-title {
+    font-family: "Sora", system-ui, sans-serif;
+    font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700;
+    letter-spacing: -0.025em; line-height: 1.07; margin: 0;
+  }
+  .post-excerpt { margin: 18px 0 0; font-size: 1.16rem; color: var(--text-soft, #374151); line-height: 1.6; }
+
+  .post-meta {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px; margin: 26px 0 0;
+    padding: 18px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  }
+  .post-author { display: flex; align-items: center; gap: 12px; }
+  .post-author img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; }
+  .post-author span { display: flex; flex-direction: column; line-height: 1.35; }
+  .post-author b { color: var(--text); font-weight: 600; }
+  .post-author em { font-style: normal; font-size: 0.82rem; color: var(--muted); }
+  .post-author:hover b { color: var(--electric); }
+  .post-date { font-size: 0.85rem; color: var(--muted); }
+
+  .post-share { display: flex; align-items: center; gap: 8px; }
+  .post-share-btn {
+    width: 38px; height: 38px; display: grid; place-items: center;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--white);
+    color: var(--text); cursor: pointer; transition: all .15s; position: relative;
+  }
+  .post-share-btn:hover { border-color: var(--electric); color: var(--electric); }
+  .post-share-btn.is-copied::after {
+    content: "Copied!"; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    background: var(--tech-black); color: #fff; font-size: 11px; font-weight: 600;
+    padding: 4px 8px; border-radius: 6px; white-space: nowrap;
+  }
+
+  /* Hero */
+  .post-hero { margin: 30px auto 8px; border-radius: 20px; overflow: hidden; background: var(--frost); }
+  .post-hero img { width: 100%; height: auto; display: block; }
+
+  /* Body + TOC layout */
+  .post-layout { display: grid; grid-template-columns: 1fr; gap: 56px; margin-top: 40px; }
+  .post-body { min-width: 0; }
+  @media (min-width: 1040px) {
+    .post-layout { grid-template-columns: minmax(0, 1fr) 240px; align-items: start; }
+  }
+
+  /* Lead paragraph — editorial emphasis on the opening line. */
+  .post-body > p:first-of-type { font-size: 1.22rem; line-height: 1.6; color: var(--text); }
+
+  .post-toc { display: none; }
+  @media (min-width: 1040px) {
+    .post-toc { display: block; }
+    .post-toc-inner { position: sticky; top: 96px; }
+  }
+  .post-toc-h { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .post-toc nav { display: flex; flex-direction: column; gap: 2px; border-left: 2px solid var(--border); }
+  .post-toc-link {
+    padding: 6px 0 6px 14px; margin-left: -2px; border-left: 2px solid transparent;
+    font-size: 0.88rem; color: var(--muted); line-height: 1.4; transition: color .15s, border-color .15s;
+  }
+  .post-toc-link.sub { padding-left: 26px; font-size: 0.83rem; }
+  .post-toc-link:hover { color: var(--text); }
+  .post-toc-link.is-active { color: var(--electric); border-left-color: var(--electric); font-weight: 600; }
+
+  /* Author card */
+  .post-authorcard {
+    display: flex; gap: 18px; margin-top: 48px; padding: 26px;
+    border: 1px solid var(--border); border-radius: 18px; background: var(--frost);
+  }
+  .post-authorcard img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+  .pa-by { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .pa-name { display: inline-block; margin-top: 4px; font-family: "Sora", system-ui, sans-serif; font-weight: 700; font-size: 1.15rem; color: var(--text); }
+  .pa-name:hover { color: var(--electric); }
+  .pa-role { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+  .pa-bio { margin: 12px 0 0; color: var(--text-soft, #374151); line-height: 1.6; }
+  .pa-link { display: inline-block; margin-top: 12px; color: var(--electric); font-weight: 600; font-size: 0.9rem; }
+
+  /* End CTA */
+  .post-cta {
+    display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+    margin: 60px auto 0; padding: 32px 36px; border-radius: 20px;
+    background: linear-gradient(135deg, var(--tech-black), #1b2436); color: #fff;
+  }
+  .post-cta h3 { font-family: "Sora", system-ui, sans-serif; font-size: 1.5rem; margin: 0; }
+  .post-cta p { margin: 8px 0 0; color: rgba(255,255,255,.7); }
+  .post-cta-form { display: flex; gap: 10px; flex: 1; min-width: 260px; max-width: 420px; }
+  .post-cta-form input {
+    flex: 1; padding: 13px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2);
+    background: rgba(255,255,255,.08); color: #fff; font-size: 0.92rem;
+  }
+  .post-cta-form input::placeholder { color: rgba(255,255,255,.5); }
+  .post-cta-done { margin: 0; font-weight: 600; }
+
+  .post-related-h {
+    font-family: "Sora", system-ui, sans-serif; font-size: 1.6rem; font-weight: 700;
+    margin: 68px auto 24px;
+  }
+
+  .nf2 { text-align: center; padding: 80px 20px; }
+  .nf2-eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--electric); margin-bottom: 12px; }
+  .nf2 .h1 { font-family: "Sora", system-ui, sans-serif; font-size: clamp(2rem,6vw,3rem); font-weight: 700; margin: 0; }
+  .nf2 p { color: var(--muted); margin: 12px 0 22px; }
+
+  /* Rich text (MDX body) */
+  .rte { color: var(--text-soft, #374151); line-height: 1.8; font-size: 1.07rem; }
+  .rte > * + * { margin-top: 1.2rem; }
+  .rte h2, .rte h3 {
+    font-family: "Sora", system-ui, sans-serif; color: var(--text);
+    letter-spacing: -0.01em; line-height: 1.25; scroll-margin-top: 90px;
+  }
+  .rte h2 { font-size: 1.6rem; margin-top: 2.6rem; }
+  .rte h3 { font-size: 1.28rem; margin-top: 2rem; }
+  .rte a { color: var(--electric); text-decoration: underline; text-underline-offset: 3px; }
+  .rte strong { color: var(--text); font-weight: 600; }
+  .rte ul, .rte ol { padding-left: 1.3rem; }
+  .rte ul { list-style: disc; }
+  .rte ol { list-style: decimal; }
+  .rte li + li { margin-top: 0.45rem; }
+  .rte blockquote {
+    border-left: 3px solid var(--electric); padding: 4px 0 4px 18px; margin-left: 0;
+    font-style: italic; color: var(--text); font-size: 1.15rem;
+  }
+</style>

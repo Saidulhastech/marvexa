@@ -1,0 +1,56 @@
+# build output
+dist/
+*.zip
+
+# local QA screenshots
+.screenshots/
+
+# generated types
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# environment variables
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# cloudflare / wrangler
+.wrangler/
+
+# macOS-specific files
+.DS_Store
+
+# Windows-specific files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# jetbrains setting folder
+.idea/
+
+# vscode
+.vscode/
+
+# Playwright MCP temp output (screenshots / page snapshots)
+.playwright-mcp/
+
+# local QA / debug artifacts
+*.local
+test-results/
+playwright-report/
+
+# local-only reference material (not part of the shipped app)
+Modern Style/
+SHOPIFY_STOREFRONT_API_2026-04_REFERENCE.md

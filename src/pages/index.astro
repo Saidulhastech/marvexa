@@ -1,0 +1,88 @@
+---
+// ============================================================
+//  Home (OMNIX) — server-rendered landing. Shopify data is fetched
+//  here and passed to the dynamic sections; static copy comes from
+//  content collections. The Shopify data layer
+//  (getProducts/getAllCollections) is used as-is — never modified.
+// ============================================================
+import Layout from '~/layouts/Layout.astro';
+import { getProducts, getHomeCollectionGroups } from '~/lib/shopify';
+import { applyMarketCache } from '~/lib/market';
+import type { Collection, ProductCard } from '~/lib/shopify/types';
+
+import Hero from '~/components/home/omnix/Hero.astro';
+import TrustBar from '~/components/home/omnix/TrustBar.astro';
+import CategoryGrid from '~/components/home/omnix/CategoryGrid.astro';
+import BestSellers from '~/components/home/omnix/BestSellers.astro';
+import PromoBanner from '~/components/home/omnix/PromoBanner.astro';
+import Marquee from '~/components/home/omnix/Marquee.astro';
+import Lookbook from '~/components/home/omnix/Lookbook.astro';
+import CuratedSetups from '~/components/home/omnix/CuratedSetups.astro';
+import Spotlight from '~/components/home/omnix/Spotlight.astro';
+import Deals from '~/components/home/omnix/Deals.astro';
+import ComparisonTable from '~/components/home/omnix/ComparisonTable.astro';
+import ShopByNeed from '~/components/home/omnix/ShopByNeed.astro';
+import BrandStrip from '~/components/home/omnix/BrandStrip.astro';
+import Testimonials from '~/components/home/omnix/Testimonials.astro';
+import BlogTeasers from '~/components/home/omnix/BlogTeasers.astro';
+import Newsletter from '~/components/home/omnix/Newsletter.astro';
+
+let products: ProductCard[] = [];
+let collections: Collection[] = [];
+let lifestyle: Collection[] = [];
+let loadError = false;
+
+const market = Astro.locals.market;
+try {
+  const [productPage, groups] = await Promise.all([
+    getProducts({ pageSize: 12, sortKey: 'BEST_SELLING' }, market),
+    getHomeCollectionGroups(50),
+  ]);
+  products = productPage.items;
+  collections = groups.categories;
+  lifestyle = groups.lifestyle;
+} catch (err) {
+  console.error('[home] Shopify load failed:', (err as Error).message);
+  loadError = true;
+}
+
+// Edge-cache the home HTML (cart/wishlist are client-side). Market-aware:
+// only the default market is shared-cached; other markets stay private so
+// localized prices never leak across currencies.
+if (!loadError) {
+  applyMarketCache(Astro.response.headers, market);
+}
+
+const bestSellers = products.slice(0, 8);
+const deals = products.slice(8, 12).length ? products.slice(8, 12) : products.slice(0, 4);
+---
+
+<Layout>
+  {
+    loadError ? (
+      <div class="container" style="padding: 80px 0; text-align: center;">
+        <h1 class="h2">We hit a connection snag</h1>
+        <p>The catalogue couldn't load right now. Please try again shortly.</p>
+      </div>
+    ) : (
+      <>
+        <Hero />
+        <TrustBar />
+        <CategoryGrid collections={collections} />
+        <BestSellers products={bestSellers} />
+        <PromoBanner />
+        <Marquee />
+        <Lookbook />
+        <CuratedSetups />
+        <Spotlight />
+        <Deals products={deals} />
+        <ComparisonTable />
+        <ShopByNeed collections={lifestyle} />
+        <BrandStrip />
+        <Testimonials />
+        <BlogTeasers />
+        <Newsletter />
+      </>
+    )
+  }
+</Layout>

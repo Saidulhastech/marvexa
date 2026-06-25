@@ -1,0 +1,919 @@
+---
+// ============================================================
+//  Overlays (OMNIX) — search overlay, account drawer, wishlist
+//  drawer, newsletter popup, back-to-top + the global UI controller
+//  that opens/closes them via [data-open]/[data-close] triggers and
+//  ⌘K / Esc. Cart opening is delegated to the nanostore.
+//  Account → links to real /account routes. Wishlist → localStorage
+//  (no Shopify wishlist). Newsletter → UI only.
+// ============================================================
+import Icon from '~/components/ui/omnix/Icon.astro';
+import { BRAND } from '~/config/omnix';
+import { resolveImage } from '~/lib/asset';
+import { getProducts } from '~/lib/shopify';
+import { Image } from 'astro:assets';
+
+// Trending pills from real catalog data — the categories/brands of the
+// current best-sellers. Falls back to a static list if Shopify is unreachable.
+let trending: string[] = [];
+try {
+  const { items } = await getProducts({ pageSize: 16, sortKey: 'BEST_SELLING' }, Astro.locals.market);
+  const seen = new Set<string>();
+  for (const p of items) {
+    for (const term of [p.productType, p.vendor]) {
+      const t = (term ?? '').trim();
+      // Skip blanks, the shop-handle vendor (e.g. "elexy-demo"), and dups.
+      if (!t || t.includes('-') || seen.has(t.toLowerCase())) continue;
+      seen.add(t.toLowerCase());
+      trending.push(t);
+    }
+  }
+  trending = trending.slice(0, 8);
+} catch {
+  /* fall back below */
+}
+if (trending.length === 0) {
+  trending = [
+    'Wireless Earbuds', 'Smartwatch', 'Noise Cancelling', 'Laptops',
+    '4K Camera', 'Gaming Headset', 'Smart Speaker', 'Tablets',
+  ];
+}
+const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
+---
+
+{/* SEARCH OVERLAY */}
+<div class="search-overlay" id="searchOverlay">
+  <div class="search-box">
+    <form class="search-input-row" id="searchForm">
+      <span class="search-ic"><Icon name="search" size={18} /></span>
+      <input type="search" id="searchInput" name="q" aria-label="Search products, brands, categories" placeholder="Search products, brands, categories…" autocomplete="off" />
+      <span class="search-spinner" id="searchSpinner" aria-hidden="true"></span>
+      <button type="button" class="search-close-btn" data-close="search" aria-label="Close search"><kbd>ESC</kbd></button>
+    </form>
+    <div class="search-hints" id="searchHints">
+      <div class="search-hint-label"><Icon name="bolt" size={13} /> Trending Searches</div>
+      <div class="search-hint-pills">
+        {trending.map((t) => <button class="search-hint-pill" type="button" data-q={t}>{t}</button>)}
+      </div>
+    </div>
+    {/* Live results (real Shopify predictive search) injected here as you type. */}
+    <div class="search-results" id="searchResults" hidden></div>
+  </div>
+</div>
+
+{/* ACCOUNT DRAWER */}
+<div class="acct-overlay" data-close="account"></div>
+<aside class="acct-drawer" id="acctDrawer" role="dialog" aria-modal="true" aria-label="Account">
+  <div class="acct-head">
+    <h5>My Account</h5>
+    <button class="acct-x" data-close="account" aria-label="Close account"><Icon name="x" size={16} stroke={2.4} /></button>
+  </div>
+  <div class="acct-hero">
+    <div class="acct-avatar-wrap"><Icon name="user" size={28} stroke={1.8} /></div>
+    <div class="acct-hero-text">
+      <span>Welcome to {BRAND.name}</span>
+      <strong>Sign in for the best experience</strong>
+    </div>
+    <div class="acct-cta-row">
+      <a href="/account/login" class="acct-btn-primary">Sign In</a>
+      <a href="/account/login" class="acct-btn-ghost">Register</a>
+    </div>
+  </div>
+  <div class="acct-body">
+    <div class="acct-section-label">Quick Links</div>
+    <a href="/account" class="acct-link"><Icon name="user" size={16} /> Your account</a>
+    <a href="/products" class="acct-link"><Icon name="cart" size={16} /> Continue shopping</a>
+    <a href="/contact" class="acct-link"><Icon name="mail" size={16} /> Contact Us</a>
+  </div>
+</aside>
+
+{/* WISHLIST DRAWER (localStorage only) */}
+<div class="wish-overlay" data-close="wishlist"></div>
+<aside class="wish-drawer" id="wishDrawer" role="dialog" aria-modal="true" aria-label="Wishlist">
+  <div class="wish-head">
+    <h5><Icon name="heart" size={18} /> Wishlist <span class="wish-count-chip" id="wishCountChip">0</span></h5>
+    <button class="wish-x" data-close="wishlist" aria-label="Close wishlist"><Icon name="x" size={16} stroke={2.4} /></button>
+  </div>
+  <div class="wish-body">
+    <div class="wish-empty" id="wishEmpty">
+      <Icon name="heart" size={48} stroke={1.5} />
+      <p>Your wishlist is empty. Save items you love and find them here.</p>
+    </div>
+    <div id="wishList"></div>
+  </div>
+  <div class="wish-foot">
+    <a class="btn btn-primary btn-block" href="/wishlist">View full wishlist</a>
+  </div>
+</aside>
+
+{/* NEWSLETTER POPUP (UI only) */}
+<div class="popup-backdrop" id="popupBackdrop" role="dialog" aria-modal="true" aria-labelledby="popupTitle">
+  <div class="popup">
+    <div class="popup-visual"><Image src={popupImg} alt="Newsletter" width={420} height={520} /></div>
+    <div class="popup-body">
+      <button class="popup-close" data-close="popup" aria-label="Close popup"><Icon name="x" size={16} stroke={2.4} /></button>
+      <div id="popupFormView">
+        <div class="popup-eyebrow">Limited offer</div>
+        <h4 id="popupTitle">Get 10% off your<br />first {BRAND.name} order.</h4>
+        <p>Drop your email below. We'll send your discount code instantly — no strings attached.</p>
+        <form class="popup-form" id="popupForm" novalidate>
+          <div class="popup-input-wrap">
+            <Icon name="mail" size={16} />
+            <input class="popup-input" type="email" name="email" aria-label="Email address" placeholder="your@email.com" required autocomplete="email" />
+          </div>
+          <button type="submit" class="popup-submit">Claim my 10% off <Icon name="arrow-right" size={16} stroke={2.4} /></button>
+        </form>
+        <p class="popup-skip">No thanks, <a href="#" data-close="popup">I'll pay full price</a>.</p>
+      </div>
+      <div class="popup-success" id="popupSuccess">
+        <div class="success-ic"><Icon name="check" size={30} stroke={2.4} /></div>
+        <h5>You're in! Welcome to {BRAND.name}.</h5>
+        <p>Your discount code is ready. Use it at checkout today.</p>
+        <div class="popup-discount"><span class="code">WELCOME10</span><button class="copy-btn" id="copyCodeBtn">Copy</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{/* QUICK VIEW MODAL — populated from the card's data-* attributes */}
+<div class="qv-overlay" id="qvOverlay" role="dialog" aria-modal="true" aria-labelledby="qvName">
+  <div class="qv-modal">
+    <button class="qv-close" data-close="qview" aria-label="Close quick view"><Icon name="x" size={16} stroke={2.4} /></button>
+    <div class="qv-media"><img id="qvImg" src="" alt="" /></div>
+    <div class="qv-body">
+      <div class="qv-brand" id="qvBrand"></div>
+      <div class="qv-name" id="qvName"></div>
+      <div class="qv-rating" id="qvRating" style="display:none"></div>
+      <div class="qv-price-row">
+        <span class="now" id="qvPrice"></span>
+        <span class="was" id="qvWas" style="display:none"></span>
+        <span class="save" id="qvSave" style="display:none"></span>
+      </div>
+      <div class="qv-divider"></div>
+      <p class="qv-desc" id="qvDesc"></p>
+      <ul class="qv-specs" id="qvSpecs"></ul>
+      <div class="qv-variants" id="qvVariants"></div>
+      <div class="qv-divider"></div>
+      <div class="qv-buy">
+        <div class="qv-qty">
+          <button type="button" id="qvQtyDec" aria-label="Decrease quantity">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg>
+          </button>
+          <input type="text" id="qvQty" value="1" inputmode="numeric" aria-label="Quantity" />
+          <button type="button" id="qvQtyInc" aria-label="Increase quantity">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+        <button class="btn btn-primary" id="qvAdd"><Icon name="cart" size={16} stroke={2.4} /> Add to Cart</button>
+        <button class="btn btn-secondary qv-wishbtn" id="qvWish" aria-label="Add to wishlist"><Icon name="heart" size={16} /></button>
+      </div>
+      <a class="qv-details" id="qvDetails" href="#">View full details
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+{/* BACK TO TOP */}
+<button class="to-top" id="toTop" aria-label="Back to top"><Icon name="arrow-up" size={18} stroke={2.4} /></button>
+
+<script>
+  import { openCart, closeCart, addItem, $cartOpen } from '../../../stores/cart';
+
+  type WishItem = { handle: string; name: string; price: string; img: string; href: string };
+
+  // Append a CDN width param safely — even when the URL already carries a query
+  // (Shopify CDN urls usually have `?v=…`). Without this the full-res original
+  // loads on variant/swatch image swaps.
+  const cdnImg = (url?: string | null, w = 640) => {
+    if (!url) return '';
+    if (/[?&]width=/.test(url)) return url;
+    return `${url}${url.includes('?') ? '&' : '?'}width=${w}`;
+  };
+
+  function readJSON<T = any[]>(key: string): T {
+    try {
+      return JSON.parse(localStorage.getItem(key) || '[]');
+    } catch {
+      return [] as unknown as T;
+    }
+  }
+
+  // ---- Toast (lightweight feedback for wishlist/compare) -------------------
+  let toastTimer: number | undefined;
+  function toast(msg: string, action?: { href: string; label: string }) {
+    let el = document.getElementById('omnixToast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'omnixToast';
+      el.className = 'omnix-toast';
+      document.body.appendChild(el);
+    }
+    if (action) {
+      el.innerHTML = '';
+      const text = document.createElement('span');
+      text.textContent = msg;
+      const link = document.createElement('a');
+      link.href = action.href;
+      link.className = 'omnix-toast-action';
+      link.textContent = action.label;
+      el.append(text, link);
+    } else {
+      el.textContent = msg;
+    }
+    el.classList.add('is-visible');
+    window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => el!.classList.remove('is-visible'), 2200);
+  }
+
+  // Compare count → header badge.
+  function updateCompareBadge() {
+    let list: string[] = [];
+    try { list = JSON.parse(localStorage.getItem('omnix_compare') || '[]'); } catch {}
+    const badge = document.getElementById('compareBadge');
+    if (badge) {
+      badge.textContent = String(list.length);
+      badge.style.display = list.length ? '' : 'none';
+    }
+  }
+
+  // ---- Wishlist (localStorage + drawer) ------------------------------------
+  const WISH_KEY = 'omnix_wishlist';
+
+  function renderWishlist() {
+    const items: WishItem[] = readJSON(WISH_KEY);
+    const handles = new Set(items.map((i) => i.handle));
+
+    // Active state on every wishlist heart.
+    document.querySelectorAll<HTMLElement>('[data-wish]').forEach((b) =>
+      b.classList.toggle('is-active', handles.has(b.dataset.handle || '')),
+    );
+
+    // Badge + drawer count chip.
+    const count = items.length;
+    const badge = document.getElementById('wishBadge');
+    if (badge) {
+      badge.textContent = String(count);
+      badge.style.display = count ? '' : 'none';
+    }
+    const chip = document.getElementById('wishCountChip');
+    if (chip) chip.textContent = String(count);
+
+    // Drawer list + empty state.
+    const empty = document.getElementById('wishEmpty');
+    const list = document.getElementById('wishList');
+    if (empty) empty.style.display = count ? 'none' : '';
+    if (list) {
+      list.innerHTML = items
+        .map(
+          (i) => `
+        <div class="wish-row" data-wish-row="${esc(i.handle)}">
+          <a class="wish-row-img" href="${esc(i.href)}"><img src="${esc(i.img)}" alt="${esc(i.name)}" loading="lazy"></a>
+          <div class="wish-row-info">
+            <a class="wish-row-name" href="${esc(i.href)}">${esc(i.name)}</a>
+            <div class="wish-row-price">${esc(i.price)}</div>
+          </div>
+          <button class="wish-row-x" data-wish-remove="${esc(i.handle)}" aria-label="Remove">&times;</button>
+        </div>`,
+        )
+        .join('');
+    }
+  }
+
+  function toggleWishlist(btn: HTMLElement) {
+    const d = btn.dataset;
+    const handle = d.handle || '';
+    const items: WishItem[] = readJSON(WISH_KEY);
+    const i = items.findIndex((x) => x.handle === handle);
+    const added = i < 0;
+    if (added) {
+      items.push({ handle, name: d.name || '', price: d.price || '', img: d.img || '', href: d.href || '#' });
+    } else {
+      items.splice(i, 1);
+    }
+    localStorage.setItem(WISH_KEY, JSON.stringify(items));
+    renderWishlist();
+    toast(added ? 'Saved to wishlist' : 'Removed from wishlist');
+  }
+
+  // name → { panel selector, overlay selector }
+  const MAP: Record<string, { panel: string; overlay?: string }> = {
+    search: { panel: '#searchOverlay' },
+    account: { panel: '#acctDrawer', overlay: '.acct-overlay' },
+    wishlist: { panel: '#wishDrawer', overlay: '.wish-overlay' },
+    mobile: { panel: '#mobMenu', overlay: '.mob-overlay' },
+    popup: { panel: '#popupBackdrop' },
+    qview: { panel: '#qvOverlay' },
+  };
+
+  // ---- Focus management (trap + restore) for modal panels -----------------
+  const FOCUSABLE =
+    'a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])';
+  let lastFocused: HTMLElement | null = null;
+  let trapPanel: HTMLElement | null = null;
+
+  function trapTab(e: KeyboardEvent) {
+    if (e.key !== 'Tab' || !trapPanel) return;
+    const items = Array.from(trapPanel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+      (el) => el.offsetParent !== null,
+    );
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  // Is any overlay (or the cart drawer) still open? Used so closing one overlay
+  // doesn't strip the page scroll-lock while another is layered on top.
+  function anyOverlayOpen(): boolean {
+    if ($cartOpen.get()) return true;
+    return Object.values(MAP).some((m) => document.querySelector(m.panel)?.classList.contains('is-open'));
+  }
+
+  function setOpen(name: string, open: boolean) {
+    if (name === 'cart') {
+      open ? openCart() : closeCart();
+      return;
+    }
+    const m = MAP[name];
+    if (!m) return;
+    const panel = document.querySelector<HTMLElement>(m.panel);
+    panel?.classList.toggle('is-open', open);
+    if (m.overlay) document.querySelector(m.overlay)?.classList.toggle('is-open', open);
+    // Keep the lock while anything else remains open (prevents the scroll-lock leak).
+    document.body.classList.toggle('no-scroll', open || anyOverlayOpen());
+
+    if (open && panel) {
+      lastFocused = document.activeElement as HTMLElement;
+      trapPanel = panel;
+      document.addEventListener('keydown', trapTab);
+      const focusTarget =
+        name === 'search'
+          ? document.getElementById('searchInput')
+          : panel.querySelector<HTMLElement>(FOCUSABLE);
+      // Defer so the panel is visible before focusing.
+      window.requestAnimationFrame(() => focusTarget?.focus());
+    } else if (!open && panel === trapPanel) {
+      document.removeEventListener('keydown', trapTab);
+      trapPanel = null;
+      lastFocused?.focus();
+      lastFocused = null;
+    }
+  }
+
+  function closeAll() {
+    closeCart();
+    Object.keys(MAP).forEach((n) => setOpen(n, false));
+    document.body.classList.remove('no-scroll');
+  }
+
+  let qvVariant: string | null = null;
+  let qvItem: WishItem | null = null;
+
+  // ---- Quick-view variant picker -------------------------------------------
+  type QVData = { id: string; opts: Record<string, string>; price: number; compareAt: number | null; img: string | null; available: boolean };
+  type QVOption = { name: string; isColor: boolean; values: { name: string; color: string | null }[] };
+  let qvVariants: QVData[] | null = null;
+  let qvSelected: Record<string, string> = {};
+  let qvCurrency = 'USD';
+  let qvQty = 1;
+
+  const QV_NAMED_COLORS: Record<string, string> = {
+    black: '#111418', white: '#ffffff', gray: '#808080', grey: '#808080',
+    silver: '#d3d3d3', gold: '#c9a86a', 'rose gold': '#b76e79', blue: '#2563eb',
+    navy: '#1e293b', red: '#dc2626', green: '#16a34a', pink: '#ec4899',
+    purple: '#7c3aed', orange: '#ea580c', yellow: '#eab308', beige: '#e7d8c2',
+    brown: '#8b5a2b', bronze: '#8c6239',
+  };
+  const qvSwatchColor = (name: string, color: string | null) =>
+    color || QV_NAMED_COLORS[name.toLowerCase()] || '#cbd5e1';
+  const qvMoney = (n: number) =>
+    new Intl.NumberFormat('en-US', {
+      style: 'currency', currency: qvCurrency, minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    }).format(n);
+
+  function qvSetQty(n: number) {
+    qvQty = Math.max(1, Math.min(99, Math.floor(n) || 1));
+    const input = document.getElementById('qvQty') as HTMLInputElement | null;
+    if (input) input.value = String(qvQty);
+    const dec = document.getElementById('qvQtyDec') as HTMLButtonElement | null;
+    if (dec) dec.disabled = qvQty <= 1;
+  }
+
+  const qvAddHTML = (label: string) =>
+    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> ${label}`;
+
+  function qvCurrentVariant(): QVData | null {
+    if (!qvVariants) return null;
+    return qvVariants.find((v) => Object.keys(qvSelected).every((k) => v.opts[k] === qvSelected[k])) || null;
+  }
+
+  // Dawn-style contextual availability: an option value is purchasable only if
+  // some *available* variant carries it while matching the current selection of
+  // every OTHER option. Values that fail get struck through + disabled.
+  function qvOptionAvailable(name: string, value: string): boolean {
+    if (!qvVariants) return true;
+    return qvVariants.some(
+      (v) =>
+        v.available &&
+        v.opts[name] === value &&
+        Object.keys(qvSelected).every((k) => k === name || v.opts[k] === qvSelected[k]),
+    );
+  }
+
+  // Re-mark every option/swatch button against the current selection. The
+  // active value stays clickable (it's the current pick); the rest are disabled
+  // when no available variant can include them.
+  function qvRefreshAvailability() {
+    const wrap = document.getElementById('qvVariants');
+    if (!wrap || !qvVariants) return;
+    wrap.querySelectorAll<HTMLElement>('[data-opts]').forEach((group) => {
+      const name = group.dataset.opts || '';
+      group.querySelectorAll<HTMLButtonElement>('.qv-opt, .qv-swatch').forEach((btn) => {
+        const avail = qvOptionAvailable(name, btn.dataset.value || '');
+        btn.classList.toggle('is-unavailable', !avail);
+        btn.disabled = !avail && !btn.classList.contains('is-active');
+      });
+    });
+  }
+
+  // Build the colour-swatch / option-button pickers into the modal.
+  function qvBuildPickers(variantsJson?: string, optionsJson?: string) {
+    const wrap = document.getElementById('qvVariants');
+    if (!wrap) return;
+    let variants: QVData[] = [];
+    let options: QVOption[] = [];
+    try { variants = JSON.parse(variantsJson || '[]'); } catch {}
+    try { options = JSON.parse(optionsJson || '[]'); } catch {}
+    if (!variants.length || !options.length) {
+      wrap.innerHTML = '';
+      wrap.style.display = 'none';
+      qvVariants = null;
+      qvSelected = {};
+      return;
+    }
+    qvVariants = variants;
+    wrap.style.display = '';
+    const base = variants.find((v) => v.available) ?? variants[0];
+    qvSelected = { ...base.opts };
+    wrap.innerHTML = options
+      .map((opt) => {
+        const head = `<div class="qv-vhead"><span class="qv-vlabel">${esc(opt.name)}</span><span class="qv-vcur">Selected: <b data-cur="${esc(opt.name)}">${esc(qvSelected[opt.name] ?? '')}</b></span></div>`;
+        const buttons = opt.values
+          .map((ov) => {
+            const active = qvSelected[opt.name] === ov.name ? ' is-active' : '';
+            return opt.isColor
+              ? `<button type="button" class="qv-swatch${active}" data-value="${esc(ov.name)}" title="${esc(ov.name)}" aria-label="${esc(ov.name)}"><span style="background:${esc(qvSwatchColor(ov.name, ov.color))}"></span></button>`
+              : `<button type="button" class="qv-opt${active}" data-value="${esc(ov.name)}">${esc(ov.name)}</button>`;
+          })
+          .join('');
+        return `<div class="qv-vgroup" data-opts="${esc(opt.name)}">${head}<div class="${opt.isColor ? 'qv-swatches' : 'qv-opts'}">${buttons}</div></div>`;
+      })
+      .join('');
+  }
+
+  // Reflect the current selection onto price / image / add button.
+  function qvRenderSelection() {
+    if (!qvVariants) return;
+    const v = qvCurrentVariant();
+    const priceEl = document.getElementById('qvPrice');
+    if (priceEl) priceEl.textContent = v ? qvMoney(v.price) : '';
+    const onSale = !!v && v.compareAt != null && v.compareAt > v.price;
+    const wasEl = document.getElementById('qvWas');
+    if (wasEl) { wasEl.textContent = onSale ? qvMoney(v!.compareAt!) : ''; wasEl.style.display = onSale ? '' : 'none'; }
+    const saveEl = document.getElementById('qvSave');
+    if (saveEl) { saveEl.textContent = onSale ? `Save ${qvMoney(v!.compareAt! - v!.price)}` : ''; saveEl.style.display = onSale ? '' : 'none'; }
+    const imgEl = document.getElementById('qvImg') as HTMLImageElement | null;
+    if (imgEl && v?.img) imgEl.src = cdnImg(v.img, 640);
+    qvVariant = v && v.available ? v.id : null;
+    const addBtn = document.getElementById('qvAdd') as HTMLButtonElement | null;
+    if (addBtn) {
+      addBtn.disabled = !qvVariant;
+      addBtn.innerHTML = qvAddHTML(qvVariant ? 'Add to Cart' : 'Unavailable');
+    }
+    qvRefreshAvailability();
+  }
+
+  function openQuickView(btn: HTMLElement) {
+    // If the trigger lives inside the cart drawer (upsell "Select"), close the
+    // drawer first so its focus-trap doesn't fight the modal. Harmless no-op
+    // when the cart is already closed (grid/quick-view triggers). The drawer
+    // reopens automatically when the shopper adds from the picker.
+    closeCart();
+    const d = btn.dataset;
+    const set = (id: string, v?: string) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = v ?? '';
+    };
+    const show = (id: string, on: boolean) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = on ? '' : 'none';
+    };
+    const imgEl = document.getElementById('qvImg') as HTMLImageElement | null;
+    if (imgEl) {
+      // Request a modal-sized render from the Shopify CDN.
+      imgEl.src = cdnImg(d.img, 640);
+      imgEl.alt = d.name || '';
+    }
+    set('qvBrand', d.brand);
+    set('qvName', d.name);
+    set('qvPrice', d.price);
+    set('qvDesc', d.desc);
+    set('qvWas', d.was);
+    show('qvWas', !!d.was);
+    set('qvSave', d.save);
+    show('qvSave', !!d.save);
+    // Rating: only shown if a card ever supplies it (no Shopify review source yet).
+    show('qvRating', !!d.rating);
+
+    // Quantity resets each open; details link points at the PDP.
+    qvSetQty(1);
+    const details = document.getElementById('qvDetails') as HTMLAnchorElement | null;
+    if (details) details.href = d.href || '#';
+
+    // Variant pickers (multi-option products) — when present they drive the
+    // price, image and add target; otherwise fall back to the single variant id.
+    qvCurrency = d.currency || 'USD';
+    qvBuildPickers(d.variants, d.options);
+    if (qvVariants) {
+      show('qvAdd', true);
+      qvRenderSelection();
+    } else {
+      qvVariant = d.variantId || null;
+      show('qvAdd', !!qvVariant);
+      const addBtn = document.getElementById('qvAdd') as HTMLButtonElement | null;
+      if (addBtn) { addBtn.disabled = false; addBtn.innerHTML = qvAddHTML('Add to Cart'); }
+    }
+    qvItem = {
+      handle: d.handle || '',
+      name: d.name || '',
+      price: d.price || '',
+      img: d.img || '',
+      href: d.href || '#',
+    };
+    setOpen('qview', true);
+  }
+
+  document.addEventListener('click', (e) => {
+    // Card colour swatch → swap the card image + retarget Quick Add (single-option).
+    // Works on both shop cards (.prod-card) and compare cards (.cmp-col).
+    const swatch = (e.target as HTMLElement).closest<HTMLElement>('[data-swatch]');
+    if (swatch) {
+      e.preventDefault();
+      // Sold-out colour → struck + disabled (Dawn-style): no image swap, no
+      // Quick Add retarget to a dead variant.
+      if (swatch.classList.contains('is-unavailable')) return;
+      const card = swatch.closest('.prod-card, .cmp-col');
+      card?.querySelectorAll('[data-swatch]').forEach((s) => s.classList.remove('is-active'));
+      swatch.classList.add('is-active');
+      const url = swatch.dataset.img;
+      const media = card?.querySelector<HTMLImageElement>('.prod-media img, .cmp-img img');
+      if (url && media) {
+        media.src = cdnImg(url, 600);
+        media.srcset = ''; // stop the responsive set overriding our swap
+      }
+      const vId = swatch.dataset.variantId;
+      if (vId) {
+        const addBtn = card?.querySelector<HTMLElement>('[data-add]:not([data-pick])');
+        if (addBtn) addBtn.dataset.variantId = vId;
+      }
+      return;
+    }
+    // Grid quick-add → multi-option products open the picker; the rest add directly.
+    const adder = (e.target as HTMLElement).closest<HTMLElement>('[data-add]');
+    if (adder) {
+      e.preventDefault();
+      if ('pick' in adder.dataset) {
+        openQuickView(adder); // opens the modal with variant pickers
+        return;
+      }
+      const variantId = adder.dataset.variantId;
+      if (variantId) {
+        openCart(); // optimistic — drawer opens instantly; line fills when the mutation returns
+        adder.setAttribute('disabled', 'true');
+        addItem(variantId, 1).finally(() => adder.removeAttribute('disabled'));
+      }
+      return;
+    }
+    // Wishlist toggle (localStorage + drawer).
+    const wish = (e.target as HTMLElement).closest<HTMLElement>('[data-wish]');
+    if (wish) {
+      e.preventDefault();
+      toggleWishlist(wish);
+      return;
+    }
+    // Remove a row from inside the wishlist drawer.
+    const wishRemove = (e.target as HTMLElement).closest<HTMLElement>('[data-wish-remove]');
+    if (wishRemove) {
+      e.preventDefault();
+      const handle = wishRemove.dataset.wishRemove || '';
+      const items: WishItem[] = readJSON(WISH_KEY).filter((x: WishItem) => x.handle !== handle);
+      localStorage.setItem(WISH_KEY, JSON.stringify(items));
+      renderWishlist();
+      return;
+    }
+    // Quick view → populate + open the modal.
+    const qv = (e.target as HTMLElement).closest<HTMLElement>('[data-qview]');
+    if (qv) {
+      e.preventDefault();
+      openQuickView(qv);
+      return;
+    }
+    // Compare → toggle a localStorage list + active state; surfaces on /compare.
+    const cmp = (e.target as HTMLElement).closest<HTMLElement>('[data-compare]');
+    if (cmp) {
+      e.preventDefault();
+      const handle = cmp.dataset.handle || '';
+      const key = 'omnix_compare';
+      const list: string[] = readJSON(key);
+      const i = list.indexOf(handle);
+      const added = i < 0;
+      if (added) list.push(handle);
+      else list.splice(i, 1);
+      localStorage.setItem(key, JSON.stringify(list));
+      // Reflect on every instance of this product's compare button.
+      document.querySelectorAll<HTMLElement>(`[data-compare][data-handle="${handle}"]`).forEach((b) =>
+        b.classList.toggle('is-active', added),
+      );
+      updateCompareBadge();
+      if (added) toast(`Added to compare (${list.length})`, { href: '/compare', label: 'View' });
+      else toast('Removed from compare');
+      return;
+    }
+    // Click directly on a modal backdrop (search / popup / quick-view) closes it
+    // — matches the other overlays and the universal modal expectation.
+    const target = e.target as HTMLElement;
+    if (target.id === 'searchOverlay') { setOpen('search', false); return; }
+    if (target.id === 'qvOverlay') { setOpen('qview', false); return; }
+    if (target.id === 'popupBackdrop') { setOpen('popup', false); return; }
+    const opener = (e.target as HTMLElement).closest<HTMLElement>('[data-open]');
+    if (opener) {
+      e.preventDefault();
+      setOpen(opener.dataset.open!, true);
+      return;
+    }
+    const closer = (e.target as HTMLElement).closest<HTMLElement>('[data-close]');
+    if (closer) {
+      e.preventDefault();
+      const name = closer.dataset.close!;
+      name === 'cart' ? closeCart() : setOpen(name, false);
+    }
+  });
+
+  // ⌘K / Ctrl-K opens search; Esc closes everything.
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      setOpen('search', true);
+    } else if (e.key === 'Escape') {
+      closeAll();
+    }
+  });
+
+  // Search → existing /search results page.
+  const go = (q: string) => {
+    if (q.trim()) window.location.href = `/search?q=${encodeURIComponent(q.trim())}`;
+  };
+  document.getElementById('searchForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    go((document.getElementById('searchInput') as HTMLInputElement).value);
+  });
+  document.querySelectorAll<HTMLElement>('.search-hint-pill').forEach((p) =>
+    p.addEventListener('click', () => go(p.dataset.q || '')),
+  );
+
+  // ── Live (predictive) search — real Shopify data via /api/search ──────────
+  const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+  const searchHints = document.getElementById('searchHints');
+  const searchResults = document.getElementById('searchResults');
+  const searchSpinner = document.getElementById('searchSpinner');
+  const setSearchLoading = (on: boolean) => searchSpinner?.classList.toggle('is-on', on);
+
+  interface PredictiveData {
+    products: {
+      handle: string;
+      title: string;
+      featuredImage?: { url: string; altText?: string | null } | null;
+      priceRange?: { minVariantPrice?: { amount: string; currencyCode: string } };
+    }[];
+    collections: { handle: string; title: string }[];
+    queries: { text: string; styledText?: string }[];
+  }
+
+  const esc = (s: unknown) =>
+    String(s ?? '').replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+    );
+  const fmt = (m?: { amount: string; currencyCode: string }) =>
+    m
+      ? new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: m.currencyCode,
+          minimumFractionDigits: Number(m.amount) % 1 === 0 ? 0 : 2,
+        }).format(Number(m.amount))
+      : '';
+
+  let searchTimer: ReturnType<typeof setTimeout> | undefined;
+  let searchSeq = 0; // guards against out-of-order responses
+
+  function showHints() {
+    if (searchHints) searchHints.hidden = false;
+    if (searchResults) {
+      searchResults.hidden = true;
+      searchResults.innerHTML = '';
+    }
+  }
+
+  function renderResults(data: PredictiveData, q: string) {
+    if (!searchResults || !searchHints) return;
+    const { products = [], collections = [], queries = [] } = data;
+
+    if (!products.length && !collections.length && !queries.length) {
+      searchResults.innerHTML = `<div class="sr-empty">No matches for “<strong>${esc(q)}</strong>”.</div>`;
+    } else {
+      let html = '';
+      if (queries.length) {
+        html +=
+          `<div class="sr-group"><div class="sr-label">Suggestions</div>` +
+          queries
+            .slice(0, 5)
+            .map((s) => `<button class="sr-suggest" type="button" data-q="${esc(s.text)}">${esc(s.text)}</button>`)
+            .join('') +
+          `</div>`;
+      }
+      if (products.length) {
+        html +=
+          `<div class="sr-group"><div class="sr-label">Products</div>` +
+          products
+            .map(
+              (p) => `
+              <a class="sr-product" href="/products/${esc(p.handle)}">
+                <span class="sr-thumb">${
+                  p.featuredImage
+                    ? `<img src="${esc(p.featuredImage.url)}" alt="${esc(p.featuredImage.altText ?? p.title)}" loading="lazy">`
+                    : ''
+                }</span>
+                <span class="sr-info">
+                  <span class="sr-name">${esc(p.title)}</span>
+                  <span class="sr-price">${fmt(p.priceRange?.minVariantPrice)}</span>
+                </span>
+              </a>`,
+            )
+            .join('') +
+          `</div>`;
+      }
+      if (collections.length) {
+        html +=
+          `<div class="sr-group"><div class="sr-label">Collections</div>` +
+          collections
+            .map((c) => `<a class="sr-collection" href="/collections/${esc(c.handle)}">${esc(c.title)}</a>`)
+            .join('') +
+          `</div>`;
+      }
+      html += `<button class="sr-all" type="button" data-q="${esc(q)}">See all results for “${esc(q)}”</button>`;
+      searchResults.innerHTML = html;
+    }
+    searchHints.hidden = true;
+    searchResults.hidden = false;
+  }
+
+  async function runSearch(q: string) {
+    const mine = ++searchSeq;
+    setSearchLoading(true);
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
+        headers: { accept: 'application/json' },
+      });
+      const data = (await res.json()) as PredictiveData;
+      if (mine !== searchSeq) return; // a newer keystroke already fired
+      renderResults(data, q);
+    } catch {
+      if (mine === searchSeq && searchResults && searchHints) {
+        searchResults.innerHTML = `<div class="sr-empty">Search is unavailable right now.</div>`;
+        searchHints.hidden = true;
+        searchResults.hidden = false;
+      }
+    } finally {
+      if (mine === searchSeq) setSearchLoading(false);
+    }
+  }
+
+  searchInput?.addEventListener('input', (e) => {
+    const q = (e.currentTarget as HTMLInputElement).value.trim();
+    clearTimeout(searchTimer);
+    if (q.length < 2) {
+      searchSeq++; // cancel any in-flight render
+      setSearchLoading(false);
+      showHints();
+      return;
+    }
+    setSearchLoading(true); // immediate feedback before the debounce fires
+    searchTimer = setTimeout(() => runSearch(q), 220);
+  });
+
+  // Suggestion / "see all" clicks → full results page (products/collections are links).
+  searchResults?.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-q]');
+    if (btn) {
+      e.preventDefault();
+      go(btn.dataset.q || '');
+    }
+  });
+
+  // Newsletter popup — show once per session; UI only. Never slam it over an
+  // already-open overlay/cart (it would clobber focus + the scroll-lock).
+  try {
+    // Skip on phones: a full-screen promo on a small viewport is exactly the
+    // "intrusive interstitial" Google penalises for mobile search.
+    if (!sessionStorage.getItem('omnix_popup') && window.innerWidth >= 768) {
+      setTimeout(() => {
+        if (anyOverlayOpen()) return; // try again next session, don't interrupt
+        setOpen('popup', true);
+        sessionStorage.setItem('omnix_popup', '1');
+      }, 12000);
+    }
+  } catch {}
+  document.getElementById('popupForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    document.getElementById('popupFormView')?.style.setProperty('display', 'none');
+    document.getElementById('popupSuccess')?.classList.add('is-shown');
+  });
+  document.getElementById('copyCodeBtn')?.addEventListener('click', () => {
+    navigator.clipboard?.writeText('WELCOME10');
+  });
+
+  // Quick-view variant pickers → update selection + price/image/add target.
+  document.getElementById('qvVariants')?.addEventListener('click', (e) => {
+    const group = (e.target as HTMLElement).closest<HTMLElement>('[data-opts]');
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.qv-opt, .qv-swatch');
+    if (!group || !btn || !qvVariants) return;
+    // Disabled (contextually unavailable) values are dead ends — ignore.
+    if (btn.disabled || btn.classList.contains('is-unavailable')) return;
+    const name = group.dataset.opts || '';
+    qvSelected[name] = btn.dataset.value || '';
+    group.querySelectorAll('.qv-opt, .qv-swatch').forEach((o) => o.classList.remove('is-active'));
+    btn.classList.add('is-active');
+    const cur = group.querySelector(`[data-cur="${name}"]`);
+    if (cur) cur.textContent = qvSelected[name];
+    qvRenderSelection();
+  });
+
+  // Quick-view quantity stepper.
+  document.getElementById('qvQtyInc')?.addEventListener('click', () => qvSetQty(qvQty + 1));
+  document.getElementById('qvQtyDec')?.addEventListener('click', () => qvSetQty(qvQty - 1));
+  document.getElementById('qvQty')?.addEventListener('change', function (this: HTMLInputElement) {
+    qvSetQty(Number(this.value));
+  });
+
+  // Quick-view → add to cart. Await the result: on success the drawer opens
+  // (feedback) and the modal closes; on failure keep the modal + show a toast.
+  document.getElementById('qvAdd')?.addEventListener('click', async function (this: HTMLButtonElement) {
+    if (!qvVariant) return;
+    this.disabled = true;
+    const label = this.innerHTML;
+    this.innerHTML = qvAddHTML('Adding…');
+    const res = await addItem(qvVariant, qvQty); // opens the cart drawer on success
+    if (res.cart) {
+      setOpen('qview', false);
+    } else {
+      toast(res.userErrors?.[0]?.message ?? 'Could not add to cart. Please try again.');
+    }
+    this.disabled = false;
+    this.innerHTML = label;
+  });
+
+  // Quick-view → save to wishlist (adds if not already saved).
+  document.getElementById('qvWish')?.addEventListener('click', () => {
+    if (!qvItem) return;
+    const items: WishItem[] = readJSON(WISH_KEY);
+    if (!items.some((x) => x.handle === qvItem!.handle)) {
+      items.push(qvItem);
+      localStorage.setItem(WISH_KEY, JSON.stringify(items));
+      renderWishlist();
+    }
+    toast('Saved to wishlist');
+  });
+
+  // Reflect persisted compare state on load.
+  const compareList: string[] = readJSON('omnix_compare');
+  document.querySelectorAll<HTMLElement>('[data-compare]').forEach((b) => {
+    if (compareList.includes(b.dataset.handle || '')) b.classList.add('is-active');
+  });
+  updateCompareBadge();
+
+  // Hydrate wishlist (hearts, badge, drawer) from storage on load.
+  renderWishlist();
+
+  // Back to top.
+  const toTop = document.getElementById('toTop');
+  window.addEventListener('scroll', () => {
+    toTop?.classList.toggle('is-visible', window.scrollY > 600);
+  });
+  toTop?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+</script>

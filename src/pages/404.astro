@@ -1,0 +1,69 @@
+---
+// Custom 404 (OMNIX chrome).
+import Layout from '~/layouts/Layout.astro';
+import Icon from '~/components/ui/omnix/Icon.astro';
+---
+
+<Layout title="Page not found (404)" description="The page you’re looking for doesn’t exist or has moved." noindex>
+  <section class="sec nf">
+    <div class="container nf-inner">
+      <p class="nf-eyebrow">Error 404</p>
+      <h1 class="nf-title">Lost the thread</h1>
+      <p class="nf-body">
+        This page doesn't exist — the link may be broken or the piece has sold out. Let's get you
+        back to something good.
+      </p>
+      <div class="nf-actions">
+        <a href="/" class="btn btn-primary">
+          <Icon name="arrow-right" size={16} stroke={2.2} /> Back home
+        </a>
+        <a href="/products" class="btn btn-ghost">Shop all products</a>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .nf-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: clamp(80px, 14vw, 150px) 20px;
+  }
+  .nf-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--electric);
+    margin: 0 0 14px;
+  }
+  .nf-title {
+    font-family: "Sora", system-ui, sans-serif;
+    font-size: clamp(2.6rem, 8vw, 4.5rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin: 0;
+  }
+  .nf-body {
+    margin: 18px 0 0;
+    max-width: 30rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .nf-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 34px;
+  }
+  .btn-ghost {
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--text);
+  }
+  .btn-ghost:hover { border-color: var(--electric); color: var(--electric); }
+</style>

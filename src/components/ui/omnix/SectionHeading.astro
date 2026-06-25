@@ -1,0 +1,38 @@
+---
+// ============================================================
+//  SectionHeading — the OMNIX `.sec-head` block (eyebrow + h2 +
+//  optional body) with an optional right-aligned link, or an
+//  `aside` slot for custom right-side content (e.g. filter tabs).
+//  Reused by every home section that has a header.
+// ============================================================
+import Icon from '~/components/ui/omnix/Icon.astro';
+
+interface Props {
+  eyebrow?: string;
+  title: string;
+  body?: string;
+  link?: { label: string; href: string };
+  /** Heading level for correct document outline (default h2). */
+  as?: 'h2' | 'h3';
+}
+const { eyebrow, title, body, link, as = 'h2' } = Astro.props;
+const Heading = as;
+const hasAside = Astro.slots.has('aside');
+---
+
+<div class="sec-head">
+  <div class="sec-head-l">
+    {eyebrow && <div class="sec-eyebrow">{eyebrow}</div>}
+    <Heading class="h2" set:html={title} />
+    {body && <p>{body}</p>}
+  </div>
+  {
+    link && !hasAside && (
+      <a class="link" href={link.href}>
+        {link.label}
+        <Icon name="arrow-right" size={14} stroke={2.4} />
+      </a>
+    )
+  }
+  {hasAside && <slot name="aside" />}
+</div>

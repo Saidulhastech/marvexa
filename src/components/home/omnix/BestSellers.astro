@@ -1,0 +1,111 @@
+---
+// ============================================================
+//  BestSellers — OMNIX "Featured products" grid with filter tabs.
+//  Tab membership is derived from REAL Shopify signals:
+//    • new-arrivals → product.isNew
+//    • deals        → has a compare-at discount
+//    • best-sellers / trending → all (query is BEST_SELLING)
+//  A small vanilla script filters by the [data-tabs] attribute.
+// ============================================================
+import type { ProductCard as TProductCard } from '~/lib/shopify/types';
+import { percentOff } from '~/lib/money';
+import SectionHeading from '~/components/ui/omnix/SectionHeading.astro';
+import ProductCard from '~/components/product/omnix/ProductCard.astro';
+import Icon from '~/components/ui/omnix/Icon.astro';
+
+interface Props {
+  products: TProductCard[];
+}
+const { products } = Astro.props;
+
+function tabsFor(p: TProductCard): string {
+  const keys = ['best-sellers', 'trending'];
+  if (p.isNew) keys.push('new-arrivals');
+  if (percentOff(p.priceRange.minVariantPrice, p.compareAtPriceRange?.minVariantPrice)) keys.push('deals');
+  return keys.join(' ');
+}
+
+const allTabs = [
+  { key: 'best-sellers', label: 'Best Sellers' },
+  { key: 'new-arrivals', label: 'New Arrivals' },
+  { key: 'trending', label: 'Trending' },
+  { key: 'deals', label: 'Deals' },
+];
+
+// Only show tabs that actually have products — drops empty New Arrivals /
+// Deals so a filter can never land on a blank grid.
+const counts: Record<string, number> = {};
+for (const p of products) {
+  for (const k of tabsFor(p).split(' ')) counts[k] = (counts[k] ?? 0) + 1;
+}
+const tabs = allTabs
+  .filter((t) => (counts[t.key] ?? 0) > 0)
+  .map((t, i) => ({ ...t, active: i === 0 }));
+---
+
+{
+  products.length > 0 && (
+    <section class="sec">
+      <div class="container">
+        <SectionHeading
+          eyebrow="Featured products"
+          title="Hand-picked, lab-tested, customer-loved."
+          body="Our editors test every product for at least 30 days before it ranks on this grid — these are the ones that survived."
+        >
+          <div class="tabs" role="tablist" slot="aside">
+            {tabs.map((t) => (
+              <button class:list={['tab', { 'is-active': t.active }]} role="tab" data-tab={t.key}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </SectionHeading>
+
+        <div class="prod-grid" id="featuredGrid">
+          {products.map((p, i) => <ProductCard product={p} eager={i < 4} tabs={tabsFor(p)} />)}
+        </div>
+
+        <p class="featured-empty" id="featuredEmpty" hidden>
+          No products in this category yet — check back soon.
+        </p>
+
+        <div class="featured-cta">
+          <a class="btn btn-secondary btn-lg" href="/products">
+            View all products
+            <Icon name="arrow-right" size={18} />
+          </a>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+<script>
+  // Filter the featured grid by the active tab's key.
+  const grid = document.getElementById('featuredGrid');
+  const empty = document.getElementById('featuredEmpty');
+  const tabBtns = document.querySelectorAll<HTMLElement>('.tabs [data-tab]');
+  if (grid && tabBtns.length) {
+    const cards = Array.from(grid.querySelectorAll<HTMLElement>('.prod-card'));
+    const apply = (key: string) => {
+      let shown = 0;
+      cards.forEach((c) => {
+        const keys = (c.dataset.tabs || '').split(/\s+/);
+        const match = keys.includes(key);
+        c.style.display = match ? '' : 'none';
+        if (match) shown++;
+      });
+      // Show the empty-state line (and collapse the grid) when a filter
+      // matches nothing — no silent blank grid.
+      if (empty) empty.hidden = shown > 0;
+      grid.style.display = shown > 0 ? '' : 'none';
+    };
+    tabBtns.forEach((btn) =>
+      btn.addEventListener('click', () => {
+        tabBtns.forEach((b) => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        apply(btn.dataset.tab || 'best-sellers');
+      }),
+    );
+  }
+</script>

@@ -1,0 +1,111 @@
+---
+// ============================================================
+//  CMS page (OMNIX) — renders a Shopify page, or a tidy "in the
+//  works" fallback so footer links never dead-end.
+// ============================================================
+import Layout from '~/layouts/Layout.astro';
+import { getPage, type ShopifyPage } from '~/lib/shopify';
+import { BRAND } from '~/config/omnix';
+
+const { handle } = Astro.params;
+
+let page: ShopifyPage | null = null;
+try {
+  page = await getPage(handle!);
+} catch (err) {
+  console.error('[page] load failed:', (err as Error).message);
+}
+
+const prettyTitle = (handle ?? '')
+  .split('-')
+  .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+  .join(' ');
+const title = page?.title ?? prettyTitle;
+---
+
+<Layout
+  title={page?.seo?.title ?? page?.title ?? prettyTitle}
+  description={page?.seo?.description ?? page?.bodySummary}
+>
+  <section class="sec">
+    <div class="container">
+      <header class="cms-head">
+        <div class="cms-eyebrow">{BRAND.name}</div>
+        <h1 class="h1">{title}</h1>
+      </header>
+
+      {
+        page?.body ? (
+          <article class="rte" set:html={page.body} />
+        ) : (
+          <div class="cms-empty">
+            <p>
+              This page is still being written. In the meantime, the catalogue is open — go have
+              a look around.
+            </p>
+            <a class="btn btn-primary" href="/products">Shop all products</a>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .cms-head { margin-bottom: 30px; }
+  .cms-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--electric);
+    margin-bottom: 10px;
+  }
+  .cms-head .h1 {
+    font-family: "Sora", system-ui, sans-serif;
+    font-size: clamp(1.9rem, 4vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin: 0;
+  }
+
+  .cms-empty { max-width: 38rem; }
+  .cms-empty p { color: var(--muted); line-height: 1.7; margin: 0 0 18px; }
+
+  /* Rich text from Shopify (page body) */
+  .rte {
+    max-width: 44rem;
+    color: var(--text-soft, #374151);
+    line-height: 1.75;
+    font-size: 1rem;
+  }
+  .rte > * + * { margin-top: 1.1rem; }
+  .rte h2, .rte h3, .rte h4 {
+    font-family: "Sora", system-ui, sans-serif;
+    color: var(--text);
+    letter-spacing: -0.01em;
+    margin-top: 2.2rem;
+    line-height: 1.2;
+  }
+  .rte h2 { font-size: 1.6rem; }
+  .rte h3 { font-size: 1.3rem; }
+  .rte h4 { font-size: 1.1rem; }
+  .rte a {
+    color: var(--electric);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .rte strong { color: var(--text); font-weight: 600; }
+  .rte ul, .rte ol { padding-left: 1.3rem; }
+  .rte ul { list-style: disc; }
+  .rte ol { list-style: decimal; }
+  .rte li + li { margin-top: 0.45rem; }
+  .rte img { border-radius: 14px; margin-block: 1.6rem; }
+  .rte blockquote {
+    border-left: 3px solid var(--electric);
+    padding-left: 1rem;
+    color: var(--text);
+    font-style: italic;
+  }
+</style>

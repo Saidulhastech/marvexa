@@ -1,0 +1,147 @@
+---
+// ============================================================
+//  Hero — OMNIX two-card showcase (large lead + small companion).
+//  The lead card rotates through `slides` (text + image swapped by
+//  a small script); the first slide renders server-side for LCP.
+// ============================================================
+import { Image, getImage } from 'astro:assets';
+import { getEntry } from 'astro:content';
+import { resolveImage } from '~/lib/asset';
+
+const h = (await getEntry('hero', 'main'))!.data;
+
+// Build the slide list (fall back to the top-level fields as one slide).
+const rawSlides = h.slides.length
+  ? h.slides
+  : [{
+      headingLead: h.headingLead, headingAccent: h.headingAccent, headingTail: h.headingTail,
+      sub: h.sub, image: h.image, primary: h.primary, secondary: h.secondary,
+    }];
+
+// Pre-optimize each slide image so the script can swap to a ready URL.
+const slides = await Promise.all(
+  rawSlides.map(async (s) => {
+    const opt = await getImage({ src: resolveImage(s.image), width: 900, height: 1000, format: 'webp' });
+    return { ...s, imageSrc: opt.src };
+  }),
+);
+const first = slides[0];
+const lgImg = resolveImage(first.image);
+
+// Small companion card — same pattern: rotate `smSlides`, fall back to the
+// top-level sm* fields as a single slide. Synced to the lead card's timer.
+const rawSmSlides = h.smSlides.length
+  ? h.smSlides
+  : [{
+      eyebrow: h.smEyebrow, desc: h.smDesc, image: h.smImage,
+      watermark: h.smWatermark, para: h.smPara, cta: h.smCta,
+    }];
+const smSlides = await Promise.all(
+  rawSmSlides.map(async (s) => {
+    const opt = s.image
+      ? await getImage({ src: resolveImage(s.image), width: 700, height: 800, format: 'webp' })
+      : null;
+    return { ...s, imageSrc: opt?.src ?? '' };
+  }),
+);
+const firstSm = smSlides[0];
+const smImg = firstSm.image ? resolveImage(firstSm.image) : null;
+const rotate = slides.length > 1 || smSlides.length > 1;
+---
+
+<section class="hero">
+  <div class="hero-stage">
+    <div class="hero-cards">
+      <article class="hero-card hero-card-lg">
+        <Image class="hero-img-bg" id="heroLgImg" src={lgImg} alt={`${first.headingLead} ${first.headingTail}`} loading="eager" />
+        <div class="hero-card-content">
+          <h1 class="hero-card-heading">
+            <span id="heroLgLead">{first.headingLead}</span>
+            <span class="hl" id="heroLgAccent">{first.headingAccent}</span><br />
+            <span id="heroLgTail">{first.headingTail}</span>
+          </h1>
+          {first.sub && <p class="hero-card-sub" id="heroLgSub">{first.sub}</p>}
+          <div class="hero-card-ctas" style="margin-top: 28px;">
+            {first.primary && <a class="btn hero-cta-light" id="heroLgCta" href={first.primary.href}>{first.primary.label}</a>}
+            {first.secondary && <a class="btn hero-cta-dark" href={first.secondary.href}>{first.secondary.label}</a>}
+          </div>
+        </div>
+      </article>
+
+      <article class="hero-card hero-card-sm">
+        <div class="hero-card-sm-top">
+          <div class="hero-card-sm-eyebrow" id="heroSmEyebrow">{firstSm.eyebrow}</div>
+          <div class="hero-card-sm-desc" id="heroSmDesc">{firstSm.desc}</div>
+        </div>
+        {
+          smImg && (
+            <div class="hero-card-product-wrap">
+              <Image id="heroSmImg" src={smImg} alt={firstSm.eyebrow ?? 'Featured product'} loading="eager" />
+            </div>
+          )
+        }
+        <div class="hero-watermark" id="heroSmWatermark">{firstSm.watermark}</div>
+        <p class="hero-card-sm-para" id="heroSmPara">{firstSm.para}</p>
+        {
+          firstSm.cta && (
+            <div class="hero-card-ctas">
+              <a class="btn hero-cta-dark" id="heroSmCta" href={firstSm.cta.href}>{firstSm.cta.label}</a>
+            </div>
+          )
+        }
+      </article>
+    </div>
+  </div>
+</section>
+
+{rotate && <script type="application/json" id="heroData" set:html={JSON.stringify({ lg: slides, sm: smSlides })} />}
+
+<script>
+  // Rotate both hero cards every 6s, in sync (one timer drives both).
+  type HeroSlide = {
+    headingLead: string; headingAccent: string; headingTail: string;
+    sub?: string; imageSrc: string; primary?: { label: string; href: string };
+  };
+  type HeroSmSlide = {
+    eyebrow?: string; desc?: string; imageSrc: string; watermark?: string;
+    para?: string; cta?: { label: string; href: string };
+  };
+  const dataEl = document.getElementById('heroData');
+  if (dataEl) {
+    const data = JSON.parse(dataEl.textContent || '{}') as { lg: HeroSlide[]; sm: HeroSmSlide[] };
+    const lg = data.lg ?? [];
+    const sm = data.sm ?? [];
+    const $ = (id: string) => document.getElementById(id);
+    const set = (id: string, v?: string) => { const el = $(id); if (el) el.textContent = v || ''; };
+    const swapImg = (id: string, src: string) => {
+      const img = $(id) as HTMLImageElement | null;
+      if (img && src) { img.src = src; img.removeAttribute('srcset'); }
+    };
+    let i = 0;
+    const render = () => {
+      // Lead card.
+      if (lg.length) {
+        const s = lg[i % lg.length];
+        set('heroLgLead', s.headingLead);
+        set('heroLgAccent', s.headingAccent);
+        set('heroLgTail', s.headingTail);
+        set('heroLgSub', s.sub);
+        swapImg('heroLgImg', s.imageSrc);
+        const cta = $('heroLgCta') as HTMLAnchorElement | null;
+        if (cta && s.primary) { cta.textContent = s.primary.label; cta.href = s.primary.href; }
+      }
+      // Companion card.
+      if (sm.length) {
+        const s = sm[i % sm.length];
+        set('heroSmEyebrow', s.eyebrow);
+        set('heroSmDesc', s.desc);
+        set('heroSmWatermark', s.watermark);
+        set('heroSmPara', s.para);
+        swapImg('heroSmImg', s.imageSrc);
+        const cta = $('heroSmCta') as HTMLAnchorElement | null;
+        if (cta && s.cta) { cta.textContent = s.cta.label; cta.href = s.cta.href; }
+      }
+    };
+    setInterval(() => { i += 1; render(); }, 6000);
+  }
+</script>

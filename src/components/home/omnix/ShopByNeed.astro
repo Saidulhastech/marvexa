@@ -1,0 +1,86 @@
+---
+// ============================================================
+//  ShopByNeed — OMNIX "Shop by lifestyle" need-grid. Cards are real
+//  Shopify `for-*` collections (title/count/image/link from Shopify);
+//  the icon + display order come from LIFESTYLE_CARDS in code, keyed
+//  by collection handle.
+// ============================================================
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import { resolveImage } from '~/lib/asset';
+import { LIFESTYLE_CARDS } from '~/config/omnix';
+import type { Collection } from '~/lib/shopify/types';
+import SectionHeading from '~/components/ui/omnix/SectionHeading.astro';
+import Icon from '~/components/ui/omnix/Icon.astro';
+
+interface Props {
+  collections: Collection[];
+}
+const { collections } = Astro.props;
+
+// Handle → { icon, order } from the code map (order = array position).
+const presentation = new Map(
+  LIFESTYLE_CARDS.map((c, i) => [c.handle, { icon: c.icon, order: i }]),
+);
+
+// Local fallback art for image-less collections (authored order).
+const fallbacks = [
+  'mp3nyht3-stylish-headphones-background-banner-wallpaper-copy-space-poster-flyer.jpg',
+  'colorful-headset-gaming-dark-background.jpg',
+  'mp51zozf-camera.jpg',
+  'mp97kyu3-03.smartwatch.jpg',
+  'mp97kyum-04.tab.jpg',
+];
+
+const cards = collections
+  .map((c, i) => {
+    const p = presentation.get(c.handle);
+    return {
+      title: c.title,
+      href: `/collections/${c.handle}`,
+      image: c.image?.url ?? resolveImage(fallbacks[i % fallbacks.length]),
+      count: c.productCount,
+      countPlus: c.productCountPlus,
+      icon: p?.icon ?? 'bolt',
+      order: p?.order ?? 99,
+    };
+  })
+  .sort((a, b) => a.order - b.order);
+---
+
+{
+  cards.length > 0 && (
+    <section class="sec sec-frost">
+      <div class="container">
+        <SectionHeading
+          eyebrow="Shop by lifestyle"
+          title="Tell us how you live —<br>we'll find the gear."
+          body="Lifestyle-led discovery, built around how you actually use technology."
+          link={{ label: 'Take the quiz', href: '/products' }}
+        />
+
+        <div class="need-grid">
+          {cards.map((c, i) => (
+            <a href={c.href} class="need-card">
+              {typeof c.image === 'string' ? (
+                <Image src={c.image as string} alt={c.title} width={420} height={320} loading={i < 3 ? 'eager' : 'lazy'} />
+              ) : (
+                <Image src={c.image as ImageMetadata} alt={c.title} width={420} height={320} loading={i < 3 ? 'eager' : 'lazy'} />
+              )}
+              <div class="need-card-body">
+                <div class="need-ic"><Icon name={c.icon} size={20} /></div>
+                <div class="need-bot">
+                  <h5>{c.title}</h5>
+                  <span>
+                    {c.count != null && `${c.count}${c.countPlus ? '+' : ''} picks`}
+                    <Icon name="arrow-right" size={13} stroke={2.4} />
+                  </span>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}

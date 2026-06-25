@@ -1,0 +1,292 @@
+---
+// ============================================================
+//  About (OMNIX "Modern") — static brand story page. Faithful
+//  reproduction of about-modern.html: hero collage + video,
+//  mission, journey timeline, why-us, team, stats counters, FAQ,
+//  newsletter CTA. Reveal + counters via a small vanilla script.
+// ============================================================
+import { Image } from 'astro:assets';
+import Layout from '~/layouts/Layout.astro';
+import { resolveImage } from '~/lib/asset';
+import '~/styles/about.css';
+
+const journey = [
+  { year: '2016', role: 'The beginning', img: 'md journey-01.jpg', alt: 'The Omnix beginning', desc: 'Two friends started Omnix from a Brooklyn apartment, tired of gadgets that worked but never felt good to own.', active: true },
+  { year: '2018', role: 'First flagship', img: 'md journey-02.jpg', alt: 'First flagship product', desc: 'Our debut headphones sold out in 72 hours — proof that people reward craft when they can feel it.' },
+  { year: '2020', role: 'Carbon-neutral', img: 'md journey-03.jpg', alt: 'Going carbon-neutral', desc: 'We rebuilt our supply chain around recyclable packaging and carbon-neutral shipping on every order.' },
+  { year: '2023', role: 'Across 3 continents', img: 'md journey-04.jpg', alt: 'Across three continents', desc: 'From one apartment to twelve flagship stores, bringing hands-on Omnix experiences closer to home.' },
+  { year: '2026', role: '250K+ customers', img: 'md journey-04-1.jpg', alt: 'A quarter-million customers', desc: 'Today we serve a quarter-million people across 47 countries — still chasing the same question we started with.' },
+];
+
+const team = [
+  { name: 'Daniel Reyes', role: 'Co-Founder & CEO', img: 'team-01.jpg' },
+  { name: 'Aisha Karim', role: 'Co-Founder & CTO', img: 'team-02.jpg' },
+  { name: 'Marcus Ven', role: 'Head of Partnerships', img: 'team-03.jpg' },
+  { name: 'Priya Shah', role: 'Head of AI Tech', img: 'team-04.jpg' },
+  { name: 'Leo Tanaka', role: 'Head of Product', img: 'team-05.jpg' },
+  { name: 'Sofia Moretti', role: 'Head of Growth', img: 'team-06.jpg' },
+];
+---
+
+<Layout
+  title="About Omnix"
+  description="Omnix is a team of passionate makers building technology that empowers people to live and work better — tested quality, backed for years, better for the planet."
+>
+  <main class="ab-main" id="aboutModern">
+    {/* Hero */}
+    <section class="ab-hero">
+      <div class="ab-wrap ab-hero-inner ab-reveal">
+        <h1>About <em>Omnix</em></h1>
+        <p>Omnix is a team of passionate makers dedicated to building technology that empowers people to live and work better.</p>
+      </div>
+      <div class="ab-wrap ab-hero-wide">
+        <div class="ab-hero-collage ab-reveal" data-d="1">
+          <div class="ab-hero-side">
+            <figure class="ab-hero-img"><Image src={resolveImage('md about-01.jpg')} alt="Inside the Omnix studio" width={520} height={347} /></figure>
+            <figure class="ab-hero-img"><Image src={resolveImage('md about-02.jpg')} alt="The Omnix team at work" width={520} height={347} /></figure>
+          </div>
+          <div class="ab-hero-video">
+            <video src="/Hero_electronics.mp4" poster={resolveImage('active-lifestyle.jpg').src} autoplay muted loop playsinline preload="metadata"></video>
+            <div class="ab-hero-vcap">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+              <h3>A team committed to real impact</h3>
+              <p>A diverse group of thinkers and builders who care deeply about technology worth keeping.</p>
+            </div>
+          </div>
+          <div class="ab-hero-side">
+            <figure class="ab-hero-img"><Image src={resolveImage('md about-03.jpg')} alt="Omnix product session" width={520} height={347} /></figure>
+            <figure class="ab-hero-img"><Image src={resolveImage('md about-04.jpg')} alt="Customers using Omnix" width={520} height={347} /></figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* What drives us */}
+    <section class="ab-mv">
+      <div class="ab-wrap">
+        <div class="ab-mv-lead ab-reveal">
+          <p class="ab-over">What drives us</p>
+          <h2>Built on trust and long-term thinking, we design technology that earns a permanent place in your life &mdash; <em>and keeps it for years.</em></h2>
+        </div>
+        <div class="ab-mv-grid2">
+          <div class="ab-mv-list">
+            <div class="ab-mv-item ab-reveal">
+              <span class="ab-mv-tag"><span class="num">//01</span> Our mission</span>
+              <h3>Technology that feels honest</h3>
+              <p>We started Omnix to make premium tech that's thoughtfully engineered, fairly priced, and backed by people who genuinely care &mdash; products we'd proudly keep ourselves.</p>
+            </div>
+            <div class="ab-mv-item ab-reveal" data-d="1">
+              <span class="ab-mv-tag"><span class="num">//02</span> Our vision</span>
+              <h3>Better, made the default</h3>
+              <p>A world where great technology is repairable, sustainable, and built to be passed on &mdash; not replaced every season. We're here to prove better is possible.</p>
+            </div>
+            <div class="ab-mv-item ab-reveal" data-d="2">
+              <span class="ab-mv-tag"><span class="num">//03</span> Our goals</span>
+              <h3>Built to last, for everyone</h3>
+              <p>Carbon-neutral shipping, a 2-year warranty, and a trade-in program that keeps good tech in use &mdash; for customers and the planet alike.</p>
+            </div>
+          </div>
+          <figure class="ab-mv-media ab-reveal" data-d="1">
+            <Image src={resolveImage('ab mv media.jpg')} alt="The Omnix team at work" width={760} height={640} />
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    {/* Journey */}
+    <section class="ab-journey">
+      <div class="ab-wrap">
+        <div class="ab-sec-head center ab-reveal">
+          <p class="ab-over">Our journey</p>
+          <h2 class="ab-h2">From a garage idea to a global store.</h2>
+        </div>
+        <div class="ab-jrny ab-reveal">
+          {
+            journey.map((j) => (
+              <div class:list={['ab-jrny-panel', { active: j.active }]}>
+                <Image src={resolveImage(j.img)} alt={j.alt} width={520} height={580} />
+                <div class="ab-jrny-info">
+                  <p class="ab-jrny-year">{j.year}</p>
+                  <span class="ab-jrny-role">{j.role}</span>
+                  <p class="ab-jrny-desc">{j.desc}</p>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    {/* Why choose us */}
+    <section class="ab-why">
+      <div class="ab-wrap">
+        <div class="ab-why-grid">
+          <div class="ab-why-intro ab-reveal">
+            <p class="ab-over">Why choose us</p>
+            <h2 class="ab-h2">Reasons people stay with Omnix.</h2>
+            <p>We're not the cheapest, and we're fine with that. What keeps people coming back is technology that's built to last and a team that stands behind every order.</p>
+            <a href="/products" class="ab-btn solid">Shop the collection <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </div>
+          <div class="ab-why-stack">
+            <div class="ab-why-card ab-reveal">
+              <div class="ab-why-top"><span class="ab-why-num">01</span><span class="ab-why-rule"></span></div>
+              <h3>Tested quality</h3>
+              <p>Every product is hands-on tested in our lab. If it won't last years, it never reaches our shelves &mdash; no exceptions.</p>
+            </div>
+            <div class="ab-why-card dark ab-reveal">
+              <div class="ab-why-top"><span class="ab-why-num">02</span><span class="ab-why-rule"></span></div>
+              <h3>Backed for years</h3>
+              <p>A 2-year warranty with no fine print, plus real human support from people who actually use what they sell.</p>
+            </div>
+            <div class="ab-why-card blue ab-reveal">
+              <div class="ab-why-top"><span class="ab-why-num">03</span><span class="ab-why-rule"></span></div>
+              <h3>Better for the planet</h3>
+              <p>Recyclable packaging, carbon-neutral shipping, and a trade-in program built to keep technology in use for years.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* Team */}
+    <section class="ab-team" id="abTeamSec">
+      <div class="ab-wrap">
+        <div class="ab-sec-head center ab-reveal">
+          <p class="ab-over">The people</p>
+          <h2 class="ab-h2">The team behind it all.</h2>
+        </div>
+        <div class="ab-team-grid" id="abTeam">
+          {
+            team.map((m, i) => (
+              <div class="ab-member ab-reveal" data-d={String(i % 3)}>
+                <div class="ab-member-photo"><Image src={resolveImage(m.img)} alt={m.name} width={400} height={500} loading="lazy" /></div>
+                <div class="ab-member-info">
+                  <a class="ab-member-li" href="https://linkedin.com" target="_blank" rel="noopener" aria-label={`${m.name} on LinkedIn`}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14zM8.34 9.5H5.67V18h2.67V9.5zM7 6.06a1.55 1.55 0 1 0 0 3.1 1.55 1.55 0 0 0 0-3.1zM18.34 18v-4.67c0-2.49-1.33-3.65-3.11-3.65-1.44 0-2.08.79-2.44 1.35V9.5h-2.67V18h2.67v-4.34c0-1.15.22-2.26 1.64-2.26 1.4 0 1.42 1.31 1.42 2.34V18h2.5z"/></svg></a>
+                  <div class="ab-member-meta"><div class="ab-member-role">{m.role}</div><div class="ab-member-name">{m.name}</div></div>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    {/* By the numbers */}
+    <section class="ab-numbers">
+      <div class="ab-wrap ab-numbers-inner">
+        <div class="ab-numbers-head ab-reveal">
+          <p class="ab-over">By the numbers</p>
+          <h2>Ten years. One obsession.</h2>
+        </div>
+        <div class="ab-num-grid">
+          <div class="ab-reveal"><div class="ab-num" data-count="250" data-suffix="K+">0</div><div class="ab-num-label">Customers worldwide</div></div>
+          <div class="ab-reveal" data-d="1"><div class="ab-num" data-count="47" data-suffix="">0</div><div class="ab-num-label">Countries served</div></div>
+          <div class="ab-reveal" data-d="2"><div class="ab-num" data-count="12" data-suffix="">0</div><div class="ab-num-label">Flagship stores</div></div>
+          <div class="ab-reveal" data-d="3"><div class="ab-num" data-count="4.9" data-dec="1" data-suffix="&#9733;">0</div><div class="ab-num-label">Average rating</div></div>
+        </div>
+      </div>
+    </section>
+
+    {/* FAQ */}
+    <section class="ab-faq">
+      <div class="ab-wrap">
+        <div class="ab-sec-head center ab-reveal">
+          <p class="ab-over">FAQ</p>
+          <h2 class="ab-h2">Questions, answered.</h2>
+        </div>
+        <div class="ab-faq-list">
+          <details class="ab-faq-item ab-reveal" open>
+            <summary>What makes Omnix products different?<span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="ab-faq-answer"><p>Every product is hands-on tested in our lab, and we only sell what we would happily keep ourselves. That means honest pricing, real reviews, and tech built to last for years &mdash; not seasons.</p></div>
+          </details>
+          <details class="ab-faq-item ab-reveal">
+            <summary>What does the warranty cover?<span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="ab-faq-answer"><p>Every Omnix product includes a 2-year warranty with no fine print. If something fails through normal use, we repair or replace it quickly &mdash; no hassle.</p></div>
+          </details>
+          <details class="ab-faq-item ab-reveal">
+            <summary>How long does shipping take?<span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="ab-faq-answer"><p>Orders ship carbon-neutral and typically arrive in 2&ndash;5 business days. Shipping is free on every order over &#36;500, with tracking included.</p></div>
+          </details>
+          <details class="ab-faq-item ab-reveal">
+            <summary>Can I return a product?<span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="ab-faq-answer"><p>Yes. We offer 30-day returns on unused items in their original packaging. Start a return from your account and we will email you a prepaid label.</p></div>
+          </details>
+          <details class="ab-faq-item ab-reveal">
+            <summary>Do you offer trade-ins?<span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="ab-faq-answer"><p>Absolutely. Our trade-in program keeps good technology in use longer. Send in an eligible device and get credit toward your next Omnix order.</p></div>
+          </details>
+          <details class="ab-faq-item ab-reveal">
+            <summary>How can I reach support?<span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="ab-faq-answer"><p>Talk to real people via live chat, email, or phone &mdash; the same team that uses our products every day, before and long after you buy.</p></div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    {/* Final CTA (newsletter) */}
+    <section class="news">
+      <div class="container">
+        <div class="news-inner">
+          <div class="sec-eyebrow" style="color: var(--cyan); justify-content: center; display: inline-flex;">Join the inner circle</div>
+          <h2 class="h2">Get <span class="accent">10% off</span> your first order.</h2>
+          <p>Drop your email &mdash; we'll send early access to drops, restock alerts, and the occasional 30%-off Friday. Unsubscribe anytime.</p>
+          <form class="news-form" onsubmit="event.preventDefault(); this.querySelector('button').textContent='Subscribed ✓';">
+            <input type="email" placeholder="your@email.com" required />
+            <button type="submit" class="btn btn-primary">Subscribe</button>
+          </form>
+          <div class="news-perks">
+            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>10% off first order</span>
+            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>Early access to drops</span>
+            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>No spam, ever</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</Layout>
+
+<script>
+  // Scroll-reveal + animated counters (matches about-modern.html).
+  const root = document.getElementById('aboutModern');
+  if (root) {
+    const reveals = root.querySelectorAll('.ab-reveal');
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(
+        (es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }),
+        { threshold: 0.14 },
+      );
+      reveals.forEach((el) => io.observe(el));
+    } else {
+      reveals.forEach((el) => el.classList.add('in'));
+    }
+
+    const animate = (el: Element) => {
+      const target = parseFloat(el.getAttribute('data-count') || '0');
+      const dec = parseInt(el.getAttribute('data-dec') || '0', 10);
+      const suffix = el.getAttribute('data-suffix') || '';
+      const dur = 1600;
+      let start: number | null = null;
+      const step = (ts: number) => {
+        if (start === null) start = ts;
+        const p = Math.min((ts - start) / dur, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        const val = (target * eased).toFixed(dec);
+        el.innerHTML =
+          (dec ? val : Math.round(Number(val)).toLocaleString('en-US')) +
+          '<span class="suf">' + suffix + '</span>';
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+    const counters = root.querySelectorAll('.ab-num');
+    if ('IntersectionObserver' in window) {
+      const cio = new IntersectionObserver(
+        (es) => es.forEach((e) => { if (e.isIntersecting) { animate(e.target); cio.unobserve(e.target); } }),
+        { threshold: 0.5 },
+      );
+      counters.forEach((el) => cio.observe(el));
+    } else {
+      counters.forEach(animate);
+    }
+  }
+</script>

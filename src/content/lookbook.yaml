@@ -1,0 +1,13 @@
+# Lookbook — single hero image with positioned product hotspots (OMNIX).
+# Coordinates are editorial (static). Products are pulled LIVE from Shopify:
+# set `handle` to pin a specific product, else best-sellers fill in order.
+- id: main
+  image: "lookbook.jpg"
+  hotspots:
+    - top: "72%"
+      left: "14%"
+    - top: "28%"
+      left: "48%"
+    - top: "52%"
+      left: "82%"
+      cardLeft: true

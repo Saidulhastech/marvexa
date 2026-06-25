@@ -1,0 +1,495 @@
+---
+// ============================================================
+//  Cart drawer (OMNIX skin, real Shopify cart). Markup matches the
+//  template; the script binds it to the framework-agnostic nanostore
+//  (stores/cart.ts) — render lines, totals, badges, and checkout.
+//  "You may also like" is real Shopify best-sellers; each + Add uses
+//  the product's first variant. Coupon is design-only (no discount
+//  wiring yet).
+// ============================================================
+import { Image } from 'astro:assets';
+import Icon from '~/components/ui/omnix/Icon.astro';
+import { getProducts } from '~/lib/shopify';
+import { formatMoney } from '~/lib/money';
+import type { ProductCard } from '~/lib/shopify/types';
+
+let upsell: ProductCard[] = [];
+try {
+  // "You May Also Like" — show three best-sellers.
+  upsell = (await getProducts({ pageSize: 3, sortKey: 'BEST_SELLING' }, Astro.locals.market)).items;
+} catch {
+  /* drawer still works without upsell */
+}
+
+// Quick-add intent per upsell product — mirrors ProductCard so a multi-option
+// product (e.g. Colour + Size) opens the shared Quick View picker instead of
+// silently adding its first variant. Single-option products add directly.
+function quickAdd(p: ProductCard) {
+  const canAdd = !!p.firstVariantId && p.firstVariantAvailable !== false;
+  const variants = p.variants ?? [];
+  const realOptions = (p.options ?? []).filter(
+    (o) => !(o.name === 'Title' && o.optionValues.every((v) => v.name === 'Default Title')),
+  );
+  const needsPicker = canAdd && variants.length > 1 && realOptions.length >= 2;
+  const colorOpt = realOptions.find(
+    (o) => /colou?r|finish|shade/i.test(o.name) || o.optionValues.some((v) => v.swatch?.color),
+  );
+  const pickerData = needsPicker
+    ? JSON.stringify(
+        variants.map((v) => ({
+          id: v.id,
+          opts: Object.fromEntries(v.selectedOptions.map((o) => [o.name, o.value])),
+          price: Number(v.price.amount),
+          compareAt: v.compareAtPrice ? Number(v.compareAtPrice.amount) : null,
+          img: v.image?.url ?? null,
+          available: v.availableForSale,
+        })),
+      )
+    : '';
+  const optionData = needsPicker
+    ? JSON.stringify(
+        realOptions.map((o) => ({
+          name: o.name,
+          isColor: o === colorOpt,
+          values: o.optionValues.map((ov) => ({ name: ov.name, color: ov.swatch?.color ?? null })),
+        })),
+      )
+    : '';
+  return { canAdd, needsPicker, pickerData, optionData };
+}
+---
+
+<div class="cart-overlay" data-close="cart"></div>
+<aside class="cart-drawer" id="cartDrawer" role="dialog" aria-modal="true" aria-label="Shopping cart">
+  <div class="cart-header">
+    <h5>
+      <Icon name="cart" size={18} />
+      Your Cart
+      <span class="cart-count-chip" id="cartChip">0</span>
+    </h5>
+    <button class="cart-x" data-close="cart" aria-label="Close cart">
+      <Icon name="x" size={16} stroke={2.4} />
+    </button>
+  </div>
+
+  <div class="cart-error" id="cartError" role="alert" style="display:none;"></div>
+
+  <div class="cart-body" id="cartBody">
+    <div class="cart-empty" id="cartEmpty">
+      <div class="empty-ic"><Icon name="cart" size={32} stroke={1.5} /></div>
+      <h6>Your cart is empty</h6>
+      <p>Add something from the store — deals, bundles, or new arrivals.</p>
+      <a class="btn btn-primary btn-sm" href="/products">Start shopping</a>
+    </div>
+    {/* Cart lines injected by the script below. */}
+    <div id="cartLines"></div>
+
+    {/* "You May Also Like" — scrolls with the cart lines, shown only when the cart has items. */}
+    {
+      upsell.length > 0 && (
+        <div class="cart-upsell" id="cartUpsell" style="display:none;">
+          <div class="cart-upsell-head">You May Also Like</div>
+          <div class="cart-upsell-scroll">
+            {upsell.map((p) => {
+              const href = `/products/${p.handle}`;
+              const qa = quickAdd(p);
+              const imgUrl = p.featuredImage?.url ?? '';
+              return (
+                <div class="cart-upsell-card">
+                  <a class="cu-img" href={href}>
+                    {p.featuredImage && (
+                      <Image src={p.featuredImage.url} alt={p.featuredImage.altText ?? p.title} width={120} height={120} />
+                    )}
+                  </a>
+                  <div class="cu-info">
+                    <a class="cu-name" href={href}>{p.title}</a>
+                    <div class="cu-price">{formatMoney(p.priceRange.minVariantPrice)}</div>
+                    {!qa.canAdd ? (
+                      <a class="cu-add" href={href}>View</a>
+                    ) : qa.needsPicker ? (
+                      // Multi-option → open the shared Quick View modal (variant pickers).
+                      <button
+                        class="cu-add"
+                        data-add
+                        data-pick
+                        data-handle={p.handle}
+                        data-name={p.title}
+                        data-img={imgUrl}
+                        data-brand={p.vendor ?? ''}
+                        data-href={href}
+                        data-price={formatMoney(p.priceRange.minVariantPrice)}
+                        data-currency={p.priceRange.minVariantPrice.currencyCode}
+                        data-variants={qa.pickerData}
+                        data-options={qa.optionData}
+                      >
+                        Select
+                      </button>
+                    ) : (
+                      <button class="cu-add" data-add data-variant-id={p.firstVariantId}>+ Add</button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )
+    }
+  </div>
+
+  <div id="cartSummaryWrap" style="display:none;">
+    <div class="cart-coupon">
+      <div class="cart-coupon-head">
+        <Icon name="bolt" size={14} /> Coupon Code
+      </div>
+      <form id="couponForm">
+        <input type="text" id="couponInput" aria-label="Coupon code" placeholder="Enter code (e.g. WELCOME10)" autocomplete="off" />
+        <button type="submit" class="cc-apply" id="couponApply">Apply</button>
+      </form>
+      <div class="cart-coupon-codes" id="couponCodes"></div>
+      <div class="cart-coupon-msg" id="couponMsg"></div>
+    </div>
+
+    <div class="cart-summary">
+      <div class="cs-row"><span>Subtotal</span><span id="csSubtotal">$0</span></div>
+      <div class="cs-row"><span>Shipping</span><span id="csShipping">Calculated at checkout</span></div>
+      <div class="cs-row" id="csDiscountRow" style="display:none;">
+        <span id="csDiscountLabel">Discount</span><span id="csDiscount" style="color:var(--success)"></span>
+      </div>
+      <div class="cs-row total"><span>Total</span><span id="csTotal">$0</span></div>
+    </div>
+    <div class="cart-ctas">
+      <button class="btn btn-primary btn-block btn-lg" id="cartCheckout">Checkout · <span id="csBtnTotal">$0</span></button>
+      <a class="btn btn-secondary btn-block" href="/cart">View Cart</a>
+      <button class="btn btn-secondary btn-block" data-close="cart">Continue Shopping</button>
+    </div>
+    <div class="cart-trust">
+      <span><Icon name="check" size={13} stroke={2.4} /> Secure checkout</span>
+      <span><Icon name="check" size={13} stroke={2.4} /> Free returns</span>
+      <span><Icon name="check" size={13} stroke={2.4} /> 2-year warranty</span>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .cart-error {
+    margin: 12px 20px 0;
+    padding: 10px 12px;
+    background: color-mix(in srgb, var(--danger, #d92d20) 8%, #fff);
+    color: var(--danger, #b42318);
+    border: 1px solid color-mix(in srgb, var(--danger, #d92d20) 28%, #fff);
+    border-radius: var(--r-lg, 10px);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .cart-item.is-busy {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .cart-item.is-soldout .ci-name {
+    color: var(--muted);
+  }
+  .ci-soldout {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--danger, #b42318);
+    margin: 2px 0;
+  }
+  .ci-qty button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+</style>
+
+<script>
+  import {
+    $cart,
+    $cartOpen,
+    $cartError,
+    $cartBusy,
+    $busyLines,
+    initCart,
+    updateItem,
+    removeItem,
+    applyDiscount,
+    checkout,
+  } from '../../../stores/cart';
+  import { formatMoney } from '../../../lib/money';
+  import type { Cart } from '../../../lib/shopify/types';
+
+  // Single money formatter shared with the rest of the app (OMNIX "$289" style,
+  // locale + currency safe) so the drawer and quick-view never disagree.
+  const money = (m?: { amount: string; currencyCode: string } | null) => (m ? formatMoney(m) : '$0');
+
+  // Escape merchant-controlled strings before they go into innerHTML.
+  const esc = (s: unknown) =>
+    String(s ?? '').replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+    );
+
+  const drawer = document.getElementById('cartDrawer');
+  const linesEl = document.getElementById('cartLines');
+  const emptyEl = document.getElementById('cartEmpty');
+  const summaryWrap = document.getElementById('cartSummaryWrap');
+  const upsellEl = document.getElementById('cartUpsell');
+  const chip = document.getElementById('cartChip');
+  const headerBadge = document.getElementById('cartBadge');
+  const errorEl = document.getElementById('cartError');
+
+  function renderLines(cart: Cart | null) {
+    if (!linesEl) return;
+    const lines = cart?.lines ?? [];
+    linesEl.innerHTML = lines
+      .map((l) => {
+        const m = l.merchandise;
+        const img = m.image?.url ?? m.product.featuredImage?.url ?? '';
+        const opts = m.selectedOptions
+          .filter((o) => o.value && o.value !== 'Default Title')
+          .map((o) => o.value)
+          .join(' · ');
+        const trash =
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
+        // Stock-aware: cap inc at the variant's available qty (when tracked) and
+        // the global 99; flag a line that is no longer purchasable.
+        const qa = typeof m.quantityAvailable === 'number' ? m.quantityAvailable : null;
+        const max = Math.min(99, qa ?? 99);
+        const atMax = l.quantity >= max;
+        const soldOut = m.availableForSale === false;
+        return `
+        <div class="cart-item${soldOut ? ' is-soldout' : ''}" data-line="${esc(l.id)}">
+          <div class="ci-img"><img src="${esc(img)}" alt="${esc(m.product.title)}" loading="lazy"></div>
+          <div class="ci-info">
+            ${opts ? `<div class="ci-brand">${esc(opts)}</div>` : ''}
+            <a class="ci-name" href="/products/${esc(m.product.handle)}">${esc(m.product.title)}</a>
+            ${soldOut ? '<div class="ci-soldout">No longer available</div>' : ''}
+            <div class="ci-price">${money(l.cost.totalAmount)}</div>
+            <div class="ci-row">
+              <div class="ci-qty">
+                <button data-act="dec" aria-label="Decrease">−</button>
+                <span>${l.quantity}</span>
+                <button data-act="inc" aria-label="Increase"${soldOut || atMax ? ' disabled' : ''}>+</button>
+              </div>
+              <button class="ci-remove" data-act="remove" aria-label="Remove">${trash} Remove</button>
+            </div>
+          </div>
+        </div>`;
+      })
+      .join('');
+    applyBusyLines($busyLines.get());
+  }
+
+  function render(cart: Cart | null) {
+    const count = cart?.totalQuantity ?? 0;
+    const hasItems = count > 0;
+
+    if (emptyEl) emptyEl.style.display = hasItems ? 'none' : '';
+    if (summaryWrap) summaryWrap.style.display = hasItems ? '' : 'none';
+    if (upsellEl) upsellEl.style.display = hasItems ? '' : 'none';
+    if (chip) chip.textContent = String(count);
+    if (headerBadge) {
+      headerBadge.textContent = String(count);
+      headerBadge.style.display = hasItems ? '' : 'none';
+    }
+
+    renderLines(cart);
+
+    const sub = money(cart?.cost.subtotalAmount);
+    const tot = money(cart?.cost.totalAmount);
+    const set = (id: string, v: string) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = v;
+    };
+    set('csSubtotal', sub);
+    set('csTotal', tot);
+    set('csBtnTotal', tot);
+
+    renderDiscount(cart);
+  }
+
+  // Discount summary row + applied-code chips, driven by Shopify's cart.
+  function renderDiscount(cart: Cart | null) {
+    const allocs = cart?.discountAllocations ?? [];
+    const discountTotal = allocs.reduce((s, a) => s + Number(a.discountedAmount.amount), 0);
+    const currency = cart?.cost.subtotalAmount.currencyCode ?? 'USD';
+
+    const row = document.getElementById('csDiscountRow');
+    const amountEl = document.getElementById('csDiscount');
+    if (row && amountEl) {
+      if (discountTotal > 0) {
+        amountEl.textContent = '−' + money({ amount: String(discountTotal), currencyCode: currency });
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    }
+
+    // Only codes Shopify accepted (applicable) are shown as removable chips.
+    const codes = (cart?.discountCodes ?? []).filter((c) => c.applicable);
+    const codesEl = document.getElementById('couponCodes');
+    if (codesEl) {
+      codesEl.innerHTML = codes
+        .map(
+          (c) => `
+          <span class="coupon-chip" data-code="${esc(c.code)}">
+            ${esc(c.code)}
+            <button type="button" data-remove-code="${esc(c.code)}" aria-label="Remove ${esc(c.code)}">×</button>
+          </span>`,
+        )
+        .join('');
+    }
+  }
+
+  // Per-line busy spinners (disable that row's controls while a mutation runs).
+  function applyBusyLines(busy: Record<string, boolean>) {
+    document.querySelectorAll<HTMLElement>('.cart-item[data-line]').forEach((row) => {
+      const on = !!busy[row.dataset.line || ''];
+      row.classList.toggle('is-busy', on);
+      row.querySelectorAll<HTMLButtonElement>('button[data-act]').forEach((b) => (b.disabled = on));
+    });
+  }
+  $busyLines.subscribe(applyBusyLines);
+
+  // Surface cart errors AND Shopify stock warnings (out-of-stock / qty clamped)
+  // inside the drawer — without this, a failed add opens to a silent empty cart.
+  $cartError.subscribe((msg) => {
+    if (!errorEl) return;
+    errorEl.textContent = msg ?? '';
+    errorEl.style.display = msg ? '' : 'none';
+  });
+
+  // Global busy → disable checkout while a mutation is mid-flight.
+  $cartBusy.subscribe((busy) => {
+    const co = document.getElementById('cartCheckout') as HTMLButtonElement | null;
+    if (co) co.disabled = busy;
+  });
+
+  // ---- Focus trap + restore (cart opens via the store, not setOpen) --------
+  const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  let lastFocused: HTMLElement | null = null;
+  function trapTab(e: KeyboardEvent) {
+    if (e.key !== 'Tab' || !drawer) return;
+    const items = Array.from(drawer.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+      (el) => el.offsetParent !== null,
+    );
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  // Open/close — toggle the OMNIX is-open class from store state + trap focus.
+  $cartOpen.subscribe((open) => {
+    drawer?.classList.toggle('is-open', open);
+    document.querySelector('.cart-overlay')?.classList.toggle('is-open', open);
+    document.body.classList.toggle('no-scroll', open);
+    if (open && drawer) {
+      lastFocused = document.activeElement as HTMLElement;
+      document.addEventListener('keydown', trapTab);
+      window.requestAnimationFrame(() =>
+        drawer.querySelector<HTMLElement>(FOCUSABLE)?.focus(),
+      );
+    } else {
+      document.removeEventListener('keydown', trapTab);
+      lastFocused?.focus();
+      lastFocused = null;
+    }
+  });
+  $cart.subscribe(render);
+
+  // Line controls (event delegation).
+  linesEl?.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('button[data-act]');
+    if (!btn) return;
+    const row = btn.closest<HTMLElement>('[data-line]');
+    const lineId = row?.dataset.line;
+    if (!lineId) return;
+    const cart = $cart.get();
+    const line = cart?.lines.find((l) => l.id === lineId);
+    const qty = line?.quantity ?? 1;
+    const act = (btn as HTMLElement).dataset.act;
+    if (act === 'inc') updateItem(lineId, qty + 1);
+    else if (act === 'dec') updateItem(lineId, qty - 1);
+    else if (act === 'remove') removeItem(lineId);
+  });
+
+  document.getElementById('cartCheckout')?.addEventListener('click', () => checkout());
+
+  // Coupon — real Shopify discount codes via cartDiscountCodesUpdate.
+  const couponInput = document.getElementById('couponInput') as HTMLInputElement | null;
+  const couponApply = document.getElementById('couponApply') as HTMLButtonElement | null;
+  const couponMsg = document.getElementById('couponMsg');
+
+  function setCouponMsg(text: string, ok: boolean | null) {
+    if (!couponMsg) return;
+    couponMsg.textContent = text;
+    couponMsg.classList.toggle('is-ok', ok === true);
+    couponMsg.classList.toggle('is-err', ok === false);
+    couponMsg.classList.toggle('is-info', ok === null && text !== '');
+  }
+
+  /** Send the full set of codes Shopify should hold (it replaces, not merges). */
+  async function submitCodes(codes: string[], context: { adding?: string } = {}) {
+    if (couponApply) couponApply.disabled = true;
+    setCouponMsg('Checking…', null);
+    try {
+      const data = await applyDiscount(codes);
+      // Null cart = the cart expired server-side, not a bad code. Say so instead
+      // of mislabelling a valid code as invalid.
+      if (!data.cart && !data.error && !data.userErrors?.length) {
+        setCouponMsg('Your cart expired — add items again.', false);
+        return;
+      }
+      const applied = (data.cart?.discountCodes ?? []).filter((c) => c.applicable);
+      const adding = context.adding?.toLowerCase();
+      if (data.error || data.userErrors?.length) {
+        setCouponMsg(data.userErrors?.[0]?.message ?? 'Could not apply the code.', false);
+      } else if (adding && !applied.some((c) => c.code.toLowerCase() === adding)) {
+        // Shopify dropped the code we just tried → it's invalid/not applicable.
+        setCouponMsg(`“${context.adding}” isn’t a valid code.`, false);
+      } else if (adding) {
+        setCouponMsg('Discount applied.', true);
+        if (couponInput) couponInput.value = '';
+      } else {
+        setCouponMsg('', null); // a removal — no message needed
+      }
+    } finally {
+      if (couponApply) couponApply.disabled = false;
+    }
+  }
+
+  document.getElementById('couponForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const code = couponInput?.value.trim() ?? '';
+    if (!code) {
+      setCouponMsg('Enter a code.', false);
+      return;
+    }
+    const existing = ($cart.get()?.discountCodes ?? [])
+      .filter((c) => c.applicable)
+      .map((c) => c.code);
+    // Merge with codes already on the cart (mutation replaces the whole set),
+    // dedupe case-insensitively so re-applying the same code is a no-op.
+    const seen = new Set(existing.map((c) => c.toLowerCase()));
+    const next = seen.has(code.toLowerCase()) ? existing : [...existing, code];
+    submitCodes(next, { adding: code });
+  });
+
+  // Remove an applied code (chip × button).
+  document.getElementById('couponCodes')?.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-remove-code]');
+    if (!btn) return;
+    const remove = btn.dataset.removeCode?.toLowerCase();
+    const next = ($cart.get()?.discountCodes ?? [])
+      .filter((c) => c.applicable && c.code.toLowerCase() !== remove)
+      .map((c) => c.code);
+    submitCodes(next);
+  });
+
+  initCart();
+</script>

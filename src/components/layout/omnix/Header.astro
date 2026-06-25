@@ -1,0 +1,164 @@
+---
+// ============================================================
+//  Header (OMNIX) — logo, Shop mega-menu, primary nav, and the
+//  action cluster (search / account / wishlist / cart / burger).
+//  Triggers carry data-open="…"; a single controller in
+//  Overlays.astro opens the matching overlay. Cart badge is
+//  driven by the nanostore.
+// ============================================================
+import { Image } from 'astro:assets';
+import { getEntry } from 'astro:content';
+import { BRAND } from '~/config/omnix';
+import { resolveImage } from '~/lib/asset';
+import Icon from '~/components/ui/omnix/Icon.astro';
+import MarketSelector from '~/components/layout/omnix/MarketSelector.astro';
+
+const nav = (await getEntry('navigation', 'main'))!.data;
+const mega = nav.mega;
+// Utility links (Store Locator / Track Order / Help) — shown in the announce
+// bar on desktop, surfaced here for mobile where that bar's meta is hidden.
+const metaLinks = nav.metaLinks ?? [];
+---
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="logo">
+      <span class="logo-mark">O</span>
+      {BRAND.name}<span class="logo-dot">.</span>
+    </a>
+
+    <nav class="nav" aria-label="Primary">
+      <div class="nav-item">
+        <a class="nav-link" href="/products">
+          Shop
+          <Icon name="chevron-down" size={14} stroke={2.5} class="chev" />
+        </a>
+        {
+          mega && (
+            <div class="mega">
+              {mega.columns.map((col) => (
+                <div class="mega-col">
+                  <h5 set:html={col.heading} />
+                  <ul>
+                    {col.links.map((l) => (
+                      <li>
+                        <a href={l.href}>
+                          <span set:html={l.label} />
+                          <Icon name="arrow-right" size={12} class="arr" />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+              {mega.feature && (
+                <div class="mega-feature">
+                  <span class="tag">{mega.feature.tag}</span>
+                  <h6>{mega.feature.title}</h6>
+                  <p>{mega.feature.body}</p>
+                  <Image src={resolveImage(mega.feature.image)} alt={mega.feature.title} width={320} height={200} />
+                </div>
+              )}
+            </div>
+          )
+        }
+      </div>
+      {
+        nav.topLinks.map((l) => (
+          <a class="nav-link" href={l.href}>
+            <span set:html={l.label} />
+            {l.badge && <span class="hot">{l.badge}</span>}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="header-actions">
+      <button class="search-toggle" data-open="search" aria-label="Search">
+        <Icon name="search" size={16} />
+        <span>Search products…</span>
+        <span class="kbd">⌘K</span>
+      </button>
+      <button class="icon-btn" data-open="account" aria-label="Account">
+        <Icon name="user" size={18} />
+      </button>
+      <a class="icon-btn" href="/compare" aria-label="Compare">
+        <Icon name="compare" size={18} />
+        <span class="badge" id="compareBadge" style="display:none">0</span>
+      </a>
+      <button class="icon-btn" data-open="wishlist" aria-label="Wishlist">
+        <Icon name="heart" size={18} />
+        <span class="badge" id="wishBadge" style="display:none">0</span>
+      </button>
+      <button class="icon-btn" data-open="cart" aria-label="Open cart">
+        <Icon name="cart" size={18} />
+        <span class="badge" id="cartBadge" style="display:none">0</span>
+      </button>
+      <button class="icon-btn burger" data-open="mobile" aria-label="Menu">
+        <Icon name="menu" size={18} />
+      </button>
+    </div>
+  </div>
+</header>
+
+{/* Mobile slide-in menu (burger). Additive styles in omnix.css. */}
+<div class="mob-overlay" data-close="mobile"></div>
+<aside class="mob-menu" id="mobMenu" aria-label="Mobile menu">
+  <div class="mob-menu-head">
+    <a href="/" class="logo"><span class="logo-mark">O</span>{BRAND.name}<span class="logo-dot">.</span></a>
+    <button class="icon-btn" data-close="mobile" aria-label="Close menu"><Icon name="x" size={18} stroke={2.4} /></button>
+  </div>
+  <button class="mob-search" data-open="search" aria-label="Search products">
+    <Icon name="search" size={16} /> Search products…
+  </button>
+  <nav class="mob-nav" aria-label="Mobile">
+    {nav.mobile.map((l) => <a href={l.href} set:html={l.label} />)}
+  </nav>
+
+  {/* Mega menu as collapsible accordions (desktop hover panel → mobile). */}
+  {
+    mega && (
+      <div class="mob-mega">
+        {mega.columns.map((col) => (
+          <div class="mob-acc">
+            <button class="mob-acc-head" aria-expanded="false">
+              <span set:html={col.heading} />
+              <Icon name="chevron-down" size={18} stroke={2.5} class="mob-acc-chev" />
+            </button>
+            <ul class="mob-acc-body">
+              {col.links.map((l) => (
+                <li>
+                  <a href={l.href} set:html={l.label} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  {/* Footer — utility links + live market selector. These live in the
+      announce bar on desktop (hidden < 900px), so mobile gets them here. */}
+  <div class="mob-menu-foot">
+    {metaLinks.length > 0 && (
+      <nav class="mob-util" aria-label="Utility">
+        {metaLinks.map((l) => <a href={l.href} set:html={l.label} />)}
+      </nav>
+    )}
+    <div class="mob-market">
+      <MarketSelector />
+    </div>
+  </div>
+</aside>
+
+<script>
+  // Mobile mega accordion — tap a heading to expand/collapse its links.
+  document.querySelectorAll<HTMLButtonElement>('.mob-acc-head').forEach((head) => {
+    head.addEventListener('click', () => {
+      const acc = head.closest('.mob-acc');
+      const open = acc?.classList.toggle('is-open') ?? false;
+      head.setAttribute('aria-expanded', String(open));
+    });
+  });
+</script>

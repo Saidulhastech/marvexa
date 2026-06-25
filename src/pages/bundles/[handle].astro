@@ -1,0 +1,406 @@
+---
+// ============================================================
+//  Build-your-own bundle configurator (Model B, no app).
+//  The bundle product is a container (tag `bundle` + custom.bundle_items
+//  metafield). Each component product is shown with the SAME variant pickers
+//  as the PDP (colour swatches + option buttons); the shopper chooses one
+//  variant per component and we add each as a separate cart line via
+//  addBundle(). The "bundle price" is a Shopify AUTOMATIC DISCOUNT applied
+//  server-side — it surfaces in the cart drawer total.
+// ============================================================
+import Layout from '~/layouts/Layout.astro';
+import { getBundleConfig } from '~/lib/shopify';
+import { applyMarketCache } from '~/lib/market';
+import { formatMoney } from '~/lib/money';
+import type { BundleConfig, ProductOption, ProductVariant } from '~/lib/shopify/types';
+
+export const prerender = false;
+
+const { handle } = Astro.params;
+const market = Astro.locals.market;
+
+let bundle: BundleConfig | null = null;
+let loadFailed = false;
+try {
+  bundle = await getBundleConfig(handle!, market);
+} catch (err) {
+  loadFailed = true;
+  console.error('[bundle] load failed:', (err as Error).message);
+}
+
+if (loadFailed) Astro.response.status = 503;
+else if (!bundle) Astro.response.status = 404;
+else applyMarketCache(Astro.response.headers, market);
+
+// A component is single-variant if it has no real options (Shopify's synthetic
+// "Title / Default Title"). Those need no picker — we just add the one variant.
+function isSingleVariant(opts: ProductOption[] = []): boolean {
+  if (!opts || opts.length === 0) return true;
+  return (
+    opts.length === 1 &&
+    opts[0].name === 'Title' &&
+    opts[0].optionValues.every((v) => v.name === 'Default Title')
+  );
+}
+const defaultVariant = (variants: ProductVariant[] = []) =>
+  variants.find((v) => v.availableForSale) ?? variants[0] ?? null;
+const selectedValue = (v: ProductVariant | null, optName: string) =>
+  v?.selectedOptions.find((o) => o.name === optName)?.value ?? '';
+
+// Colour-option detection + swatch resolution — same rules as the PDP so the
+// pickers look identical across the store.
+const NAMED_COLORS: Record<string, string> = {
+  black: '#111418', white: '#ffffff', gray: '#808080', grey: '#808080',
+  silver: '#d3d3d3', gold: '#c9a86a', 'rose gold': '#b76e79', blue: '#2563eb',
+  navy: '#1e293b', red: '#dc2626', green: '#16a34a', pink: '#ec4899',
+  purple: '#7c3aed', orange: '#ea580c', yellow: '#eab308', beige: '#e7d8c2',
+  brown: '#8b5a2b', bronze: '#8c6239',
+};
+const isColorOption = (opt: ProductOption) =>
+  /colou?r|finish|shade/i.test(opt.name) || opt.optionValues.some((v) => v.swatch?.color);
+const swatchColor = (ov: { name: string; swatch?: { color?: string | null } | null }) =>
+  ov.swatch?.color || NAMED_COLORS[ov.name.toLowerCase()] || '#cbd5e1';
+
+const currency = bundle?.components[0]?.priceRange.minVariantPrice.currencyCode ?? 'USD';
+const money = (n: number) => formatMoney({ amount: String(n), currencyCode: currency });
+
+// Client boot: one entry per component with its variants flattened.
+const bootComponents = (bundle?.components ?? []).map((c) => {
+  const dv = defaultVariant(c.variants);
+  return {
+    title: c.title,
+    single: isSingleVariant(c.options),
+    defaultOpts: Object.fromEntries((dv?.selectedOptions ?? []).map((o) => [o.name, o.value])),
+    variants: (c.variants ?? []).map((v) => ({
+      id: v.id,
+      opts: Object.fromEntries(v.selectedOptions.map((o) => [o.name, o.value])),
+      price: Number(v.price.amount),
+      available: v.availableForSale,
+      img: v.image?.url ?? null,
+    })),
+  };
+});
+
+const initialSubtotal = bootComponents.reduce((sum, c) => {
+  const dv = c.variants.find((v) => v.available) ?? c.variants[0];
+  return sum + (dv ? dv.price : 0);
+}, 0);
+
+const bootData = { currency, components: bootComponents };
+---
+
+{
+  bundle ? (
+    <Layout title={`Build your ${bundle.title}`} description={bundle.description}>
+      <div class="bz" id="bzRoot">
+        <script type="application/json" id="bzBoot" set:html={JSON.stringify(bootData)} />
+
+        <div class="bz-wrap">
+          <nav class="bz-crumb" aria-label="Breadcrumb">
+            <a href="/">Home</a> <span>/</span> <span class="cur">{bundle.title}</span>
+          </nav>
+
+          <header class="bz-head">
+            <h1>{bundle.title}</h1>
+            {bundle.description && <p>{bundle.description}</p>}
+            <span class="bz-pill">{bundle.components.length} items · choose your options</span>
+          </header>
+
+          <div class="bz-grid">
+            {/* Component slots */}
+            <div class="bz-slots">
+              {bundle.components.map((c, i) => {
+                const dv = defaultVariant(c.variants);
+                const single = isSingleVariant(c.options);
+                return (
+                  <article class="bz-slot" data-slot={i} data-handle={c.handle}>
+                    <div class="bz-slot-media">
+                      {c.featuredImage ? (
+                        <img src={c.featuredImage.url} alt={c.featuredImage.altText ?? c.title} loading="lazy" />
+                      ) : (
+                        <div class="bz-slot-empty" />
+                      )}
+                    </div>
+                    <div class="bz-slot-body">
+                      <div class="bz-slot-top">
+                        {c.vendor && <span class="bz-slot-vendor">{c.vendor}</span>}
+                        <a class="bz-slot-name" href={`/products/${c.handle}`}>{c.title}</a>
+                      </div>
+
+                      {/* Variant pickers — identical pattern to the PDP. */}
+                      {!single &&
+                        (c.options ?? []).map((opt) =>
+                          isColorOption(opt) ? (
+                            <div class="pm-variant" data-option={opt.name}>
+                              <div class="pm-variant-head">
+                                <span class="pm-variant-label">{opt.name}</span>
+                                <span class="pm-variant-cur">Selected: <b data-cur={opt.name}>{selectedValue(dv, opt.name)}</b></span>
+                              </div>
+                              <div class="pm-swatches" data-opts={opt.name}>
+                                {opt.optionValues.map((ov) => (
+                                  <button
+                                    class:list={['pm-swatch', { 'is-active': selectedValue(dv, opt.name) === ov.name }]}
+                                    data-value={ov.name}
+                                    aria-label={ov.name}
+                                    title={ov.name}
+                                  >
+                                    <span style={`background:${swatchColor(ov)}`}></span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div class="pm-variant" data-option={opt.name}>
+                              <div class="pm-variant-head">
+                                <span class="pm-variant-label">{opt.name}</span>
+                                <span class="pm-variant-cur">Selected: <b data-cur={opt.name}>{selectedValue(dv, opt.name)}</b></span>
+                              </div>
+                              <div class="pm-options" data-opts={opt.name}>
+                                {opt.optionValues.map((ov) => (
+                                  <button class:list={['pm-option', { 'is-active': selectedValue(dv, opt.name) === ov.name }]} data-value={ov.name}>
+                                    <span class="pm-option-name">{ov.name}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ),
+                        )}
+
+                      <div class="bz-slot-foot">
+                        <span class="bz-slot-price" data-slot-price>{dv ? money(Number(dv.price.amount)) : '—'}</span>
+                        <span class="bz-slot-stock" data-slot-stock>{dv?.availableForSale ? 'In stock' : 'Unavailable'}</span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {/* Summary */}
+            <aside class="bz-summary">
+              <h2>Your bundle</h2>
+              <ul class="bz-sum-list" id="bzSumList"></ul>
+              <div class="bz-sum-row">
+                <span>Subtotal</span>
+                <span id="bzSubtotal">{money(initialSubtotal)}</span>
+              </div>
+              <p class="bz-sum-note">Bundle discount, if any, is applied automatically at checkout.</p>
+              <button class="btn btn-dark bz-add" id="bzAdd">Add bundle to cart</button>
+              <p class="bz-sum-err" id="bzErr" hidden></p>
+            </aside>
+          </div>
+        </div>
+      </div>
+
+      <style>
+        .bz-wrap { max-width: 1100px; margin: 0 auto; padding: 40px 20px 80px; }
+        .bz-crumb { font-family: var(--f-body); font-size: 13px; color: var(--muted, #6b7280); display: flex; gap: 8px; }
+        .bz-crumb a { color: inherit; text-decoration: none; }
+        .bz-crumb .cur { color: var(--text, #111); font-weight: 600; }
+        .bz-head { margin: 18px 0 28px; }
+        .bz-head h1 { font-family: var(--f-head, inherit); font-size: clamp(26px, 4vw, 40px); margin: 0; }
+        .bz-head p { color: var(--text-soft, #555); font-family: var(--f-body); margin: 8px 0 0; max-width: 60ch; }
+        .bz-pill { display: inline-block; margin-top: 14px; font-size: 12px; font-weight: 600; letter-spacing: .02em; background: var(--soft-blue, #eef4ff); color: var(--electric, #2563eb); padding: 6px 12px; border-radius: 999px; }
+        .bz-grid { display: grid; grid-template-columns: 1fr 340px; gap: 32px; align-items: start; }
+        @media (max-width: 880px) { .bz-grid { grid-template-columns: 1fr; } }
+
+        .bz-slots { display: flex; flex-direction: column; gap: 16px; }
+        .bz-slot { display: grid; grid-template-columns: 120px 1fr; gap: 20px; padding: 20px; border: 1px solid var(--border, #e5e7eb); border-radius: var(--r-lg, 18px); background: #fff; transition: border-color var(--t-fast, .15s) var(--ease, ease), box-shadow var(--t-fast, .15s) var(--ease, ease); }
+        .bz-slot:hover { border-color: #C7D0DC; box-shadow: 0 6px 24px -16px rgba(15,23,42,.35); }
+        .bz-slot.is-unavailable { opacity: .55; }
+        .bz-slot-media img, .bz-slot-empty { width: 120px; height: 120px; object-fit: cover; border-radius: var(--r-md, 12px); background: #f1f3f5; }
+        .bz-slot-top { display: flex; flex-direction: column; gap: 3px; margin-bottom: 4px; }
+        .bz-slot-vendor { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; color: var(--muted, #9ca3af); }
+        .bz-slot-name { font-family: var(--f-head, inherit); font-weight: 600; font-size: 16px; color: var(--tech-black, #111); text-decoration: none; }
+        .bz-slot-name:hover { color: var(--electric, #2563eb); }
+        .bz-slot-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border, #eee); }
+        .bz-slot-price { font-family: var(--f-head, inherit); font-weight: 700; font-size: 17px; color: var(--tech-black, #111); }
+        .bz-slot-stock { font-family: var(--f-body); font-size: 12.5px; color: var(--muted, #6b7280); }
+        .bz-slot-stock.is-out { color: #dc2626; }
+
+        /* Variant pickers — copied from the PDP (.pm-*) so bundle and product
+           option selection look identical. */
+        .bz-slot .pm-variant { margin-top: 16px; }
+        .bz-slot .pm-variant-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+        .bz-slot .pm-variant-label { font-family: var(--f-head, inherit); font-size: 13px; font-weight: 600; color: var(--tech-black, #111); }
+        .bz-slot .pm-variant-cur { font-family: var(--f-body); font-size: 12.5px; color: var(--muted, #6b7280); }
+        .bz-slot .pm-variant-cur b { color: var(--text, #111); font-weight: 600; }
+        .bz-slot .pm-swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+        .bz-slot .pm-swatch { position: relative; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--border, #e5e7eb); cursor: pointer; padding: 0; background: none; transition: border-color var(--t-fast, .15s) var(--ease, ease), transform var(--t-fast, .15s) var(--ease, ease); }
+        .bz-slot .pm-swatch span { position: absolute; inset: 3px; border-radius: 50%; border: 1px solid rgba(0,0,0,.1); }
+        .bz-slot .pm-swatch:hover { transform: translateY(-2px); }
+        .bz-slot .pm-swatch.is-active { border-color: var(--electric, #2563eb); }
+        /* Dim + diagonal strike-through, matching the PDP / Quick View swatches. */
+        .bz-slot .pm-swatch.is-unavailable { opacity: .4; cursor: not-allowed; overflow: hidden; }
+        .bz-slot .pm-swatch.is-unavailable::after {
+          content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+          background: linear-gradient(
+            to top left,
+            transparent calc(50% - 1px),
+            var(--muted, #6b7280) calc(50% - 1px),
+            var(--muted, #6b7280) calc(50% + 1px),
+            transparent calc(50% + 1px)
+          );
+        }
+        .bz-slot .pm-swatch.is-unavailable:hover { transform: none; border-color: var(--border, #e5e7eb); }
+        .bz-slot .pm-options { display: flex; flex-wrap: wrap; gap: 9px; }
+        .bz-slot .pm-option { display: flex; flex-direction: column; gap: 2px; min-width: 80px; padding: 9px 14px; border: 1.5px solid var(--border, #e5e7eb); border-radius: var(--r-md, 10px); background: #fff; cursor: pointer; transition: all var(--t-fast, .15s) var(--ease, ease); }
+        .bz-slot .pm-option:hover { border-color: #C7D0DC; }
+        .bz-slot .pm-option.is-active { border-color: var(--electric, #2563eb); background: var(--soft-blue, #eef4ff); }
+        .bz-slot .pm-option.is-unavailable { opacity: .45; cursor: not-allowed; }
+        .bz-slot .pm-option.is-unavailable .pm-option-name { text-decoration: line-through; }
+        .bz-slot .pm-option-name { font-family: var(--f-body); font-size: 13px; font-weight: 600; color: var(--tech-black, #111); }
+
+        .bz-summary { position: sticky; top: 96px; border: 1px solid var(--border, #e5e7eb); border-radius: var(--r-lg, 18px); padding: 24px; background: #fff; }
+        .bz-summary h2 { font-family: var(--f-head, inherit); font-size: 18px; margin: 0 0 16px; }
+        .bz-sum-list { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+        .bz-sum-list li { display: flex; justify-content: space-between; gap: 10px; font-family: var(--f-body); font-size: 13px; color: var(--text-soft, #555); }
+        .bz-sum-list li b { color: var(--text, #111); font-weight: 600; white-space: nowrap; }
+        .bz-sum-row { display: flex; justify-content: space-between; align-items: baseline; padding-top: 14px; border-top: 1px solid var(--border, #eee); font-family: var(--f-body); }
+        .bz-sum-row #bzSubtotal { font-family: var(--f-head, inherit); font-size: 22px; font-weight: 800; }
+        .bz-sum-note { font-size: 12px; color: var(--muted, #6b7280); margin: 10px 0 16px; font-family: var(--f-body); }
+        .bz-add { width: 100%; }
+        .bz-sum-err { color: #dc2626; font-size: 13px; margin: 10px 0 0; font-family: var(--f-body); }
+      </style>
+
+      <script>
+        import { addBundle } from '~/stores/cart';
+
+        const root = document.getElementById('bzRoot');
+        const bootEl = document.getElementById('bzBoot');
+        if (root && bootEl) {
+          interface CVariant { id: string; opts: Record<string, string>; price: number; available: boolean; img: string | null; }
+          interface CComp { title: string; single: boolean; defaultOpts: Record<string, string>; variants: CVariant[]; }
+          const data = JSON.parse(bootEl.textContent || '{}') as { currency: string; components: CComp[] };
+
+          const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: data.currency });
+          const money = (n: number) => fmt.format(n);
+
+          // Per-slot current selection (option name → value).
+          const selection: Record<string, string>[] = data.components.map((c) => ({ ...c.defaultOpts }));
+
+          function variantFor(slot: number): CVariant | undefined {
+            const c = data.components[slot];
+            if (c.single) return c.variants.find((v) => v.available) ?? c.variants[0];
+            const sel = selection[slot];
+            return c.variants.find((v) => Object.keys(sel).every((k) => v.opts[k] === sel[k]));
+          }
+
+          const slotEls = Array.from(root.querySelectorAll<HTMLElement>('.bz-slot'));
+
+          // Grey out option values that can't combine with the slot's current
+          // selection — same UX as the PDP.
+          function updateOptionStates(slot: number) {
+            const c = data.components[slot];
+            if (c.single) return;
+            const el = slotEls[slot];
+            el.querySelectorAll<HTMLElement>('[data-opts]').forEach((group) => {
+              const name = group.dataset.opts || '';
+              group.querySelectorAll<HTMLElement>('.pm-option, .pm-swatch').forEach((btn) => {
+                const trial = { ...selection[slot], [name]: btn.dataset.value || '' };
+                const ok = c.variants.some(
+                  (v) => v.available && Object.keys(trial).every((k) => v.opts[k] === trial[k]),
+                );
+                btn.classList.toggle('is-unavailable', !ok);
+              });
+            });
+          }
+
+          function renderSlot(slot: number) {
+            const el = slotEls[slot];
+            if (!el) return;
+            const v = variantFor(slot);
+            const priceEl = el.querySelector('[data-slot-price]');
+            const stockEl = el.querySelector('[data-slot-stock]');
+            const ok = !!v && v.available;
+            if (priceEl) priceEl.textContent = v ? money(v.price) : 'Unavailable';
+            if (stockEl) {
+              stockEl.textContent = ok ? 'In stock' : v ? 'Sold out' : 'Unavailable combo';
+              stockEl.classList.toggle('is-out', !ok);
+            }
+            el.classList.toggle('is-unavailable', !ok);
+            updateOptionStates(slot);
+          }
+
+          function renderSummary() {
+            const list = document.getElementById('bzSumList');
+            const sub = document.getElementById('bzSubtotal');
+            let subtotal = 0;
+            let html = '';
+            data.components.forEach((c, i) => {
+              const v = variantFor(i);
+              const label = c.single
+                ? c.title
+                : `${c.title} — ${Object.values(selection[i]).join(' / ')}`;
+              const price = v && v.available ? money(v.price) : '—';
+              if (v && v.available) subtotal += v.price;
+              html += `<li><span>${label}</span><b>${price}</b></li>`;
+            });
+            if (list) list.innerHTML = html;
+            if (sub) sub.textContent = money(subtotal);
+          }
+
+          // Wire each option group (button groups + colour swatches), scoped to its slot.
+          slotEls.forEach((el, slot) => {
+            el.querySelectorAll<HTMLElement>('[data-opts]').forEach((group) => {
+              const name = group.dataset.opts || '';
+              group.addEventListener('click', (e) => {
+                const btn = (e.target as HTMLElement).closest<HTMLElement>('.pm-option, .pm-swatch');
+                if (!btn) return;
+                selection[slot][name] = btn.dataset.value || '';
+                group.querySelectorAll('.pm-option, .pm-swatch').forEach((o) => o.classList.remove('is-active'));
+                btn.classList.add('is-active');
+                const cur = el.querySelector(`[data-cur="${name}"]`);
+                if (cur) cur.textContent = selection[slot][name];
+                renderSlot(slot);
+                renderSummary();
+              });
+            });
+          });
+
+          // Add bundle: one variant per slot; require all resolvable & available.
+          const addBtn = document.getElementById('bzAdd') as HTMLButtonElement | null;
+          const errEl = document.getElementById('bzErr');
+          addBtn?.addEventListener('click', async () => {
+            const lines: { merchandiseId: string; quantity: number }[] = [];
+            const missing: string[] = [];
+            data.components.forEach((c, i) => {
+              const v = variantFor(i);
+              if (v && v.available) lines.push({ merchandiseId: v.id, quantity: 1 });
+              else missing.push(c.title);
+            });
+            if (errEl) {
+              errEl.hidden = missing.length === 0;
+              errEl.textContent = missing.length ? `Unavailable: ${missing.join(', ')}. Pick another option.` : '';
+            }
+            if (missing.length) return;
+
+            const label = addBtn.textContent;
+            addBtn.disabled = true;
+            addBtn.textContent = 'Adding…';
+            try {
+              await addBundle(lines);
+            } finally {
+              addBtn.disabled = false;
+              addBtn.textContent = label;
+            }
+          });
+
+          // init
+          data.components.forEach((_, i) => renderSlot(i));
+          renderSummary();
+        }
+      </script>
+    </Layout>
+  ) : (
+    <Layout title={loadFailed ? 'Something went wrong' : 'Bundle not found'} noindex>
+      <div class="bz-wrap" style="text-align:center; padding:120px 20px;">
+        <h1>{loadFailed ? 'Something went wrong' : 'Bundle not found'}</h1>
+        <p style="color:var(--text-soft,#555);">
+          {loadFailed ? "We couldn't load this bundle right now." : "This bundle isn't available."}
+        </p>
+        <a href="/collections" class="btn btn-dark" style="margin-top:20px; display:inline-flex;">Browse products</a>
+      </div>
+    </Layout>
+  )
+}

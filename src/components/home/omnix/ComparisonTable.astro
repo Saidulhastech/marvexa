@@ -1,0 +1,145 @@
+---
+// ============================================================
+//  ComparisonTable — OMNIX "Compare top models". FULLY DYNAMIC:
+//  pulls the top 3 best-selling products live from Shopify. Image,
+//  name, price and link are live; the spec rows are derived from
+//  real product fields (brand / rating / availability / stock) —
+//  no hardcoded data. Middle column is flagged as the best seller.
+// ============================================================
+import { Image } from 'astro:assets';
+import { getProducts } from '~/lib/shopify';
+import { formatMoney, hasPriceRange } from '~/lib/money';
+import SectionHeading from '~/components/ui/omnix/SectionHeading.astro';
+
+const products = (await getProducts({ pageSize: 3, sortKey: 'BEST_SELLING' }, Astro.locals.market)).items;
+const bestIdx = products.length === 3 ? 1 : 0; // highlight the middle column
+
+const cols = products.map((p, i) => {
+  // Spec rows built from real Shopify fields only — blanks dropped.
+  const specs = [
+    p.vendor && { label: 'Brand', value: p.vendor },
+    p.rating != null && {
+      label: 'Rating',
+      value: `${p.rating}★${p.ratingCount ? ` (${p.ratingCount})` : ''}`,
+    },
+    { label: 'Availability', value: p.availableForSale ? 'In stock' : 'Sold out' },
+    p.totalInventory != null && { label: 'Units left', value: String(p.totalInventory) },
+  ].filter((s): s is { label: string; value: string } => Boolean(s));
+
+  const canAdd = p.availableForSale && !!p.firstVariantId && p.firstVariantAvailable !== false;
+
+  // ---- Variant-aware add (mirrors ProductCard) ----------------------------
+  // Real options excluding the implicit single "Title / Default Title" option.
+  const variants = p.variants ?? [];
+  const realOptions = (p.options ?? []).filter(
+    (o) => !(o.name === 'Title' && o.optionValues.every((v) => v.name === 'Default Title')),
+  );
+  const colorOpt = realOptions.find(
+    (o) => /colou?r|finish|shade/i.test(o.name) || o.optionValues.some((v) => v.swatch?.color),
+  );
+  // Picker needed only when more than one option must be chosen (e.g. Colour + Size).
+  const needsPicker = canAdd && variants.length > 1 && realOptions.length >= 2;
+
+  const pickerData = needsPicker
+    ? JSON.stringify(
+        variants.map((v) => ({
+          id: v.id,
+          opts: Object.fromEntries(v.selectedOptions.map((o) => [o.name, o.value])),
+          price: Number(v.price.amount),
+          compareAt: v.compareAtPrice ? Number(v.compareAtPrice.amount) : null,
+          img: v.image?.url ?? null,
+          available: v.availableForSale,
+        })),
+      )
+    : '';
+  const optionData = needsPicker
+    ? JSON.stringify(
+        realOptions.map((o) => ({
+          name: o.name,
+          isColor: o === colorOpt,
+          values: o.optionValues.map((ov) => ({ name: ov.name, color: ov.swatch?.color ?? null })),
+        })),
+      )
+    : '';
+
+  return {
+    best: i === bestIdx,
+    bestLabel: 'Best Seller',
+    name: p.title,
+    brand: p.vendor ?? '',
+    handle: p.handle,
+    price:
+      (hasPriceRange(p.priceRange) ? 'From ' : '') +
+      formatMoney(p.priceRange.minVariantPrice),
+    currency: p.priceRange.minVariantPrice.currencyCode,
+    href: `/products/${p.handle}`,
+    img: p.featuredImage ?? null,
+    canAdd,
+    needsPicker,
+    pickerData,
+    optionData,
+    variantId: p.firstVariantId ?? '',
+    soldOut: !p.availableForSale,
+    specs,
+  };
+});
+---
+
+{
+  cols.length > 0 && (
+    <section class="sec">
+      <div class="container">
+        <SectionHeading
+          eyebrow="Compare top models"
+          title="Pick your perfect set of headphones."
+          body="Three flagships from our audio line, side-by-side. Specs, price, battery, and what we recommend."
+          link={{ label: 'Full compare tool', href: '/compare' }}
+        />
+
+        <div class="compare-wrap">
+          <div class="compare-grid">
+            {cols.map((c) => (
+              <div class:list={['cmp-col', { 'is-best': c.best }]}>
+                {c.best && <span class="cmp-best-badge">{c.bestLabel}</span>}
+                <div class="cmp-img">
+                  {c.img && <Image src={c.img.url} alt={c.img.altText ?? c.name} width={240} height={240} />}
+                </div>
+                <div class="cmp-name">{c.name}</div>
+                <div class="cmp-price">{c.price}</div>
+                <ul class="cmp-spec">
+                  {c.specs.map((s) => (
+                    <li><span>{s.label}</span><b>{s.value}</b></li>
+                  ))}
+                </ul>
+                <div class="cmp-foot">
+                  {c.canAdd ? (
+                    c.needsPicker ? (
+                      <button
+                        class="btn btn-primary btn-block"
+                        data-add
+                        data-pick
+                        data-handle={c.handle}
+                        data-name={c.name}
+                        data-price={c.price}
+                        data-img={c.img?.url ?? ''}
+                        data-brand={c.brand}
+                        data-href={c.href}
+                        data-currency={c.currency}
+                        data-variants={c.pickerData}
+                        data-options={c.optionData}
+                      >Select Options</button>
+                    ) : (
+                      <button class="btn btn-primary btn-block" data-add data-variant-id={c.variantId}>Add to Cart</button>
+                    )
+                  ) : (
+                    <a class="btn btn-primary btn-block" href={c.href}>{c.soldOut ? 'Sold out' : 'View product'}</a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}

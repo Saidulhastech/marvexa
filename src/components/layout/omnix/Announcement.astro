@@ -1,0 +1,57 @@
+---
+// ============================================================
+//  Announcement bar — rotating top ticker (OMNIX).
+//  Copy from the `announcements` content collection; rotation is
+//  a tiny vanilla script (no framework).
+// ============================================================
+import { getCollection, getEntry } from 'astro:content';
+import Icon from '~/components/ui/omnix/Icon.astro';
+import MarketSelector from '~/components/layout/omnix/MarketSelector.astro';
+
+const slides = (await getCollection('announcements')).sort((a, b) =>
+  a.id.localeCompare(b.id),
+);
+const nav = await getEntry('navigation', 'main');
+const meta = nav?.data.metaLinks ?? [];
+// The live market selector takes the first slot (was the static "EN / USD").
+const left = meta.slice(0, 1);
+const right = meta.slice(1);
+---
+
+<div class="announce">
+  <div class="container">
+    <div class="announce-meta">
+      <MarketSelector />
+      {left.map((l) => <a href={l.href}>{l.label}</a>)}
+    </div>
+    <div class="announce-msg" id="announceMsg">
+      <div class="announce-slides">
+        {
+          slides.map((s, i) => (
+            <div class:list={['announce-slide', { 'is-active': i === 0 }]}>
+              <Icon name={s.data.icon} size={13} />
+              <span set:html={s.data.text} />
+            </div>
+          ))
+        }
+      </div>
+    </div>
+    <div class="announce-meta">
+      {right.map((l) => <a href={l.href}>{l.label}</a>)}
+    </div>
+  </div>
+</div>
+
+<script>
+  // Rotate the active announcement slide on an interval.
+  const slides = document.querySelectorAll<HTMLElement>('.announce-slide');
+  if (slides.length > 1) {
+    let current = 0;
+    const goTo = (i: number) => {
+      slides[current].classList.remove('is-active');
+      current = (i + slides.length) % slides.length;
+      slides[current].classList.add('is-active');
+    };
+    setInterval(() => goTo(current + 1), 3500);
+  }
+</script>

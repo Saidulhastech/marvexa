@@ -1,0 +1,11 @@
+# Newsletter band (OMNIX). title may contain <span class="accent">…</span>.
+- id: main
+  eyebrow: "Join the inner circle"
+  title: 'Get <span class="accent">10% off</span> your first order.'
+  body: "Drop your email — we'll send early access to drops, restock alerts, and the occasional 30%-off Friday. Unsubscribe anytime."
+  placeholder: "your@email.com"
+  cta: "Subscribe"
+  perks:
+    - "10% off first order"
+    - "Early access to drops"
+    - "No spam, ever"

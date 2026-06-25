@@ -1,0 +1,192 @@
+---
+// ============================================================
+//  Wishlist (OMNIX) — full-page view of the saved wishlist. The
+//  list is client-side (localStorage 'omnix_wishlist', the same
+//  store the header wishlist drawer uses). Cards are injected by
+//  the <script>; remove syncs back + updates the header badge.
+// ============================================================
+import Layout from '~/layouts/Layout.astro';
+import Icon from '~/components/ui/omnix/Icon.astro';
+---
+
+<Layout title="Wishlist" description="Your saved products — kept in one place." noindex>
+  <section class="sec">
+    <div class="container">
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">Home</a><span>/</span><span class="cur">Wishlist</span>
+      </nav>
+
+      <header class="wl-head">
+        <div>
+          <div class="wl-eyebrow">Saved</div>
+          <h1 class="h1">Your wishlist</h1>
+          <p class="wl-sub" id="wlSub">Products you've saved for later.</p>
+        </div>
+        <button class="btn btn-ghost" id="wlClear" type="button" style="display:none;">Clear all</button>
+      </header>
+
+      {/* Empty state */}
+      <div class="wl-empty" id="wlEmpty" style="display:none;">
+        <div class="wl-empty-ico"><Icon name="heart" size={30} stroke={1.5} /></div>
+        <b>Your wishlist is empty</b>
+        <p>Tap the heart on any product to save it here for later.</p>
+        <a class="btn btn-primary" href="/products">Browse products</a>
+      </div>
+
+      {/* Grid (rendered by script) */}
+      <div class="wl-grid" id="wlGrid" style="display:none;"></div>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  type WishItem = { handle: string; name: string; price: string; img: string; href: string };
+  const KEY = 'omnix_wishlist';
+
+  const $ = (id: string) => document.getElementById(id);
+  const read = (): WishItem[] => {
+    try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
+  };
+  const write = (l: WishItem[]) => localStorage.setItem(KEY, JSON.stringify(l));
+  const esc = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  // Header wishlist badge + drawer chip are owned by Overlays (set on load);
+  // reflect local changes here too so they stay in sync.
+  function syncBadge(n: number) {
+    const badge = $('wishBadge');
+    if (badge) { badge.textContent = String(n); badge.style.display = n ? '' : 'none'; }
+    const chip = $('wishCountChip');
+    if (chip) chip.textContent = String(n);
+  }
+
+  function card(i: WishItem) {
+    return `
+      <article class="wl-card" data-handle="${esc(i.handle)}">
+        <button class="wl-rm" type="button" data-remove="${esc(i.handle)}" aria-label="Remove from wishlist">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+        <a class="wl-img" href="${i.href}">${i.img ? `<img src="${i.img}" alt="${esc(i.name)}" loading="lazy">` : ''}</a>
+        <div class="wl-body">
+          <a class="wl-name" href="${i.href}">${esc(i.name)}</a>
+          <div class="wl-price">${esc(i.price)}</div>
+          <a class="btn btn-primary btn-block btn-sm wl-view" href="${i.href}">View product</a>
+        </div>
+      </article>`;
+  }
+
+  function render() {
+    const items = read();
+    syncBadge(items.length);
+
+    const empty = $('wlEmpty')!;
+    const grid = $('wlGrid')!;
+    const clear = $('wlClear')!;
+    const sub = $('wlSub')!;
+
+    if (items.length === 0) {
+      empty.style.display = '';
+      grid.style.display = 'none';
+      clear.style.display = 'none';
+      sub.textContent = "Products you've saved for later.";
+      return;
+    }
+
+    empty.style.display = 'none';
+    grid.style.display = '';
+    clear.style.display = '';
+    sub.textContent = `${items.length} saved item${items.length === 1 ? '' : 's'}.`;
+    grid.innerHTML = items.map(card).join('');
+  }
+
+  $('wlGrid')?.addEventListener('click', (e) => {
+    const rm = (e.target as HTMLElement).closest<HTMLElement>('[data-remove]');
+    if (!rm) return;
+    const h = rm.dataset.remove!;
+    write(read().filter((x) => x.handle !== h));
+    // keep heart buttons elsewhere in sync if present on a later visit
+    document.querySelectorAll<HTMLElement>(`[data-wish][data-handle="${h}"]`).forEach((b) =>
+      b.classList.remove('is-active'));
+    render();
+  });
+
+  $('wlClear')?.addEventListener('click', () => {
+    write([]);
+    document.querySelectorAll<HTMLElement>('[data-wish]').forEach((b) => b.classList.remove('is-active'));
+    render();
+  });
+
+  render();
+</script>
+
+<style>
+  /* Static header / empty — scoped is fine. */
+  .crumb {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.82rem; color: var(--muted); margin-bottom: 22px; flex-wrap: wrap;
+  }
+  .crumb a:hover { color: var(--text); }
+  .crumb .cur { color: var(--text); font-weight: 500; }
+
+  .wl-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 28px;
+  }
+  .wl-eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--electric); margin-bottom: 10px;
+  }
+  .wl-head .h1 {
+    font-family: "Sora", system-ui, sans-serif;
+    font-size: clamp(1.9rem, 4vw, 2.8rem); font-weight: 700;
+    letter-spacing: -0.02em; line-height: 1.05; margin: 0;
+  }
+  .wl-sub { margin: 12px 0 0; color: var(--muted); }
+
+  .btn-ghost { border: 1px solid var(--border); background: var(--white); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--electric); color: var(--electric); }
+
+  .wl-empty {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    gap: 10px; padding: 66px 20px;
+  }
+  .wl-empty-ico {
+    width: 60px; height: 60px; display: grid; place-items: center;
+    border: 1px solid var(--border); border-radius: 16px; color: var(--muted); margin-bottom: 6px;
+  }
+  .wl-empty b { font-size: 1.2rem; }
+  .wl-empty p { color: var(--muted); max-width: 30rem; margin: 0; }
+  .wl-empty .btn { margin-top: 14px; }
+</style>
+
+<style is:global>
+  /* JS-injected cards → must be global (scoped CSS keys off a build-time attr). */
+  .wl-grid {
+    display: grid; gap: 22px;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  @media (max-width: 1024px) { .wl-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 760px)  { .wl-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 460px)  { .wl-grid { grid-template-columns: 1fr; } }
+
+  .wl-card {
+    position: relative; display: flex; flex-direction: column;
+    border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+    background: var(--white); transition: box-shadow .2s, transform .2s;
+  }
+  .wl-card:hover { box-shadow: var(--shadow-lg, 0 12px 30px rgba(0,0,0,.08)); transform: translateY(-2px); }
+  .wl-rm {
+    position: absolute; top: 10px; right: 10px; z-index: 2;
+    width: 30px; height: 30px; display: grid; place-items: center;
+    border: 1px solid var(--border); border-radius: 9px; background: var(--white);
+    color: var(--muted); cursor: pointer; transition: all .15s;
+  }
+  .wl-rm:hover { border-color: #ef4444; color: #ef4444; }
+  .wl-img { display: block; aspect-ratio: 1/1; background: var(--frost); }
+  .wl-img img { width: 100%; height: 100%; object-fit: cover; }
+  .wl-body { padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .wl-name { font-family: "Sora", system-ui, sans-serif; font-weight: 600; font-size: 0.96rem; line-height: 1.3; color: var(--text); }
+  .wl-name:hover { color: var(--electric); }
+  .wl-price { font-weight: 700; color: var(--text); }
+  .wl-view { margin-top: auto; justify-content: center; }
+</style>

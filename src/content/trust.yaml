@@ -1,0 +1,17 @@
+# Trust strip (OMNIX). icon → ~/components/ui/omnix/Icon names.
+- id: shipping
+  icon: truck
+  title: "Fast Shipping"
+  body: "Rates shown at checkout"
+- id: returns
+  icon: refresh
+  title: "30-Day Returns"
+  body: "No-questions promise"
+- id: warranty
+  icon: shield
+  title: "2-Year Warranty"
+  body: "Genuine product cover"
+- id: support
+  icon: chat
+  title: "24/7 Support"
+  body: "Chat with experts"

@@ -1,0 +1,293 @@
+---
+// ============================================================
+//  Contact (OMNIX) — bento redesign. Static page: contact bento
+//  grid, demo contact form (client-only success view) and FAQ.
+// ============================================================
+import Layout from '~/layouts/Layout.astro';
+import '~/styles/contact.css';
+---
+
+<Layout
+  title="Contact"
+  description="Get in touch with OMNIX — live chat, email, phone, or send us a message. Real people, fast replies, and answers that actually solve it."
+>
+  <main class="cn-main" id="contactModern">
+    <div class="cn-wrap">
+      <!-- Intro -->
+      <div class="cn-intro">
+        <div class="cn-intro-l">
+          <span class="cn-eyebrow"><span></span>Contact</span>
+          <h1>How can we <span class="hl">help you?</span></h1>
+          <p>Pick the channel that suits you, or send us a message &mdash; real people, fast replies, and answers that actually solve it.</p>
+        </div>
+        <div class="cn-intro-chip">
+          <span class="pulse"></span>
+          <span><b>We're online now</b><span class="t">Avg. reply in under 2 hours</span></span>
+        </div>
+      </div>
+
+      <!-- BENTO -->
+      <div class="cn-bento">
+        <!-- Chat (feature) -->
+        <div class="cn-tile chat">
+          <span class="cn-chat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg></span>
+          <div class="cn-chat-txt">
+            <h3>Live chat <span class="cn-chat-online"><span></span>Online</span></h3>
+            <p>Chat with a product specialist right now &mdash; typical wait under a minute.</p>
+          </div>
+          <button class="cn-chat-btn" id="cnChat">Start chat <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        </div>
+
+        <!-- Email -->
+        <div class="cn-tile email cn-link-tile">
+          <div>
+            <span class="cn-t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg></span>
+            <h3>Email us</h3>
+            <span class="sub">Orders, returns &amp; general help</span>
+          </div>
+          <a class="val" href="mailto:support@omnix.com">support@omnix.com <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+
+        <!-- Call -->
+        <div class="cn-tile call cn-link-tile">
+          <div>
+            <span class="cn-t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+            <h3>Call us</h3>
+            <span class="sub">Mon&ndash;Fri &middot; 9am&ndash;6pm EST</span>
+          </div>
+          <a class="val" href="tel:+18005550199">+1 (800) 555-0199 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+
+        <!-- Map -->
+        <div class="cn-tile map" id="cnMap">
+          <iframe src="https://www.google.com/maps?q=Downtown+Manhattan+New+York&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Omnix Flagship Store location"></iframe>
+          <div class="cn-map-card">
+            <span class="cn-map-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+            <div class="cn-map-info"><b>Omnix Flagship Store</b><span>120 Innovation Ave, Downtown, NY</span></div>
+            <a class="cn-map-go" href="https://www.google.com/maps?q=Downtown+Manhattan+New+York" target="_blank" rel="noopener">Directions <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </div>
+        </div>
+
+        <!-- Visit -->
+        <div class="cn-tile visit cn-link-tile">
+          <div>
+            <span class="cn-t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></span>
+            <h3>Visit us</h3>
+            <span class="sub">120 Innovation Ave<br>Downtown, NY 10013</span>
+          </div>
+          <a class="val" href="#cnMap">View on map <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+
+        <!-- Social -->
+        <div class="cn-tile social">
+          <div>
+            <span class="cn-t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg></span>
+            <h3>Follow along</h3>
+          </div>
+          <div class="cn-social-row">
+            <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+            <a href="#" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 1.5h3.5l-7.6 8.7 9 11.9h-7l-5.5-7.2-6.3 7.2H1.5l8.2-9.3L1 1.5h7.2l5 6.6 5.7-6.6zm-1.2 18.6h1.9L6.4 3.4H4.3l13.4 16.7z"/></svg></a>
+            <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 6.4a2.8 2.8 0 0 0-2-2C18.8 4 12 4 12 4s-6.8 0-8.5.4a2.8 2.8 0 0 0-2 2A29 29 0 0 0 1.5 12a29 29 0 0 0 .5 5.6 2.8 2.8 0 0 0 2 2C5.2 20 12 20 12 20s6.8 0 8.5-.4a2.8 2.8 0 0 0 2-2 29 29 0 0 0 .5-5.6 29 29 0 0 0-.5-5.6z"/><path d="M10 15l5-3-5-3z" fill="currentColor"/></svg></a>
+            <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
+          </div>
+        </div>
+
+        <!-- Hours -->
+        <div class="cn-tile hours">
+          <div class="cn-hours-head">
+            <span class="cn-t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+            <b>Support hours</b>
+          </div>
+          <div class="cn-hours-rows">
+            <div class="cn-hours-row"><span class="d">Mon &ndash; Thu</span><span class="h">9am &ndash; 6pm</span></div>
+            <div class="cn-hours-row"><span class="d">Friday</span><span class="h">9am &ndash; 5pm</span></div>
+            <div class="cn-hours-row"><span class="d">Saturday</span><span class="h">10am &ndash; 4pm</span></div>
+            <div class="cn-hours-row"><span class="d">Sunday</span><span class="h closed">Closed</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FORM (dark panel) -->
+      <section class="cn-formsec">
+        <div class="cn-form-inner">
+          <div class="cn-form-head">
+            <span class="eb">Send a message</span>
+            <h2>Tell us what you need</h2>
+            <p>Fill out the form and we'll reply within one business day.</p>
+          </div>
+          <form id="cnForm" novalidate>
+            <div class="cn-row">
+              <div class="cn-field">
+                <label class="cn-label" for="cnFname">First name</label>
+                <input type="text" class="cn-input" id="cnFname" placeholder="First name" autocomplete="given-name" required data-label="first name">
+                <span class="cn-err-msg">Required.</span>
+              </div>
+              <div class="cn-field">
+                <label class="cn-label" for="cnLname">Last name</label>
+                <input type="text" class="cn-input" id="cnLname" placeholder="Last name" autocomplete="family-name" required data-label="last name">
+                <span class="cn-err-msg">Required.</span>
+              </div>
+            </div>
+            <div class="cn-row">
+              <div class="cn-field">
+                <label class="cn-label" for="cnEmail">Email</label>
+                <input type="email" class="cn-input" id="cnEmail" placeholder="you@example.com" autocomplete="email" required data-label="email">
+                <span class="cn-err-msg">Enter a valid email.</span>
+              </div>
+              <div class="cn-field">
+                <label class="cn-label" for="cnPhone">Phone <span class="opt">(optional)</span></label>
+                <input type="tel" class="cn-input" id="cnPhone" placeholder="+1 (555) 000-0000" autocomplete="tel">
+              </div>
+            </div>
+            <div class="cn-row">
+              <div class="cn-field">
+                <label class="cn-label" for="cnSubject">Subject</label>
+                <select class="cn-select" id="cnSubject" required>
+                  <option value="">Choose a topic</option>
+                  <option>Order &amp; shipping</option>
+                  <option>Returns &amp; refunds</option>
+                  <option>Product question</option>
+                  <option>Warranty &amp; repairs</option>
+                  <option>Partnership / wholesale</option>
+                  <option>Something else</option>
+                </select>
+                <span class="cn-err-msg">Please choose a topic.</span>
+              </div>
+              <div class="cn-field">
+                <label class="cn-label" for="cnOrder">Order number <span class="opt">(optional)</span></label>
+                <input type="text" class="cn-input" id="cnOrder" placeholder="#OMX-00000">
+              </div>
+            </div>
+            <div class="cn-row c1">
+              <div class="cn-field">
+                <label class="cn-label" for="cnMessage">Message</label>
+                <textarea class="cn-textarea" id="cnMessage" placeholder="How can we help?" required data-label="message"></textarea>
+                <span class="cn-err-msg">Please write your message.</span>
+              </div>
+            </div>
+            <label class="cn-check"><input type="checkbox" id="cnConsent" required><span class="cn-check-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>I agree to the <a href="#">privacy policy</a> and consent to being contacted about my enquiry.</label>
+            <div class="cn-submit-wrap">
+              <button type="submit" class="cn-submit" id="cnSubmit">
+                <span class="cn-submit-spin"></span>
+                <svg class="send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                <span class="cn-submit-txt">Send message</span>
+              </button>
+            </div>
+          </form>
+
+          <!-- Success -->
+          <div class="cn-success" id="cnSuccess">
+            <div class="cn-success-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+            <h3>Message sent!</h3>
+            <p>Thanks for reaching out, <span id="cnSuccessName">there</span>. Our team will get back to you within one business day.</p>
+            <button type="button" class="cn-success-btn" id="cnSendAnother"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Send another message</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- FAQ -->
+      <section class="cn-faq">
+        <span class="cn-faq-eyebrow">FAQ</span>
+        <h2>Frequently asked questions</h2>
+        <p>Quick answers to the things customers ask most.</p>
+        <div class="cn-faq-list" id="cnFaqList">
+          <div class="cn-faq-item open">
+            <button type="button" class="cn-faq-trigger"><span class="cn-faq-q">How long does shipping take?</span><span class="cn-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+            <div class="cn-faq-body"><div class="cn-faq-body-inner">Standard delivery takes 5&ndash;7 business days, while Express arrives in 2 days. Shipping rates are calculated at checkout based on your address, and you can track every order from your account.</div></div>
+          </div>
+          <div class="cn-faq-item">
+            <button type="button" class="cn-faq-trigger"><span class="cn-faq-q">What is your return policy?</span><span class="cn-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+            <div class="cn-faq-body"><div class="cn-faq-body-inner">You can return any unused item within 30 days for a full refund. We cover the return shipping &mdash; just start a return from your order history and we'll email you a prepaid label.</div></div>
+          </div>
+          <div class="cn-faq-item">
+            <button type="button" class="cn-faq-trigger"><span class="cn-faq-q">Do your products come with a warranty?</span><span class="cn-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+            <div class="cn-faq-body"><div class="cn-faq-body-inner">Every Omnix product includes a 2-year manufacturer warranty covering defects. You can also add an Omnix Protection Plan at checkout for accidental damage and theft coverage.</div></div>
+          </div>
+          <div class="cn-faq-item">
+            <button type="button" class="cn-faq-trigger"><span class="cn-faq-q">Can I change or cancel my order?</span><span class="cn-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+            <div class="cn-faq-body"><div class="cn-faq-body-inner">Orders can be changed or cancelled within 1 hour of placing them, before they enter fulfilment. Contact us right away with your order number and we'll do our best to help.</div></div>
+          </div>
+          <div class="cn-faq-item">
+            <button type="button" class="cn-faq-trigger"><span class="cn-faq-q">Do you ship internationally?</span><span class="cn-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+            <div class="cn-faq-body"><div class="cn-faq-body-inner">Yes &mdash; we ship to over 60 countries. International shipping rates and delivery times are calculated at checkout based on your destination.</div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</Layout>
+
+<script is:inline>
+  (function(){
+    var root = document.getElementById('contactModern');
+    if (!root) return;
+    var $ = function(s){ return root.querySelector(s); };
+    var $$ = function(s){ return Array.prototype.slice.call(root.querySelectorAll(s)); };
+
+    // Form validation + submit
+    function validate(){
+      var ok = true;
+      ['#cnFname','#cnLname','#cnEmail','#cnSubject','#cnMessage'].forEach(function(sel){
+        var el = $(sel); var field = el.closest('.cn-field');
+        var val = el.value.trim();
+        var bad = !val;
+        if (sel === '#cnEmail' && val) bad = !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val);
+        field.classList.toggle('err', bad);
+        if (bad) ok = false;
+      });
+      var consent = $('#cnConsent');
+      if (!consent.checked) { ok = false; consent.closest('.cn-check').style.color = '#FCA5A5'; }
+      else consent.closest('.cn-check').style.color = '';
+      return ok;
+    }
+    $$('.cn-input, .cn-select, .cn-textarea').forEach(function(el){
+      el.addEventListener('input', function(){ var f = el.closest('.cn-field'); if (f) f.classList.remove('err'); });
+      el.addEventListener('change', function(){ var f = el.closest('.cn-field'); if (f) f.classList.remove('err'); });
+    });
+    $('#cnConsent').addEventListener('change', function(){ if (this.checked) this.closest('.cn-check').style.color = ''; });
+
+    $('#cnForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      if (!validate()){
+        var firstErr = root.querySelector('.cn-field.err');
+        if (firstErr) firstErr.scrollIntoView({ behavior:'smooth', block:'center' });
+        return;
+      }
+      var btn = $('#cnSubmit');
+      btn.classList.add('loading'); btn.disabled = true;
+      setTimeout(function(){
+        btn.classList.remove('loading'); btn.disabled = false;
+        $('#cnSuccessName').textContent = $('#cnFname').value.trim() || 'there';
+        $('#cnForm').style.display = 'none';
+        $('#cnSuccess').classList.add('show');
+        $('#cnSuccess').scrollIntoView({ behavior:'smooth', block:'center' });
+      }, 1400);
+    });
+    $('#cnSendAnother').addEventListener('click', function(){
+      $('#cnForm').reset();
+      $('#cnForm').style.display = '';
+      $('#cnSuccess').classList.remove('show');
+      $('#cnForm').scrollIntoView({ behavior:'smooth', block:'start' });
+    });
+
+    // Live chat nudge
+    var chat = $('#cnChat');
+    if (chat) chat.addEventListener('click', function(){
+      var orig = this.innerHTML; var self = this;
+      this.innerHTML = 'Connecting&hellip;';
+      setTimeout(function(){ self.innerHTML = orig; }, 1600);
+    });
+
+    // FAQ accordion
+    $('#cnFaqList').addEventListener('click', function(e){
+      var trig = e.target.closest('.cn-faq-trigger'); if (!trig) return;
+      var item = trig.closest('.cn-faq-item');
+      var body = item.querySelector('.cn-faq-body');
+      var isOpen = item.classList.contains('open');
+      $$('.cn-faq-item').forEach(function(it){ it.classList.remove('open'); it.querySelector('.cn-faq-body').style.maxHeight = null; });
+      if (!isOpen){ item.classList.add('open'); body.style.maxHeight = body.scrollHeight + 'px'; }
+    });
+    var firstOpen = root.querySelector('.cn-faq-item.open .cn-faq-body');
+    if (firstOpen) firstOpen.style.maxHeight = firstOpen.scrollHeight + 'px';
+  })();
+</script>

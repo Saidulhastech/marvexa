@@ -1,0 +1,65 @@
+---
+// ============================================================
+//  Deals — OMNIX "Daily Deal" band: static head + live countdown
+//  + DealCard grid (Shopify products, ideally discounted). The
+//  countdown is a small vanilla script.
+// ============================================================
+import type { ProductCard as TProductCard } from '~/lib/shopify/types';
+import DealCard from '~/components/product/omnix/DealCard.astro';
+
+interface Props {
+  products: TProductCard[];
+  limit?: number;
+}
+const { products, limit = 4 } = Astro.props;
+const items = products.slice(0, limit);
+---
+
+{
+  items.length > 0 && (
+    <section class="sec sec-frost">
+      <div class="container">
+        <div class="deal-head">
+          <div class="deal-head-l">
+            <span class="deal-tag"><span class="dot" /> Daily Deal · Live now</span>
+            <h3>Drops every 24h, only while stocks last.</h3>
+            <p>Up to 40% off rotating top-rated picks. Today's deals end soon — set a reminder.</p>
+          </div>
+          <div class="deal-countdown" id="countdown">
+            <div class="ct-cell"><div class="ct-num" data-ct="d">00</div><div class="ct-lab">Days</div></div>
+            <div class="ct-cell"><div class="ct-num" data-ct="h">00</div><div class="ct-lab">Hours</div></div>
+            <div class="ct-cell"><div class="ct-num" data-ct="m">00</div><div class="ct-lab">Mins</div></div>
+            <div class="ct-cell"><div class="ct-num" data-ct="s">00</div><div class="ct-lab">Secs</div></div>
+          </div>
+        </div>
+
+        <div class="deal-grid">
+          {items.map((p, i) => <DealCard product={p} eager={i < 2} />)}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+<script>
+  // Countdown to ~2 days out, refreshed each second.
+  const root = document.getElementById('countdown');
+  if (root) {
+    const target = Date.now() + 1000 * 60 * 60 * 47; // ~47h
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const set = (k: string, v: number) => {
+      const el = root.querySelector(`[data-ct="${k}"]`);
+      if (el) el.textContent = pad(v);
+    };
+    const tick = () => {
+      let diff = Math.max(0, target - Date.now());
+      const d = Math.floor(diff / 86400000); diff -= d * 86400000;
+      const h = Math.floor(diff / 3600000); diff -= h * 3600000;
+      const m = Math.floor(diff / 60000); diff -= m * 60000;
+      const s = Math.floor(diff / 1000);
+      set('d', d); set('h', h); set('m', m); set('s', s);
+    };
+    tick();
+    setInterval(tick, 1000);
+  }
+</script>

@@ -1,0 +1,387 @@
+---
+// ============================================================
+//  Compare (OMNIX) — side-by-side product comparison, reusing the
+//  home "Compare top models" card design (.compare-grid / .cmp-col,
+//  styled globally in omnix.css). The compare list is client-side
+//  (localStorage 'omnix_compare', toggled by the data-compare
+//  buttons in Overlays). The page SSR-fetches the catalogue, embeds
+//  a lean lookup, and the <script> renders a card per saved handle.
+//  Add-to-cart reuses the shared nanostore; remove/clear sync back.
+// ============================================================
+import Layout from '~/layouts/Layout.astro';
+import { getProducts } from '~/lib/shopify';
+import { formatMoney, percentOff, hasPriceRange } from '~/lib/money';
+import type { ProductCard } from '~/lib/shopify/types';
+
+export const prerender = false;
+
+let products: ProductCard[] = [];
+let loadError = false;
+try {
+  // Small catalogue: one fetch covers any saved compare selection.
+  products = (await getProducts({ pageSize: 250, sortKey: 'BEST_SELLING' }, Astro.locals.market)).items;
+} catch (err) {
+  loadError = true;
+  console.error('[compare] load failed:', (err as Error).message);
+}
+
+// Lean lookup keyed by handle — only what the cards need.
+const catalogue = Object.fromEntries(
+  products.map((p) => {
+    const off = percentOff(p.priceRange.minVariantPrice, p.compareAtPriceRange?.minVariantPrice);
+
+    // ---- Variant-aware add (mirrors ProductCard) --------------------------
+    const variants = p.variants ?? [];
+    const realOptions = (p.options ?? []).filter(
+      (o) => !(o.name === 'Title' && o.optionValues.every((v) => v.name === 'Default Title')),
+    );
+    const canQuickAdd =
+      p.availableForSale && !!p.firstVariantId && p.firstVariantAvailable !== false;
+    // Picker only when more than one option must be chosen (e.g. Colour + Size).
+    // A colour-only product is resolved by its inline swatch (see below) — same
+    // rule as ProductCard so the two card types behave identically.
+    const needsPicker = canQuickAdd && variants.length > 1 && realOptions.length >= 2;
+    const colorOpt = realOptions.find(
+      (o) => /colou?r|finish|shade/i.test(o.name) || o.optionValues.some((v) => v.swatch?.color),
+    );
+    const colorName = colorOpt?.name ?? null;
+    // Inline swatches (mirrors ProductCard): swap the card image on click and,
+    // when colour is the *only* option, retarget Quick Add to that variant.
+    const swatches = (p.swatches ?? []).map((s) => {
+      const variant = colorName
+        ? variants.find((v) =>
+            v.selectedOptions.some((o) => o.name === colorName && o.value === s.name),
+          )
+        : undefined;
+      // Sold out when no available variant carries this colour (Dawn-style strike).
+      const available = colorName
+        ? variants.some(
+            (v) =>
+              v.availableForSale &&
+              v.selectedOptions.some((o) => o.name === colorName && o.value === s.name),
+          )
+        : true;
+      return {
+        name: s.name,
+        color: s.color,
+        img: variant?.image?.url ?? null,
+        available,
+        variantId: realOptions.length === 1 && available ? variant?.id ?? null : null,
+      };
+    });
+    // Compact variant + option payloads for the shared Quick View picker.
+    const pickerVariants = needsPicker
+      ? variants.map((v) => ({
+          id: v.id,
+          opts: Object.fromEntries(v.selectedOptions.map((o) => [o.name, o.value])),
+          price: Number(v.price.amount),
+          compareAt: v.compareAtPrice ? Number(v.compareAtPrice.amount) : null,
+          img: v.image?.url ?? null,
+          available: v.availableForSale,
+        }))
+      : null;
+    const pickerOptions = needsPicker
+      ? realOptions.map((o) => ({
+          name: o.name,
+          isColor: o === colorOpt,
+          values: o.optionValues.map((ov) => ({ name: ov.name, color: ov.swatch?.color ?? null })),
+        }))
+      : null;
+
+    return [
+      p.handle,
+      {
+        handle: p.handle,
+        title: p.title,
+        image: p.featuredImage?.url ?? '',
+        brand: p.vendor ?? '',
+        type: p.productType ?? '',
+        price:
+          (hasPriceRange(p.priceRange) ? 'From ' : '') +
+          formatMoney(p.priceRange.minVariantPrice),
+        was: off > 0 ? formatMoney(p.compareAtPriceRange!.minVariantPrice) : '',
+        off,
+        rating: p.rating ?? 0,
+        available: p.availableForSale,
+        tags: (p.tags ?? []).slice(0, 3),
+        variantId: canQuickAdd && !needsPicker ? p.firstVariantId! : '',
+        currency: p.priceRange.minVariantPrice.currencyCode,
+        // Multi-option products surface a "Select Options" button → opens the
+        // shared Quick View modal (variant picker) just like the shop grids.
+        pick: needsPicker,
+        pickVariants: pickerVariants ? JSON.stringify(pickerVariants) : '',
+        pickOptions: pickerOptions ? JSON.stringify(pickerOptions) : '',
+        swatches,
+      },
+    ];
+  }),
+);
+---
+
+<Layout title="Compare" description="Compare products side by side — price, specs, rating and availability.">
+  <section class="sec">
+    <div class="container">
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">Home</a><span>/</span><span class="cur">Compare</span>
+      </nav>
+
+      <header class="cmp2-head">
+        <div>
+          <div class="cmp2-eyebrow">Compare</div>
+          <h1 class="h1">Compare products</h1>
+          <p class="cmp2-sub" id="cmp2Sub">Add products to compare from any product card.</p>
+        </div>
+        <button class="btn btn-ghost" id="cmp2Clear" type="button" style="display:none;">Clear all</button>
+      </header>
+
+      {/* Empty / error state */}
+      <div class="cmp2-empty" id="cmp2Empty" style="display:none;">
+        <div class="cmp2-empty-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="18" rx="1.5"/><rect x="14" y="3" width="7" height="11" rx="1.5"/></svg>
+        </div>
+        <b id="cmp2EmptyTitle">Nothing to compare yet</b>
+        <p id="cmp2EmptyBody">Tap the compare icon on any product to line it up here side by side.</p>
+        <a class="btn btn-primary" href="/products">Browse products</a>
+      </div>
+
+      {/* Cards (rendered by script) — reuses the home compare design */}
+      <div class="cmp-scroll" id="cmpScroll" style="display:none;">
+        <div class="compare-wrap">
+          <div class="compare-grid" id="cmpGrid"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script type="application/json" id="cmp2Catalogue" is:inline set:html={JSON.stringify(catalogue)}></script>
+  <div hidden id="cmp2Flags" data-load-error={loadError ? '1' : '0'}></div>
+</Layout>
+
+<script>
+  type Swatch = { name: string; color: string; img: string | null; available: boolean; variantId: string | null };
+  type Row = {
+    handle: string; title: string; image: string; brand: string; type: string;
+    price: string; was: string; off: number; rating: number; available: boolean;
+    tags: string[]; variantId: string; currency: string;
+    pick: boolean; pickVariants: string; pickOptions: string; swatches: Swatch[];
+  };
+
+  const KEY = 'omnix_compare';
+  const cat: Record<string, Row> = JSON.parse(
+    document.getElementById('cmp2Catalogue')?.textContent || '{}',
+  );
+  const loadError = document.getElementById('cmp2Flags')?.dataset.loadError === '1';
+
+  const $ = (id: string) => document.getElementById(id);
+  const readList = (): string[] => {
+    try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
+  };
+  const writeList = (l: string[]) => localStorage.setItem(KEY, JSON.stringify(l));
+  // Keep the header compare badge in sync (it's owned by Overlays, which
+  // only sets it on load — so reflect local changes here too).
+  const syncBadge = (n: number) => {
+    const badge = document.getElementById('compareBadge');
+    if (badge) {
+      badge.textContent = String(n);
+      badge.style.display = n ? '' : 'none';
+    }
+  };
+  const esc = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  function specRow(label: string, value: string) {
+    return `<li><span>${label}</span><b>${value}</b></li>`;
+  }
+
+  function card(p: Row) {
+    const specs = [
+      p.brand && specRow('Brand', esc(p.brand)),
+      p.type && specRow('Category', esc(p.type)),
+      specRow('Rating', p.rating ? `${p.rating.toFixed(1)}★` : '—'),
+      specRow('Availability', p.available ? 'In stock' : 'Sold out'),
+      p.tags.length && specRow('Features', p.tags.map(esc).join(', ')),
+    ].filter(Boolean).join('');
+
+    const priceRow = `<div class="cmp-price">${p.price}` +
+      (p.was ? ` <span class="cmp-was">${p.was}</span>` : '') +
+      (p.off ? ` <span class="cmp-off">-${p.off}%</span>` : '') +
+      `</div>`;
+
+    // Inline colour swatches — identical markup/classes to ProductCard so the
+    // shared Overlays handler (image swap + Quick Add retarget) drives them.
+    const swatchRow = p.swatches.length
+      ? `<div class="prod-swatches">` +
+        p.swatches
+          .slice(0, 4)
+          .map(
+            (s) =>
+              `<button type="button" class="swatch${s.available ? '' : ' is-unavailable'}"` +
+              ` style="background:${esc(s.color)}"` +
+              ` title="${esc(s.available ? s.name : `${s.name} — sold out`)}"` +
+              ` aria-label="${esc(s.available ? s.name : `${s.name}, sold out`)}"` +
+              ` aria-disabled="${s.available ? 'false' : 'true'}" data-swatch` +
+              ` data-name="${esc(s.name)}" data-img="${esc(s.img ?? '')}"` +
+              ` data-variant-id="${esc(s.variantId ?? '')}"></button>`,
+          )
+          .join('') +
+        (p.swatches.length > 4 ? `<span class="swatch-more">+${p.swatches.length - 4}</span>` : '') +
+        `</div>`
+      : '';
+
+    let foot: string;
+    if (p.pick) {
+      // Multi-option → "Select Options" opens the shared Quick View picker
+      // (handled by the global delegation in Overlays).
+      foot =
+        `<button class="btn btn-primary btn-block" type="button"` +
+        ` data-add data-pick` +
+        ` data-handle="${esc(p.handle)}"` +
+        ` data-name="${esc(p.title)}"` +
+        ` data-img="${esc(p.image)}"` +
+        ` data-brand="${esc(p.brand)}"` +
+        ` data-href="/products/${esc(p.handle)}"` +
+        ` data-currency="${esc(p.currency)}"` +
+        ` data-variants="${esc(p.pickVariants)}"` +
+        ` data-options="${esc(p.pickOptions)}">Select Options</button>`;
+    } else if (p.variantId) {
+      foot =
+        `<button class="btn btn-primary btn-block" type="button"` +
+        ` data-add data-variant-id="${esc(p.variantId)}">Add to Cart</button>`;
+    } else {
+      foot = `<a class="btn btn-primary btn-block" href="/products/${esc(p.handle)}">${p.available ? 'View product' : 'Sold out'}</a>`;
+    }
+
+    return `
+      <div class="cmp-col">
+        <button class="cmp-rm" type="button" data-remove="${p.handle}" aria-label="Remove from compare">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+        <a class="cmp-img" href="/products/${p.handle}">${p.image ? `<img src="${p.image}" alt="${esc(p.title)}">` : ''}</a>
+        <a class="cmp-name" href="/products/${p.handle}">${esc(p.title)}</a>
+        ${priceRow}
+        ${swatchRow}
+        <ul class="cmp-spec">${specs}</ul>
+        <div class="cmp-foot">${foot}</div>
+      </div>`;
+  }
+
+  function render() {
+    const items = readList().filter((h) => cat[h]).map((h) => cat[h]); // drop stale handles
+    syncBadge(items.length);
+
+    const empty = $('cmp2Empty')!;
+    const scroll = $('cmpScroll')!;
+    const clear = $('cmp2Clear')!;
+    const sub = $('cmp2Sub')!;
+
+    if (loadError) {
+      $('cmp2EmptyTitle')!.textContent = 'Compare is unavailable';
+      $('cmp2EmptyBody')!.textContent = 'We could not load products right now. Please try again shortly.';
+    }
+
+    if (items.length === 0) {
+      empty.style.display = '';
+      scroll.style.display = 'none';
+      clear.style.display = 'none';
+      sub.textContent = 'Add products to compare from any product card.';
+      return;
+    }
+
+    empty.style.display = 'none';
+    scroll.style.display = '';
+    clear.style.display = '';
+    sub.textContent = `${items.length} product${items.length === 1 ? '' : 's'} side by side.`;
+
+    // 3 cards per row (omnix .compare-grid → 3 desktop / 2 tablet / 1 mobile);
+    // a 4th product wraps to the next row.
+    $('cmpGrid')!.innerHTML = items.map(card).join('');
+  }
+
+  // Remove from compare (event delegation). Add-to-cart + the "Select Options"
+  // variant picker are handled globally by Overlays via the shared data-add /
+  // data-pick convention — same as the shop grids.
+  $('cmpGrid')?.addEventListener('click', (e) => {
+    const rm = (e.target as HTMLElement).closest<HTMLElement>('[data-remove]');
+    if (rm) {
+      const h = rm.dataset.remove!;
+      writeList(readList().filter((x) => x !== h));
+      document.querySelectorAll<HTMLElement>(`[data-compare][data-handle="${h}"]`).forEach((b) =>
+        b.classList.remove('is-active'));
+      render();
+    }
+  });
+
+  $('cmp2Clear')?.addEventListener('click', () => {
+    writeList([]);
+    document.querySelectorAll<HTMLElement>('[data-compare]').forEach((b) => b.classList.remove('is-active'));
+    render();
+  });
+
+  render();
+</script>
+
+<style>
+  /* Static header / empty — scoped is fine (present at build time). */
+  .crumb {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.82rem; color: var(--muted); margin-bottom: 22px; flex-wrap: wrap;
+  }
+  .crumb a:hover { color: var(--text); }
+  .crumb .cur { color: var(--text); font-weight: 500; }
+
+  .cmp2-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 28px;
+  }
+  .cmp2-eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--electric); margin-bottom: 10px;
+  }
+  .cmp2-head .h1 {
+    font-family: "Sora", system-ui, sans-serif;
+    font-size: clamp(1.9rem, 4vw, 2.8rem); font-weight: 700;
+    letter-spacing: -0.02em; line-height: 1.05; margin: 0;
+  }
+  .cmp2-sub { margin: 12px 0 0; color: var(--muted); }
+
+  .btn-ghost { border: 1px solid var(--border); background: var(--white); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--electric); color: var(--electric); }
+
+  .cmp2-empty {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    gap: 10px; padding: 66px 20px;
+  }
+  .cmp2-empty-ico {
+    width: 60px; height: 60px; display: grid; place-items: center;
+    border: 1px solid var(--border); border-radius: 16px; color: var(--muted); margin-bottom: 6px;
+  }
+  .cmp2-empty b { font-size: 1.2rem; }
+  .cmp2-empty p { color: var(--muted); max-width: 30rem; margin: 0; }
+  .cmp2-empty .btn { margin-top: 14px; }
+
+  .cmp-scroll { overflow-x: auto; }
+</style>
+
+<style is:global>
+  /* These target the JS-injected cards, so they must be global (scoped
+     CSS keys off a build-time attribute the injected nodes lack).
+     Builds on the home compare design (.cmp-col) in omnix.css. */
+  .cmp-col { position: relative; }
+  /* Horizontal divider between wrapped rows (omnix only borders columns). */
+  #cmpGrid .cmp-col { border-bottom: 1px solid var(--border); }
+  .cmp-name { color: var(--text); }
+  .cmp-name:hover { color: var(--electric); }
+  .cmp-rm {
+    position: absolute; top: 12px; right: 12px; z-index: 2;
+    width: 28px; height: 28px; display: grid; place-items: center;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--white);
+    color: var(--muted); cursor: pointer; transition: all .15s;
+  }
+  .cmp-rm:hover { border-color: #ef4444; color: #ef4444; }
+  .cmp-was { color: var(--muted); text-decoration: line-through; font-size: 0.85rem; font-weight: 500; margin-left: 6px; }
+  .cmp-off { color: #16a34a; font-weight: 700; font-size: 0.82rem; margin-left: 6px; }
+  .cmp-foot { margin-top: auto; }
+  /* Reuse ProductCard's swatch styling, but left-align on its own compare row
+     (ProductCard right-aligns because the swatches sit beside the price). */
+  #cmpGrid .prod-swatches { justify-content: flex-start; margin: 8px 0 2px; }
+</style>

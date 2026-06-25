@@ -1,0 +1,19 @@
+---
+// ============================================================
+//  ProductGrid — OMNIX `.prod-grid` of ProductCards. Reused by
+//  every product grid section (best-sellers, deals, etc.).
+// ============================================================
+import type { ProductCard as TProductCard } from '~/lib/shopify/types';
+import ProductCard from '~/components/product/omnix/ProductCard.astro';
+
+interface Props {
+  products: TProductCard[];
+  /** Eager-load the first row for above-the-fold grids. */
+  eagerCount?: number;
+}
+const { products, eagerCount = 0 } = Astro.props;
+---
+
+<div class="prod-grid">
+  {products.map((p, i) => <ProductCard product={p} eager={i < eagerCount} />)}
+</div>

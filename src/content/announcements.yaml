@@ -1,0 +1,13 @@
+# Rotating top announcement bar (OMNIX). Static chrome copy.
+- id: spring-sale
+  icon: spark
+  text: "Spring Sale — up to <b>40% off</b> audio &amp; wearables. Shop now."
+- id: next-day
+  icon: truck
+  text: "Next-day delivery available — order before <b>2 PM</b>."
+- id: trade-in
+  icon: refresh
+  text: "Trade-in your old device — get up to <b>$400</b> instant credit today."
+- id: returns
+  icon: shield
+  text: "<b>30-day</b> no-questions returns &amp; 2-year warranty on every order."

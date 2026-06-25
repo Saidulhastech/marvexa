@@ -1,0 +1,33 @@
+---
+// ============================================================
+//  TrustBar — OMNIX `.trust` strip (4 promises). Content-driven.
+// ============================================================
+import { getCollection } from 'astro:content';
+import Icon from '~/components/ui/omnix/Icon.astro';
+
+const items = (await getCollection('trust')).sort((a, b) => a.id.localeCompare(b.id));
+// Preserve authored order (yaml order is lost by id-sort), so reorder
+// by the known sequence used in the template.
+const order = ['shipping', 'returns', 'warranty', 'support'];
+items.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+---
+
+<section class="trust">
+  <div class="container">
+    <div class="trust-grid">
+      {
+        items.map((it) => (
+          <div class="trust-item">
+            <div class="trust-ic">
+              <Icon name={it.data.icon} size={22} />
+            </div>
+            <div class="trust-text">
+              <h6>{it.data.title}</h6>
+              <span>{it.data.body}</span>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>

@@ -1,0 +1,102 @@
+---
+// ============================================================
+//  Collections index (OMNIX) — every Shopify collection as a
+//  lifestyle category tile. Uses the OMNIX chrome (Layout =
+//  new header/footer/cart drawer) and the shared `.cat-card`.
+//  Local demo art fills in for image-less collections.
+// ============================================================
+import Layout from '~/layouts/Layout.astro';
+import SectionHeading from '~/components/ui/omnix/SectionHeading.astro';
+import CategoryCard from '~/components/collection/omnix/CategoryCard.astro';
+import { resolveImage } from '~/lib/asset';
+import { getAllCollections } from '~/lib/shopify';
+import type { Collection } from '~/lib/shopify/types';
+
+let collections: Collection[] = [];
+let loadError = false;
+try {
+  collections = await getAllCollections();
+} catch (err) {
+  console.error('[collections] load failed:', (err as Error).message);
+  loadError = true;
+}
+
+// Local fallback art (authored order) for image-less collections —
+// same set the home category grid uses, so the look stays consistent.
+const fallbacks = [
+  'cat-smartphones.jpg',
+  'photo-luxurious-headphone-product-image.jpg',
+  'cat-smartwatch.jpg',
+  'cat-cameras.jpg',
+  'speaker.jpg',
+  'cat-tablets.jpg',
+];
+---
+
+<Layout title="Collections" description="Shop the full range by collection.">
+  <section class="sec">
+    <div class="container">
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">Home</a><span>/</span><span class="cur">Collections</span>
+      </nav>
+
+      <SectionHeading
+        eyebrow="Browse"
+        title="Shop by collection"
+        body="Curated edits for every part of the rotation — explore the full catalogue by collection."
+      />
+
+      {
+        collections.length > 0 ? (
+          <div class="cat-grid">
+            {collections.map((c, i) => (
+              <CategoryCard
+                title={c.title}
+                href={`/collections/${c.handle}`}
+                image={c.image?.url ?? resolveImage(fallbacks[i % fallbacks.length])}
+                count={c.productCount}
+                countPlus={c.productCountPlus}
+                eager={i < 3}
+              />
+            ))}
+          </div>
+        ) : (
+          <div class="coll-empty">
+            <b>{loadError ? 'Collections unavailable' : 'No collections yet'}</b>
+            <p>
+              {loadError
+                ? 'We could not load collections right now. Please try again shortly.'
+                : 'New collections are on the way. Check back soon.'}
+            </p>
+            <a class="btn btn-primary" href="/products">Browse all products</a>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .crumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--muted, #6b7280);
+    margin-bottom: 22px;
+  }
+  .crumb a:hover { color: var(--ink, #0e1417); }
+  .crumb .cur { color: var(--ink, #0e1417); font-weight: 500; }
+
+  .coll-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    padding: 72px 20px;
+  }
+  .coll-empty b { font-size: 1.25rem; }
+  .coll-empty p { color: var(--muted, #6b7280); max-width: 30rem; margin: 0; }
+  .coll-empty .btn { margin-top: 14px; }
+</style>

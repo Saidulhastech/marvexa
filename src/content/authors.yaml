@@ -1,0 +1,34 @@
+# ============================================================
+#  Blog authors — keyed by slug (used as /blog/author/<slug>).
+#  Referenced from a blog post's `author` frontmatter field.
+#  Avatars use the pravatar service (allowed in astro.config
+#  remotePatterns) so no local asset files are needed.
+# ============================================================
+maya-chen:
+  name: Maya Chen
+  role: Senior Audio Editor
+  avatar: "https://i.pravatar.cc/200?img=47"
+  bio: >-
+    Maya has spent a decade testing headphones on planes, trains and in
+    open-plan offices. She cares more about what a spec sheet hides than
+    what it shows, and writes the buying guides she wishes she'd had.
+  twitter: "@mayachen"
+
+ravi-okafor:
+  name: Ravi Okafor
+  role: Hardware Engineer
+  avatar: "https://i.pravatar.cc/200?img=12"
+  bio: >-
+    Ravi works on acoustic and mechanical design at Omnix. He writes the
+    behind-the-build stories — the trade-offs, the dead ends, and the five
+    grams that took eighteen months.
+  twitter: "@raviokafor"
+
+elena-fischer:
+  name: Elena Fischer
+  role: Fitness & Wearables Writer
+  avatar: "https://i.pravatar.cc/200?img=32"
+  bio: >-
+    Elena reviews wearables the only way she trusts — by training with them.
+    Marathons, trail runs and the occasional 3am battery-anxiety check.
+  twitter: "@elenafischer"

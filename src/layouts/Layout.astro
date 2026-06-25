@@ -1,0 +1,94 @@
+---
+// ============================================================
+//  Layout — OMNIX html shell. Loads the design system (plain CSS),
+//  Sora + Inter fonts, SEO <head>, and the vanilla chrome
+//  (announcement, header, footer, cart drawer, mobile nav).
+// ============================================================
+import '~/styles/omnix.css';
+import { BRAND } from '~/config/omnix';
+import SEO from '~/components/seo/SEO.astro';
+import Announcement from '~/components/layout/omnix/Announcement.astro';
+import Header from '~/components/layout/omnix/Header.astro';
+import Footer from '~/components/layout/omnix/Footer.astro';
+import CartDrawer from '~/components/layout/omnix/CartDrawer.astro';
+import Overlays from '~/components/layout/omnix/Overlays.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  type?: string;
+  noindex?: boolean;
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  noFooter?: boolean;
+}
+
+const { title, description, image, type, noindex, jsonLd, noFooter = false } = Astro.props;
+
+// Site-wide JSON-LD: Organization + WebSite (merged with any page blocks).
+const baseJsonLd: Record<string, unknown>[] = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: BRAND.legalName,
+    url: Astro.site?.href ?? Astro.url.origin,
+    sameAs: [BRAND.social.instagram, BRAND.social.twitter, BRAND.social.youtube],
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: BRAND.name,
+    url: Astro.site?.href ?? Astro.url.origin,
+  },
+];
+const pageJsonLd = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+const allJsonLd = [...baseJsonLd, ...pageJsonLd];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    {/* Warm the Shopify image CDN early so product images aren't gated on a
+        cold connection (helps LCP on product grids/PDP). */}
+    <link rel="preconnect" href="https://cdn.shopify.com" crossorigin />
+
+    {/* Fonts — Sora (display) · Inter (body), matching the OMNIX template */}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+    />
+
+    <SEO {title} {description} {image} {type} {noindex} jsonLd={allJsonLd} />
+  </head>
+
+  <body>
+    <a href="#main" class="skip-link">Skip to content</a>
+
+    <Announcement />
+    <Header />
+
+    <main id="main">
+      <slot />
+    </main>
+
+    {!noFooter && <Footer />}
+
+    {/* Global cart drawer (nanostore-driven) + secondary overlays */}
+    <CartDrawer />
+    <Overlays />
+  </body>
+</html>

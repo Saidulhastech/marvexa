@@ -1,0 +1,173 @@
+---
+// ============================================================
+//  Author page (OMNIX) — author banner + bio + every post they've
+//  written. SSR: looks the author up by slug, 404 if missing.
+// ============================================================
+import Layout from '~/layouts/Layout.astro';
+import PostCard from '~/components/blog/PostCard.astro';
+import Icon from '~/components/ui/omnix/Icon.astro';
+import { getEntry, getCollection } from 'astro:content';
+
+const { slug } = Astro.params;
+const author = slug ? await getEntry('authors', slug) : undefined;
+
+if (!author) {
+  Astro.response.status = 404;
+}
+
+let posts: Awaited<ReturnType<typeof getCollection<'blog'>>> = [];
+if (author) {
+  posts = (await getCollection('blog'))
+    .filter((p) => p.data.author === slug)
+    .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+}
+
+// Distinct topics across this author's posts → "writes about" chips.
+const topics = [...new Set(posts.flatMap((p) => p.data.tags))].slice(0, 6);
+---
+
+{
+  author ? (
+    <Layout title={`${author.data.name} — Journal`} description={author.data.bio}>
+      {/* ---- Banner hero ---- */}
+      <header class="au-banner">
+        <div class="container au-banner-inner">
+          <a class="au-back" href="/blog">← The journal</a>
+          <div class="au-id">
+            {author.data.avatar && <img class="au-avatar" src={author.data.avatar} alt={author.data.name} />}
+            <div class="au-id-text">
+              <div class="au-eyebrow">Author</div>
+              <h1 class="au-name">{author.data.name}</h1>
+              {author.data.role && <div class="au-role">{author.data.role}</div>}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="sec au-main">
+        <div class="container au-grid">
+          {/* Sidebar */}
+          <aside class="au-side">
+            {author.data.bio && <p class="au-bio">{author.data.bio}</p>}
+
+            <div class="au-stats">
+              <div class="au-stat"><b>{posts.length}</b><span>Post{posts.length === 1 ? '' : 's'}</span></div>
+              {topics.length > 0 && <div class="au-stat"><b>{topics.length}</b><span>Topics</span></div>}
+            </div>
+
+            {topics.length > 0 && (
+              <div class="au-topics">
+                <div class="au-topics-h">Writes about</div>
+                <div class="au-topics-list">
+                  {topics.map((t) => <span class="blog-tag">{t}</span>)}
+                </div>
+              </div>
+            )}
+
+            {author.data.twitter && (
+              <a class="au-social" href={`https://twitter.com/${author.data.twitter.replace('@', '')}`} target="_blank" rel="noopener">
+                <Icon name="instagram" size={15} /> {author.data.twitter}
+              </a>
+            )}
+          </aside>
+
+          {/* Posts */}
+          <div class="au-posts">
+            {
+              posts.length > 0 ? (
+                <>
+                  <div class="au-posts-head">
+                    <h2>Latest stories</h2>
+                    <span>{posts.length} post{posts.length === 1 ? '' : 's'}</span>
+                  </div>
+                  <div class="blog-grid au-blog-grid">
+                    {posts.map((p) => <PostCard post={p} />)}
+                  </div>
+                </>
+              ) : (
+                <p class="au-empty">No posts from this author yet.</p>
+              )
+            }
+          </div>
+        </div>
+      </section>
+    </Layout>
+  ) : (
+    <Layout title="Author not found" description="We couldn’t find that author." noindex>
+      <section class="sec">
+        <div class="container au-nf">
+          <p class="au-eyebrow au-eyebrow-nf">Error 404</p>
+          <h1 class="h1">Author not found</h1>
+          <p>We couldn't find that author.</p>
+          <a class="btn btn-primary" href="/blog">Back to the journal</a>
+        </div>
+      </section>
+    </Layout>
+  )
+}
+
+<style>
+  /* Banner — solid colored block; identity sits fully inside it. */
+  .au-banner {
+    background: linear-gradient(135deg, var(--tech-black), #1b2436);
+    color: #fff; padding: 30px 0 34px;
+  }
+  .au-back { display: inline-block; font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,.78); margin-bottom: 36px; }
+  .au-back:hover { color: #fff; }
+  .au-id { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .au-avatar {
+    width: 116px; height: 116px; border-radius: 50%; object-fit: cover;
+    border: 4px solid rgba(255,255,255,.9); box-shadow: 0 12px 30px rgba(0,0,0,.35);
+  }
+  .au-eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cyan); margin-bottom: 8px; }
+  .au-name {
+    font-family: "Sora", system-ui, sans-serif;
+    font-size: clamp(1.9rem, 4.5vw, 2.8rem); font-weight: 700;
+    letter-spacing: -0.02em; line-height: 1.04; margin: 0; color: #fff;
+  }
+  .au-role { color: rgba(255,255,255,.72); font-weight: 500; margin-top: 7px; }
+
+  /* Body grid */
+  .au-main { padding-top: 44px; }
+  .au-grid { display: grid; grid-template-columns: 1fr; gap: 40px; }
+  @media (min-width: 980px) {
+    .au-grid { grid-template-columns: 280px minmax(0, 1fr); gap: 56px; align-items: start; }
+    .au-side { position: sticky; top: 96px; }
+  }
+
+  .au-bio { color: var(--text-soft, #374151); line-height: 1.75; margin: 0 0 22px; }
+
+  .au-stats { display: flex; gap: 14px; margin-bottom: 24px; }
+  .au-stat {
+    flex: 1; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px;
+    background: var(--white); display: flex; flex-direction: column;
+  }
+  .au-stat b { font-family: "Sora", system-ui, sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--text); line-height: 1; }
+  .au-stat span { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+
+  .au-topics { margin-bottom: 22px; }
+  .au-topics-h { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .au-topics-list { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .au-social {
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px;
+    border: 1px solid var(--border); border-radius: 999px; background: var(--white);
+    color: var(--text); font-weight: 600; font-size: 0.88rem;
+  }
+  .au-social:hover { border-color: var(--electric); color: var(--electric); }
+
+  .au-posts-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    margin-bottom: 24px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
+  }
+  .au-posts-head h2 { font-family: "Sora", system-ui, sans-serif; font-size: 1.5rem; font-weight: 700; margin: 0; }
+  .au-posts-head span { font-size: 0.8rem; color: var(--muted); }
+  .au-blog-grid { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 620px) { .au-blog-grid { grid-template-columns: 1fr; } }
+  .au-empty { color: var(--muted); padding: 32px 0; }
+
+  .au-nf { text-align: center; padding: 80px 20px; }
+  .au-nf .h1 { font-family: "Sora", system-ui, sans-serif; font-size: clamp(2rem,6vw,3rem); font-weight: 700; margin: 0; }
+  .au-nf p { color: var(--muted); margin: 12px 0 22px; }
+  .au-eyebrow-nf { margin-bottom: 12px; }
+</style>

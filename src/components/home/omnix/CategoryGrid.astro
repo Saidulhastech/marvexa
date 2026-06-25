@@ -1,0 +1,56 @@
+---
+// ============================================================
+//  CategoryGrid — OMNIX "Shop by category". Maps real Shopify
+//  collections to lifestyle tiles. Falls back to local demo art
+//  when a collection has no image.
+// ============================================================
+import type { Collection } from '~/lib/shopify/types';
+import { resolveImage } from '~/lib/asset';
+import SectionHeading from '~/components/ui/omnix/SectionHeading.astro';
+import CategoryCard from '~/components/collection/omnix/CategoryCard.astro';
+
+interface Props {
+  collections: Collection[];
+  limit?: number;
+}
+const { collections, limit = 6 } = Astro.props;
+
+// Local fallback art (in authored order) for image-less collections.
+const fallbacks = [
+  'cat-smartphones.jpg',
+  'photo-luxurious-headphone-product-image.jpg',
+  'cat-smartwatch.jpg',
+  'cat-cameras.jpg',
+  'speaker.jpg',
+  'cat-tablets.jpg',
+];
+
+const items = collections.slice(0, limit);
+---
+
+{
+  items.length > 0 && (
+    <section class="sec sec-frost">
+      <div class="container">
+        <SectionHeading
+          eyebrow="Shop by category"
+          title="Find the perfect tech for every moment."
+          body="Lifestyle-led categories, hand-picked from over 240 brands and engineered to fit how you actually live."
+          link={{ label: 'View all categories', href: '/collections' }}
+        />
+        <div class="cat-grid">
+          {items.map((c, i) => (
+            <CategoryCard
+              title={c.title}
+              href={`/collections/${c.handle}`}
+              image={c.image?.url ?? resolveImage(fallbacks[i % fallbacks.length])}
+              count={c.productCount}
+              countPlus={c.productCountPlus}
+              eager={i < 3}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}

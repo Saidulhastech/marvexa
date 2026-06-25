@@ -1,0 +1,260 @@
+---
+// ============================================================
+//  Search results (OMNIX) — full product search with sort +
+//  cursor pagination, on the OMNIX chrome. Shares `.prod-grid`.
+// ============================================================
+import Layout from '~/layouts/Layout.astro';
+import ProductGrid from '~/components/product/omnix/ProductGrid.astro';
+import Icon from '~/components/ui/omnix/Icon.astro';
+import { searchProducts, SEARCH_SORT_OPTIONS, resolveSort } from '~/lib/shopify';
+import { paginationUrls } from '~/lib/pagination';
+import type { ProductCard } from '~/lib/shopify/types';
+
+const url = Astro.url;
+const q = (url.searchParams.get('q') ?? '').trim();
+const sortValue = url.searchParams.get('sort') ?? SEARCH_SORT_OPTIONS[0].value;
+const sort = resolveSort(SEARCH_SORT_OPTIONS, sortValue);
+const after = url.searchParams.get('after');
+const before = url.searchParams.get('before');
+
+let products: ProductCard[] = [];
+let total = 0;
+let prevUrl: string | null = null;
+let nextUrl: string | null = null;
+let loadFailed = false;
+
+if (q) {
+  try {
+    const page = await searchProducts(
+      {
+        query: q,
+        pageSize: 12,
+        after,
+        before,
+        sortKey: sort.sortKey,
+        reverse: sort.reverse,
+      },
+      Astro.locals.market,
+    );
+    products = page.items;
+    total = page.totalCount;
+    ({ prevUrl, nextUrl } = paginationUrls(url, page.pageInfo));
+  } catch (err) {
+    loadFailed = true;
+    console.error('[search] load failed:', (err as Error).message);
+  }
+}
+
+const countLabel = q ? `${total} result${total === 1 ? '' : 's'} for “${q}”` : 'Enter a search term';
+---
+
+<Layout title={q ? `Search · ${q}` : 'Search'} description="Search the full catalogue." noindex>
+  <section class="sec">
+    <div class="container">
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">Home</a><span>/</span><span class="cur">Search</span>
+      </nav>
+
+      <header class="coll-head">
+        <div class="coll-eyebrow">Search</div>
+        <h1 class="h1">{q ? q : 'Search the catalogue'}</h1>
+      </header>
+
+      <form class="srch-box" method="get" action="/search" role="search">
+        <Icon name="search" size={18} />
+        <input
+          type="search"
+          name="q"
+          value={q}
+          placeholder="Search products…"
+          autocomplete="off"
+          aria-label="Search products"
+        />
+        <button type="submit" class="btn btn-primary">Search</button>
+      </form>
+
+      {
+        q ? (
+          products.length > 0 ? (
+            <>
+              <div class="coll-toolbar">
+                <span class="coll-count">{countLabel}</span>
+                <form class="coll-sortwrap" method="get" action="/search">
+                  <input type="hidden" name="q" value={q} />
+                  <label for="srchSort">Sort by</label>
+                  <select class="coll-sort" id="srchSort" name="sort" onchange="this.form.submit()">
+                    {SEARCH_SORT_OPTIONS.map((o) => (
+                      <option value={o.value} selected={o.value === sort.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </form>
+              </div>
+
+              <ProductGrid products={products} eagerCount={4} />
+
+              {(prevUrl || nextUrl) && (
+                <nav class="coll-pager" aria-label="Pagination">
+                  {prevUrl ? (
+                    <a class="btn btn-ghost" href={prevUrl}>
+                      <Icon name="arrow-left" size={15} stroke={2.2} /> Previous
+                    </a>
+                  ) : (
+                    <span class="btn btn-ghost is-disabled" aria-disabled="true">
+                      <Icon name="arrow-left" size={15} stroke={2.2} /> Previous
+                    </span>
+                  )}
+                  {nextUrl ? (
+                    <a class="btn btn-ghost" href={nextUrl}>
+                      Next <Icon name="arrow-right" size={15} stroke={2.2} />
+                    </a>
+                  ) : (
+                    <span class="btn btn-ghost is-disabled" aria-disabled="true">
+                      Next <Icon name="arrow-right" size={15} stroke={2.2} />
+                    </span>
+                  )}
+                </nav>
+              )}
+            </>
+          ) : (
+            <div class="coll-empty">
+              <b>{loadFailed ? 'Search is unavailable' : 'No matches'}</b>
+              <p>
+                {loadFailed
+                  ? 'We could not run that search right now. Please try again shortly.'
+                  : `Nothing matched “${q}”. Try another term.`}
+              </p>
+              <a class="btn btn-ghost" href="/products">Browse all products</a>
+            </div>
+          )
+        ) : (
+          <div class="coll-empty">
+            <b>Start typing to search</b>
+            <p>Search the full catalogue by product name, brand, or keyword.</p>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .crumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  .crumb a:hover { color: var(--text); }
+  .crumb .cur { color: var(--text); font-weight: 500; }
+
+  .coll-head { margin-bottom: 22px; }
+  .coll-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--electric);
+    margin-bottom: 10px;
+  }
+  .coll-head .h1 {
+    font-family: "Sora", system-ui, sans-serif;
+    font-size: clamp(1.9rem, 4vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin: 0;
+    word-break: break-word;
+  }
+
+  .srch-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 6px 6px 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--white);
+    margin-bottom: 30px;
+    max-width: 640px;
+  }
+  .srch-box:focus-within { border-color: var(--electric); }
+  .srch-box svg { color: var(--muted); flex-shrink: 0; }
+  .srch-box input {
+    flex: 1;
+    border: none;
+    outline: 0;
+    box-shadow: none;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    font-size: 0.95rem;
+    color: var(--text);
+    padding: 10px 0;
+  }
+  .srch-box input:focus,
+  .srch-box input:focus-visible { outline: 0; box-shadow: none; }
+  .srch-box input::-webkit-search-decoration,
+  .srch-box input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+  .srch-box .btn { padding: 11px 22px; }
+
+  .coll-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-bottom: 18px;
+    margin-bottom: 26px;
+    border-bottom: 1px solid var(--border);
+  }
+  .coll-count { font-size: 0.85rem; color: var(--muted); }
+  .coll-sortwrap { display: flex; align-items: center; gap: 10px; }
+  .coll-sortwrap label { font-size: 0.82rem; color: var(--muted); }
+  .coll-sort {
+    appearance: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--white);
+    padding: 9px 34px 9px 14px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+  .coll-sort:hover { border-color: var(--electric); }
+
+  .coll-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 42px;
+  }
+  .btn-ghost {
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--text);
+  }
+  .btn-ghost:hover { border-color: var(--electric); color: var(--electric); }
+  .btn-ghost.is-disabled { opacity: 0.4; pointer-events: none; }
+
+  .coll-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    padding: 64px 20px;
+  }
+  .coll-empty b { font-size: 1.25rem; }
+  .coll-empty p { color: var(--muted); max-width: 30rem; margin: 0; }
+  .coll-empty .btn { margin-top: 14px; }
+</style>

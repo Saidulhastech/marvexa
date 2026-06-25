@@ -1,0 +1,63 @@
+---
+// ============================================================
+//  Journal index (OMNIX) — every blog post as a card. Links to the
+//  post detail pages; reuses the home `.blog-grid` design.
+// ============================================================
+import Layout from '~/layouts/Layout.astro';
+import PostCard from '~/components/blog/PostCard.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('blog')).sort(
+  (a, b) => b.data.date.getTime() - a.data.date.getTime(),
+);
+---
+
+<Layout title="Journal" description="Long-form buying guides and gear stories from the Omnix team.">
+  <section class="sec">
+    <div class="container">
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">Home</a><span>/</span><span class="cur">Journal</span>
+      </nav>
+
+      <header class="jr-head">
+        <div class="jr-eyebrow">From the Omnix journal</div>
+        <h1 class="h1">Buy smarter. Read deeper.</h1>
+        <p class="jr-sub">
+          Long-form buying guides and gear stories, written by people who use the things they review.
+        </p>
+      </header>
+
+      {
+        posts.length > 0 ? (
+          <div class="blog-grid">
+            {posts.map((p) => <PostCard post={p} />)}
+          </div>
+        ) : (
+          <p class="jr-empty">No posts yet — check back soon.</p>
+        )
+      }
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .crumb {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.82rem; color: var(--muted); margin-bottom: 22px; flex-wrap: wrap;
+  }
+  .crumb a:hover { color: var(--text); }
+  .crumb .cur { color: var(--text); font-weight: 500; }
+
+  .jr-head { margin-bottom: 36px; max-width: 46rem; }
+  .jr-eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--electric); margin-bottom: 10px;
+  }
+  .jr-head .h1 {
+    font-family: "Sora", system-ui, sans-serif;
+    font-size: clamp(1.9rem, 4vw, 2.8rem); font-weight: 700;
+    letter-spacing: -0.02em; line-height: 1.05; margin: 0;
+  }
+  .jr-sub { margin: 12px 0 0; color: var(--muted); line-height: 1.6; }
+  .jr-empty { color: var(--muted); padding: 40px 0; }
+</style>

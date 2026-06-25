@@ -1,0 +1,682 @@
+---
+// ============================================================
+//  Cart (OMNIX) — full-width cart page. Vanilla Astro + nanostore
+//  (no React island): the interactive line items, free-ship meter,
+//  summary, promo, and checkout are rendered/bound by the <script>
+//  below from the shared store (stores/cart.ts). Gift wrap / order
+//  notes / protection are REAL: notes → cart.note, gift message →
+//  cart attribute, gift wrap & protection → real cart lines. The two
+//  paid extras are resolved BY HANDLE from Shopify (resolveCartExtras);
+//  a feature whose product/variant isn't found is simply hidden — see
+//  CART_EXTRAS in src/config/omnix.ts. Breadcrumb/header/steps chrome +
+//  "Pairs well" upsell are server-rendered.
+// ============================================================
+import Layout from '~/layouts/Layout.astro';
+import { getProducts } from '~/lib/shopify';
+import { BRAND } from '~/config/omnix';
+import { resolveCartExtras } from '~/lib/cart-extras';
+import { formatMoney } from '~/lib/money';
+import type { ProductCard as TProductCard } from '~/lib/shopify/types';
+import ProductCard from '~/components/product/omnix/ProductCard.astro';
+import '~/styles/cart.css';
+
+export const prerender = false;
+
+const market = Astro.locals.market;
+let reco: TProductCard[] = [];
+try {
+  const page = await getProducts({ pageSize: 4, sortKey: 'BEST_SELLING' }, market);
+  reco = page.items;
+} catch (err) {
+  console.error('[cart] reco load failed:', (err as Error).message);
+}
+
+// Free-shipping meter is OFF when the threshold is null/0 — a store that doesn't
+// actually offer free shipping shouldn't show the promise. > 0 = on; 0/null = off (default).
+const FREE_SHIP = Number(BRAND.freeShippingThreshold) || 0;
+const FREE_SHIP_ON = FREE_SHIP > 0;
+
+// Resolve gift wrap + protection by handle (hidden when not set up in the store).
+const EXTRAS = await resolveCartExtras(market);
+const GIFT = EXTRAS.giftWrap;
+const NOTES = EXTRAS.orderNotes;
+const PROTECTION = EXTRAS.protection;
+const giftPriceLabel = GIFT.price ? `+${formatMoney(GIFT.price)}` : '';
+const anyExtras = GIFT.show || NOTES.show || PROTECTION.show;
+
+// Variant gids the client needs to add/remove the paid extras as real cart lines.
+const extrasConfig = {
+  giftWrap: { variantId: GIFT.variantId },
+  protection: {
+    plans: PROTECTION.plans.map((p) => ({ id: p.id, name: p.name, variantId: p.variantId })),
+  },
+};
+---
+
+<Layout title="Cart" description="Review your selection, fine-tune the details, and check out securely." noindex>
+  <div class="cm-main" id="cartModern" data-free-ship={BRAND.freeShippingThreshold} data-extras={JSON.stringify(extrasConfig)}>
+    <div class="cm-wrap">
+      {/* Breadcrumb */}
+      <nav class="cm-crumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        <a href="/products">Shop</a>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        <span class="cur">Cart</span>
+      </nav>
+
+      {/* Header */}
+      <div class="cm-head">
+        <div class="cm-head-l">
+          <h1>Your <span class="cm-hl">Cart</span></h1>
+          <p>Review your selection, fine-tune the details, and check out securely &mdash; your next upgrade is one click away.</p>
+        </div>
+        <div class="cm-steps" aria-hidden="true">
+          <div class="cm-step is-active"><span class="cm-step-no">1</span>Cart</div>
+          <div class="cm-step-sep"></div>
+          <div class="cm-step"><span class="cm-step-no">2</span>Details</div>
+          <div class="cm-step-sep"></div>
+          <div class="cm-step"><span class="cm-step-no">3</span>Payment</div>
+        </div>
+      </div>
+
+      {/* Empty state (toggled by script) */}
+      <div class="cm-empty" id="cmEmpty">
+        <div class="cm-empty-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+        </div>
+        <h2>Your cart is empty</h2>
+        <p>Looks like you haven't added anything yet. Explore our latest tech and find something you'll love.</p>
+        <a href="/products" class="cm-empty-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          Start shopping
+        </a>
+      </div>
+
+      {/* Main grid (populated by script) */}
+      <div class="cm-grid" id="cmGrid" style="display:none;">
+        {/* LEFT */}
+        <div class="cm-left">
+          <div class="cm-items-head">
+            <div class="cm-ihtitle"><span id="cmCount">0</span> items in your cart</div>
+            <button class="cm-clear" type="button" id="cmClear">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Clear cart
+            </button>
+          </div>
+
+          {/* Free shipping progress — only when a threshold is set (FREE_SHIP_ON) */}
+          {FREE_SHIP_ON && (
+            <div class="cm-freeship" id="cmFreeship">
+              <div class="cm-fs-row">
+                <span class="cm-fs-ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7zM5.5 18.5a2.5 2.5 0 1 0 0-.01M18.5 18.5a2.5 2.5 0 1 0 0-.01"/></svg>
+                </span>
+                <span class="cm-fs-text" id="cmFsText"></span>
+              </div>
+              <div class="cm-fs-bar"><div class="cm-fs-fill" id="cmFsFill" style="width:0%"></div></div>
+            </div>
+          )}
+
+          <div class="cm-items" id="cmItems"></div>
+
+          <p class="cm-promo-msg err" id="cmError" role="alert" style="display:none;"></p>
+
+          {/* Features — gift wrap & protection are resolved by handle from
+              Shopify; each block only renders when its product is set up. */}
+          {anyExtras && (
+          <div class="cm-feats">
+            {/* Gift wrap */}
+            {GIFT.show && (
+            <div class="cm-feat" id="featGift" data-feat="gift">
+              <button class="cm-feat-head" type="button" data-acc>
+                <span class="cm-feat-ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="13" rx="1"/><path d="M12 8v13M2 12h20"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C9 3 12 8 12 8M16.5 8a2.5 2.5 0 0 0 0-5C15 3 12 8 12 8"/></svg>
+                </span>
+                <span class="cm-feat-txt">
+                  <span class="cm-feat-title">{GIFT.label} <span class="cm-feat-tag">{giftPriceLabel}</span></span>
+                  <span class="cm-feat-desc">{GIFT.desc}</span>
+                </span>
+                <span class="cm-feat-switch" id="giftSwitch" role="switch" aria-checked="false"></span>
+              </button>
+              <div class="cm-feat-body">
+                <div class="cm-feat-inner">
+                  <textarea class="cm-textarea" id="giftMsg" placeholder="Write a personal message for the recipient…" maxlength={GIFT.messageMaxLength}></textarea>
+                  <div class="cm-hint"><span>Sent to our team with your order</span><span><span id="giftCount">0</span>/{GIFT.messageMaxLength}</span></div>
+                </div>
+              </div>
+            </div>
+            )}
+
+            {/* Order notes */}
+            {NOTES.show && (
+            <div class="cm-feat" id="featNotes" data-feat="notes">
+              <button class="cm-feat-head" type="button" data-acc>
+                <span class="cm-feat-ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                </span>
+                <span class="cm-feat-txt">
+                  <span class="cm-feat-title">Order notes</span>
+                  <span class="cm-feat-desc">Delivery instructions or a request for our team</span>
+                </span>
+                <span class="cm-feat-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+              </button>
+              <div class="cm-feat-body">
+                <div class="cm-feat-inner">
+                  <textarea class="cm-textarea" id="orderNotes" placeholder="e.g. Leave with the concierge / Call before delivery / Gift — no invoice" maxlength={NOTES.maxLength}></textarea>
+                  <div class="cm-hint"><span>Reviewed before dispatch</span></div>
+                </div>
+              </div>
+            </div>
+            )}
+
+            {/* Protection plan */}
+            {PROTECTION.show && (
+            <div class="cm-feat" id="featProtect" data-feat="protect">
+              <button class="cm-feat-head" type="button" data-acc>
+                <span class="cm-feat-ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                </span>
+                <span class="cm-feat-txt">
+                  <span class="cm-feat-title">Omnix Protection Plan</span>
+                  <span class="cm-feat-desc">Accidental damage, theft &amp; failure coverage</span>
+                </span>
+                <span class="cm-feat-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+              </button>
+              <div class="cm-feat-body">
+                <div class="cm-feat-inner">
+                  <div class="cm-plans" id="cmPlans">
+                    {PROTECTION.plans.map((plan) => (
+                      <label class={`cm-plan${plan.id === 'none' ? ' is-sel' : ''}`} data-plan={plan.id}>
+                        <span class="cm-plan-radio"></span>
+                        <span class="cm-plan-info">
+                          <span class="cm-plan-name">{plan.name}{plan.best && <span class="cm-plan-best">BEST VALUE</span>}</span>
+                          <span class="cm-plan-meta">{plan.meta}</span>
+                        </span>
+                        <span class="cm-plan-price">{plan.price ? formatMoney(plan.price) : 'Free'}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            )}
+          </div>
+          )}
+        </div>
+
+        {/* RIGHT: SUMMARY */}
+        <aside class="cm-summary" aria-label="Order summary">
+          <div class="cm-sum-head">
+            <h2>Order summary</h2>
+            <p>Free returns within 30 days</p>
+          </div>
+          <div class="cm-sum-body">
+            <div class="cm-row">
+              <span class="cm-rl">Subtotal (<span id="sumCount">0</span> items)</span>
+              <span class="cm-rv" id="sumSubtotal">$0</span>
+            </div>
+            <div class="cm-row disc" id="sumDiscRow" style="display:none;">
+              <span class="cm-rl" id="sumDiscLabel">Discount</span>
+              <span class="cm-rv" id="sumDisc"></span>
+            </div>
+            <div class="cm-row">
+              <span class="cm-rl">Shipping</span>
+              <span class="cm-rv">Calculated at checkout</span>
+            </div>
+            <div class="cm-row">
+              <span class="cm-rl" id="sumTaxLabel">Estimated tax <span class="cm-info-i" title="Final tax is calculated by Shopify at checkout">i</span></span>
+              <span class="cm-rv" id="sumTax">Calculated at checkout</span>
+            </div>
+
+            <div class="cm-sum-div"></div>
+
+            {/* Promo — real Shopify cartDiscountCodesUpdate API */}
+            <div class="cm-promo">
+              <div class="cm-promo-row">
+                <input type="text" class="cm-promo-input" id="promoInput" placeholder="Promo or gift code" autocomplete="off" />
+                <button class="cm-promo-apply" id="promoApply" type="button">Apply</button>
+              </div>
+              <div class="cm-promo-msg" id="promoMsg" style="display:none;"></div>
+              <div class="cm-promo-tags" id="promoTags"></div>
+            </div>
+
+            {/* Total */}
+            <div class="cm-total">
+              <span class="cm-total-l">Total</span>
+              <span class="cm-total-r">
+                <span class="cm-total-val" id="sumTotal">$0</span>
+                <span class="cm-total-note" id="sumTotalNote">USD · shipping &amp; taxes at checkout</span>
+              </span>
+            </div>
+
+            <button class="cm-checkout" id="cmCheckout" type="button">
+              Secure checkout
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+
+            <div class="cm-loyalty">
+              <span class="cm-loyalty-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+              <span class="cm-loyalty-txt">You'll earn <strong><span id="loyaltyPts">0</span> Omnix points</strong> with this order.<br />Members save 10% — <a href="#">join free</a></span>
+            </div>
+
+            <div class="cm-trust">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Secure SSL</span>
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h15v11H1zM16 8h4l3 3v4h-7"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Fast shipping</span>
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>30-day returns</span>
+            </div>
+          </div>
+        </aside>
+
+        {/* Mobile bar */}
+        <div class="cm-mobar">
+          <div class="cm-mobar-total">Total<b id="moTotal">$0</b></div>
+          <button class="cm-mobar-btn" id="moCheckout" type="button">Checkout
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Recommended */}
+      {
+        reco.length > 0 && (
+          <section class="cm-reco" id="cmReco">
+            <div class="cm-reco-head">
+              <div>
+                <h2>Pairs well with your cart</h2>
+                <p>Handpicked add-ons our customers love</p>
+              </div>
+            </div>
+            <div class="cm-reco-grid" id="cmRecoGrid">
+              {reco.map((p) => <ProductCard product={p} />)}
+            </div>
+          </section>
+        )
+      }
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // ============================================================
+  //  Cart page controller — binds the static markup above to the
+  //  framework-agnostic nanostore (stores/cart.ts). Money + line
+  //  rendering mirror the cart drawer; gift/notes/protection now sync
+  //  to the real Shopify cart (note + attributes + paid lines).
+  // ============================================================
+  import {
+    $cart,
+    $cartBusy,
+    $cartError,
+    $busyLines,
+    initCart,
+    addItem,
+    updateItem,
+    removeItem,
+    clearCart,
+    applyDiscount,
+    setNote,
+    setAttributes,
+    checkout,
+  } from '../stores/cart';
+  import { formatMoney } from '../lib/money';
+  import type { Cart } from '../lib/shopify/types';
+
+  const root = document.getElementById('cartModern');
+  const FREE_SHIP = Number(root?.dataset.freeShip ?? 0);
+
+  const $ = (id: string) => document.getElementById(id);
+  const setText = (id: string, v: string) => { const el = $(id); if (el) el.textContent = v; };
+
+  let currency = 'USD';
+  const m = (n: number) => formatMoney({ amount: String(n), currencyCode: currency });
+
+  function esc(s: string) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  const trash =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+
+  function renderItems(cart: Cart | null) {
+    const wrap = $('cmItems');
+    if (!wrap) return;
+    const lines = cart?.lines ?? [];
+    wrap.innerHTML = lines
+      .map((line) => {
+        const md = line.merchandise;
+        const image = md.image ?? md.product?.featuredImage ?? null;
+        const lineTotal = Number(line.cost?.totalAmount?.amount ?? 0);
+        const unitPrice = Number(md.price?.amount ?? 0);
+        const options = md.selectedOptions.filter((o) => o.value !== 'Default Title');
+        const brand = md.title && md.title !== md.product.title ? `<span class="cm-brand">${esc(md.title)}</span>` : '';
+        const vars = options.length
+          ? `<div class="cm-variants">${options.map((o) => `<span class="cm-var">${esc(o.value)}</span>`).join('')}</div>`
+          : '';
+        const each = line.quantity > 1 ? `<div class="cm-each">${m(unitPrice)} each</div>` : '';
+        const stockCls = md.availableForSale ? 'in' : 'low';
+        const stockTxt = md.availableForSale ? 'In stock' : 'Backordered';
+        return `
+        <div class="cm-item" data-id="${line.id}">
+          <div class="cm-thumb">${image ? `<img src="${image.url}" alt="${esc(image.altText ?? md.product.title)}" loading="lazy">` : ''}</div>
+          <div class="cm-info">
+            ${brand}
+            <a href="/products/${md.product.handle}" class="cm-name">${esc(md.product.title)}</a>
+            ${vars}
+            <div class="cm-stock ${stockCls}"><span class="cm-stock-dot"></span>${stockTxt}</div>
+            <div class="cm-item-actions">
+              <button class="cm-ia rm" type="button" data-act="remove">${trash} Remove</button>
+            </div>
+          </div>
+          <div class="cm-item-right">
+            <div class="cm-price-wrap">
+              <div class="cm-price">${m(lineTotal)}</div>
+              ${each}
+            </div>
+            <div class="cm-qty">
+              <button type="button" data-act="dec" aria-label="Decrease"${line.quantity <= 1 ? ' disabled' : ''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+              <span class="cm-qval">${line.quantity}</span>
+              <button type="button" data-act="inc" aria-label="Increase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+            </div>
+          </div>
+        </div>`;
+      })
+      .join('');
+    applyLineBusy($busyLines.get());
+  }
+
+  function renderSummary(cart: Cart | null) {
+    const lines = cart?.lines ?? [];
+    currency = cart?.cost?.subtotalAmount?.currencyCode ?? 'USD';
+    const subtotal = Number(cart?.cost?.subtotalAmount?.amount ?? 0);
+    const total = Number(cart?.cost?.totalAmount?.amount ?? subtotal);
+    const tax = cart?.cost?.totalTaxAmount ? Number(cart.cost.totalTaxAmount.amount) : null;
+    const discountTotal = (cart?.discountAllocations ?? []).reduce(
+      (s, d) => s + Number(d.discountedAmount?.amount ?? 0), 0,
+    );
+    const appliedCodes = (cart?.discountCodes ?? []).filter((c) => c.applicable).map((c) => c.code);
+    const count = cart?.totalQuantity ?? lines.reduce((s, l) => s + l.quantity, 0);
+
+    setText('cmCount', String(count));
+    setText('sumCount', String(count));
+    setText('sumSubtotal', m(subtotal));
+    setText('sumTotal', m(total));
+    setText('moTotal', m(total));
+    setText('sumTotalNote', `${currency} · shipping & taxes at checkout`);
+    setText('loyaltyPts', Math.round(total).toLocaleString('en-US'));
+
+    // Discount row
+    const discRow = $('sumDiscRow');
+    if (discRow) {
+      discRow.style.display = discountTotal > 0 ? '' : 'none';
+      setText('sumDiscLabel', appliedCodes.length ? `Discount (${appliedCodes.join(', ')})` : 'Discount');
+      setText('sumDisc', `-${m(discountTotal)}`);
+    }
+
+    // Tax
+    setText('sumTaxLabel', tax != null ? 'Tax' : 'Estimated tax');
+    setText('sumTax', tax != null ? m(tax) : 'Calculated at checkout');
+
+    // Free shipping meter
+    const unlocked = subtotal >= FREE_SHIP;
+    const remaining = Math.max(0, FREE_SHIP - subtotal);
+    const progress = FREE_SHIP > 0 ? Math.min(100, Math.round((subtotal / FREE_SHIP) * 100)) : 100;
+    $('cmFreeship')?.classList.toggle('is-unlocked', unlocked);
+    const fsText = $('cmFsText');
+    if (fsText) {
+      fsText.innerHTML = unlocked
+        ? '<strong>Free shipping unlocked!</strong> Your order ships free.'
+        : `Add <strong>${m(remaining)}</strong> more to unlock <strong>FREE shipping</strong>.`;
+    }
+    const fill = $('cmFsFill');
+    if (fill) fill.style.width = `${progress}%`;
+
+    // Applied promo tags
+    const tags = $('promoTags');
+    if (tags) {
+      tags.innerHTML = appliedCodes
+        .map((c) => `<button class="cm-promo-tag is-active" type="button" data-code="${esc(c)}" title="Remove code">${esc(c)} ✕</button>`)
+        .join('');
+    }
+  }
+
+  function render(cart: Cart | null) {
+    const count = cart?.totalQuantity ?? 0;
+    const empty = count === 0;
+    $('cmEmpty')?.classList.toggle('show', empty);
+    const grid = $('cmGrid');
+    if (grid) grid.style.display = empty ? 'none' : '';
+    if (!empty) {
+      renderItems(cart);
+      renderSummary(cart);
+    }
+    // Header badge stays in sync via the cart drawer's own subscription.
+  }
+
+  // ---- Busy states ----
+  function applyBusy(busy: boolean) {
+    for (const id of ['promoInput', 'promoApply', 'cmCheckout', 'moCheckout', 'cmClear']) {
+      const el = $(id) as HTMLButtonElement | HTMLInputElement | null;
+      if (el) el.toggleAttribute('disabled', busy);
+    }
+  }
+  function applyLineBusy(map: Record<string, boolean>) {
+    document.querySelectorAll<HTMLElement>('.cm-item[data-id]').forEach((row) => {
+      const id = row.dataset.id!;
+      const busy = !!map[id];
+      row.classList.toggle('is-busy', busy);
+      row.querySelectorAll('button[data-act]').forEach((b) => (b as HTMLButtonElement).toggleAttribute('disabled', busy));
+    });
+  }
+
+  // ---- Subscriptions ----
+  $cart.subscribe(render);
+  $cartBusy.subscribe(applyBusy);
+  $busyLines.subscribe(applyLineBusy);
+  $cartError.subscribe((err) => {
+    const el = $('cmError');
+    if (!el) return;
+    el.textContent = err ?? '';
+    el.style.display = err ? 'block' : 'none';
+  });
+
+  // ---- Line item controls (event delegation) ----
+  $('cmItems')?.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('button[data-act]');
+    if (!btn) return;
+    const row = btn.closest<HTMLElement>('.cm-item[data-id]');
+    const id = row?.dataset.id;
+    if (!id) return;
+    const line = $cart.get()?.lines.find((l) => l.id === id);
+    const qty = line?.quantity ?? 1;
+    const act = (btn as HTMLElement).dataset.act;
+    if (act === 'inc') updateItem(id, qty + 1);
+    else if (act === 'dec') { if (qty > 1) updateItem(id, qty - 1); }
+    else if (act === 'remove') removeItem(id);
+  });
+
+  // Clear cart — one atomic mutation, with a confirm (destructive, no undo).
+  $('cmClear')?.addEventListener('click', () => {
+    if (!($cart.get()?.lines?.length)) return;
+    if (!window.confirm('Remove all items from your cart?')) return;
+    clearCart();
+  });
+
+  // ---- Promo ----
+  function setPromoMsg(kind: 'ok' | 'err' | null, text = '') {
+    const el = $('promoMsg');
+    if (!el) return;
+    el.className = `cm-promo-msg${kind ? ' ' + kind : ''}`;
+    el.textContent = text;
+    el.style.display = kind ? 'block' : 'none';
+  }
+  async function submitPromo() {
+    const input = $('promoInput') as HTMLInputElement | null;
+    const code = (input?.value || '').trim();
+    if (!code) { setPromoMsg('err', 'Enter a code first.'); return; }
+    setPromoMsg(null);
+    const applied = ($cart.get()?.discountCodes ?? []).filter((c) => c.applicable).map((c) => c.code);
+    const res = await applyDiscount([...applied, code]);
+    const ok = res.cart?.discountCodes?.some((c) => c.applicable && c.code.toUpperCase() === code.toUpperCase());
+    if (ok) {
+      if (input) input.value = '';
+      setPromoMsg('ok', `Applied: ${code.toUpperCase()} ✓`);
+    } else {
+      setPromoMsg('err', 'Invalid or expired code.');
+    }
+  }
+  $('promoApply')?.addEventListener('click', submitPromo);
+  $('promoInput')?.addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Enter') { e.preventDefault(); submitPromo(); }
+  });
+  $('promoTags')?.addEventListener('click', (e) => {
+    const tag = (e.target as HTMLElement).closest<HTMLElement>('[data-code]');
+    if (!tag) return;
+    setPromoMsg(null);
+    const applied = ($cart.get()?.discountCodes ?? []).filter((c) => c.applicable).map((c) => c.code);
+    applyDiscount(applied.filter((c) => c !== tag.dataset.code));
+  });
+
+  // ---- Checkout ----
+  for (const id of ['cmCheckout', 'moCheckout']) {
+    $(id)?.addEventListener('click', () => checkout());
+  }
+
+  // ============================================================
+  //  Cart extras (gift wrap / order notes / protection) — REAL.
+  //  Order notes  → Shopify cart `note`.
+  //  Gift message → cart attribute `gift_message`.
+  //  Gift wrap / protection are PAID → added as real cart lines when a
+  //  variant gid is configured (src/config/omnix.ts → CART_EXTRAS); the
+  //  choice is also recorded as a cart attribute either way (shows on the
+  //  order in admin). No gid configured = attribute-only (nothing charged).
+  // ============================================================
+  type ExtraPlan = { id: string; name: string; variantId: string };
+  const extras = (() => {
+    try { return JSON.parse(root?.dataset.extras || '{}'); } catch { return {}; }
+  })() as { giftWrap?: { variantId: string }; protection?: { plans: ExtraPlan[] } };
+  const GIFT_VID: string = extras.giftWrap?.variantId || '';
+  const PLANS: ExtraPlan[] = extras.protection?.plans || [];
+  const PROTECT_VIDS = PLANS.map((p) => p.variantId).filter(Boolean);
+
+  const lineByVariant = (vid: string) =>
+    $cart.get()?.lines.find((l) => l.merchandise.id === vid) ?? null;
+
+  // Merge our managed keys into the cart's existing attributes, then replace
+  // the whole set (cartAttributesUpdate is wholesale). null/'' removes a key.
+  const MANAGED = ['gift_wrap', 'gift_message', 'protection_plan'];
+  async function syncAttrs(updates: Record<string, string | null>) {
+    const kept = ($cart.get()?.attributes ?? []).filter((a) => !(a.key in updates));
+    const next = [...kept];
+    for (const [key, value] of Object.entries(updates)) {
+      if (value) next.push({ key, value });
+    }
+    await setAttributes(next);
+  }
+
+  // ---- Accordions ----
+  document.querySelectorAll<HTMLButtonElement>('.cm-feat-head[data-acc]').forEach((head) => {
+    head.addEventListener('click', () => head.closest('.cm-feat')?.classList.toggle('is-open'));
+  });
+
+  // ---- Order notes (cart.note, debounced) ----
+  const orderNotes = $('orderNotes') as HTMLTextAreaElement | null;
+  let noteTimer: ReturnType<typeof setTimeout> | undefined;
+  orderNotes?.addEventListener('input', () => {
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => setNote(orderNotes.value.trim()), 600);
+  });
+
+  // ---- Gift wrap (paid line + gift_wrap / gift_message attributes) ----
+  const giftSwitch = $('giftSwitch');
+  const giftMsg = $('giftMsg') as HTMLTextAreaElement | null;
+  const isGiftOn = () => !!$('featGift')?.classList.contains('is-on');
+
+  async function setGift(on: boolean) {
+    if (GIFT_VID) {
+      const line = lineByVariant(GIFT_VID);
+      if (on && !line) await addItem(GIFT_VID, 1, { open: false });
+      else if (!on && line) await removeItem(line.id);
+    }
+    await syncAttrs({
+      gift_wrap: on ? 'yes' : null,
+      gift_message: on ? (giftMsg?.value.trim() || null) : null,
+    });
+  }
+
+  giftSwitch?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const feat = $('featGift');
+    const on = feat?.classList.toggle('is-on') ?? false;
+    giftSwitch.setAttribute('aria-checked', String(on));
+    if (on) feat?.classList.add('is-open');
+    setGift(on);
+  });
+
+  let giftMsgTimer: ReturnType<typeof setTimeout> | undefined;
+  giftMsg?.addEventListener('input', () => {
+    setText('giftCount', String(giftMsg.value.length));
+    if (!isGiftOn()) return; // message only persists while wrap is on
+    clearTimeout(giftMsgTimer);
+    giftMsgTimer = setTimeout(() => syncAttrs({ gift_message: giftMsg.value.trim() || null }), 600);
+  });
+
+  // ---- Protection plan (paid line + protection_plan attribute) ----
+  async function selectPlan(planId: string) {
+    const plan = PLANS.find((p) => p.id === planId);
+    // Drop any protection line that isn't the chosen plan.
+    for (const vid of PROTECT_VIDS) {
+      const line = lineByVariant(vid);
+      if (line && vid !== plan?.variantId) await removeItem(line.id);
+    }
+    // Add the chosen plan's variant (when real + not the free "none").
+    if (plan && plan.variantId && planId !== 'none' && !lineByVariant(plan.variantId)) {
+      await addItem(plan.variantId, 1, { open: false });
+    }
+    await syncAttrs({ protection_plan: plan && planId !== 'none' ? plan.name : null });
+  }
+
+  $('cmPlans')?.addEventListener('click', (e) => {
+    const label = (e.target as HTMLElement).closest<HTMLElement>('.cm-plan');
+    if (!label) return;
+    e.preventDefault();
+    document.querySelectorAll('#cmPlans .cm-plan').forEach((p) => p.classList.remove('is-sel'));
+    label.classList.add('is-sel');
+    selectPlan(label.dataset.plan || 'none');
+  });
+
+  // ---- Hydrate extras UI from the server cart (once) ----
+  let extrasHydrated = false;
+  function hydrateExtras(cart: Cart | null) {
+    if (extrasHydrated || !cart) return;
+    extrasHydrated = true;
+    const attrs = Object.fromEntries((cart.attributes ?? []).map((a) => [a.key, a.value]));
+
+    if (orderNotes && cart.note) orderNotes.value = cart.note;
+
+    const giftOn = attrs.gift_wrap === 'yes' || (!!GIFT_VID && !!lineByVariant(GIFT_VID));
+    if (giftOn) {
+      $('featGift')?.classList.add('is-on');
+      giftSwitch?.setAttribute('aria-checked', 'true');
+    }
+    if (giftMsg) {
+      giftMsg.value = attrs.gift_message || '';
+      setText('giftCount', String(giftMsg.value.length));
+    }
+
+    let selId = 'none';
+    for (const p of PLANS) {
+      if (p.variantId && lineByVariant(p.variantId)) { selId = p.id; break; }
+    }
+    if (selId === 'none' && attrs.protection_plan) {
+      const found = PLANS.find((p) => p.name === attrs.protection_plan);
+      if (found) selId = found.id;
+    }
+    document.querySelectorAll<HTMLElement>('#cmPlans .cm-plan').forEach((el) =>
+      el.classList.toggle('is-sel', el.dataset.plan === selId),
+    );
+  }
+  $cart.subscribe(hydrateExtras);
+
+  initCart();
+</script>

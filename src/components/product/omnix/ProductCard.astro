@@ -1,0 +1,224 @@
+---
+// ============================================================
+//  ProductCard (OMNIX skin, Shopify data). Reused by every product
+//  grid (best-sellers, recommendations). Quick Add adds the first
+//  variant (Option B) or links to the PDP; Quick View opens the
+//  shared modal. Wishlist + Compare are localStorage. "New" badge
+//  and colour swatches come from real Shopify data when available.
+// ============================================================
+import { Image } from 'astro:assets';
+import type { ProductCard as TProductCard } from '~/lib/shopify/types';
+import { formatMoney, percentOff, hasPriceRange } from '~/lib/money';
+import Icon from '~/components/ui/omnix/Icon.astro';
+
+interface Props {
+  product: TProductCard;
+  /** Eager-load for above-the-fold grids (better LCP). */
+  eager?: boolean;
+  /** Space-separated tab keys this card belongs to (for grid filtering). */
+  tabs?: string;
+  /** Extra data-* attributes spread onto the card (shop facet filtering). */
+  attrs?: Record<string, string>;
+}
+const { product, eager = false, tabs, attrs = {} } = Astro.props;
+
+const href = `/products/${product.handle}`;
+const price = product.priceRange.minVariantPrice;
+const compareAt = product.compareAtPriceRange?.minVariantPrice ?? null;
+const off = percentOff(price, compareAt);
+// "From" when variants span more than one price (matches Shopify Dawn default).
+const fromPrefix = hasPriceRange(product.priceRange) ? 'From ' : '';
+const img = product.featuredImage;
+const soldOut = !product.availableForSale;
+const canQuickAdd = !soldOut && !!product.firstVariantId && product.firstVariantAvailable !== false;
+
+// ---- Variant-aware quick add ----------------------------------------------
+// Real options excluding the implicit single "Title / Default Title" option.
+const variants = product.variants ?? [];
+const realOptions = (product.options ?? []).filter(
+  (o) => !(o.name === 'Title' && o.optionValues.every((v) => v.name === 'Default Title')),
+);
+// A product needs the picker only when more than one option must be chosen
+// (e.g. Colour + Size). A colour-only product is fully resolved by the swatch.
+const needsPicker = canQuickAdd && variants.length > 1 && realOptions.length >= 2;
+
+// Colour option detection mirrors the PDP (real swatch value or a colour-ish name).
+const colorOpt = realOptions.find(
+  (o) => /colou?r|finish|shade/i.test(o.name) || o.optionValues.some((v) => v.swatch?.color),
+);
+const colorName = colorOpt?.name ?? null;
+
+// Card swatches enriched with the variant image + (single-option only) its id,
+// so a click can swap the card image and retarget Quick Add.
+const swatches = (product.swatches ?? []).map((s) => {
+  const variant = colorName
+    ? variants.find((v) => v.selectedOptions.some((o) => o.name === colorName && o.value === s.name))
+    : undefined;
+  // Sold out when no available variant carries this colour (Dawn-style strike).
+  const available = colorName
+    ? variants.some(
+        (v) =>
+          v.availableForSale &&
+          v.selectedOptions.some((o) => o.name === colorName && o.value === s.name),
+      )
+    : true;
+  return {
+    name: s.name,
+    color: s.color,
+    img: variant?.image?.url ?? null,
+    available,
+    // Only safe to add directly when colour is the *only* option and in stock.
+    variantId: realOptions.length === 1 && available ? variant?.id ?? null : null,
+  };
+});
+
+// Compact variant + option payloads for the Quick View picker (multi-option).
+const pickerData = needsPicker
+  ? JSON.stringify(
+      variants.map((v) => ({
+        id: v.id,
+        opts: Object.fromEntries(v.selectedOptions.map((o) => [o.name, o.value])),
+        price: Number(v.price.amount),
+        compareAt: v.compareAtPrice ? Number(v.compareAtPrice.amount) : null,
+        img: v.image?.url ?? null,
+        available: v.availableForSale,
+      })),
+    )
+  : '';
+const optionData = needsPicker
+  ? JSON.stringify(
+      realOptions.map((o) => ({
+        name: o.name,
+        isColor: o === colorOpt,
+        values: o.optionValues.map((ov) => ({ name: ov.name, color: ov.swatch?.color ?? null })),
+      })),
+    )
+  : '';
+const currency = price.currencyCode;
+---
+
+<article class="prod-card" data-tabs={tabs} {...attrs}>
+  <div class="prod-media">
+    <a href={href} aria-label={product.title}>
+      {
+        img ? (
+          <Image
+            src={img.url}
+            alt={img.altText ?? product.title}
+            width={600}
+            height={600}
+            widths={[300, 600]}
+            sizes="(max-width: 640px) 50vw, 300px"
+            loading={eager ? 'eager' : 'lazy'}
+          />
+        ) : (
+          <div class="prod-media-empty" />
+        )
+      }
+    </a>
+    <div class="prod-badges">
+      {soldOut && <span class="badge badge-hot">Sold out</span>}
+      {!soldOut && product.isNew && <span class="badge badge-new">New</span>}
+      {!soldOut && off > 0 && <span class="badge badge-sale">-{off}%</span>}
+    </div>
+    <button
+      class="prod-wish"
+      aria-label="Add to wishlist"
+      data-wish
+      data-handle={product.handle}
+      data-name={product.title}
+      data-price={formatMoney(price)}
+      data-img={img?.url ?? ''}
+      data-href={href}
+    >
+      <Icon name="heart" size={16} />
+    </button>
+    <button class="prod-compare" aria-label="Add to compare" data-compare data-handle={product.handle}>
+      <Icon name="compare" size={15} />
+    </button>
+    <div class="prod-actions">
+      {
+        canQuickAdd ? (
+          needsPicker ? (
+            <button
+              class="prod-quick"
+              data-add
+              data-pick
+              data-handle={product.handle}
+              data-name={product.title}
+              data-img={img?.url ?? ''}
+              data-brand={product.vendor ?? ''}
+              data-href={href}
+              data-currency={currency}
+              data-variants={pickerData}
+              data-options={optionData}
+            >
+              <Icon name="plus" size={13} stroke={2.4} /> Select Options
+            </button>
+          ) : (
+            <button class="prod-quick" data-add data-variant-id={product.firstVariantId}>
+              <Icon name="plus" size={13} stroke={2.4} /> Quick Add
+            </button>
+          )
+        ) : (
+          <a class="prod-quick" href={href}>
+            <Icon name="plus" size={13} stroke={2.4} /> {soldOut ? 'View' : 'Quick Add'}
+          </a>
+        )
+      }
+      <button
+        class="prod-qview"
+        aria-label="Quick view"
+        data-qview
+        data-handle={product.handle}
+        data-name={product.title}
+        data-price={formatMoney(price)}
+        data-was={compareAt && off > 0 ? formatMoney(compareAt) : ''}
+        data-save={off > 0 ? `Save ${off}%` : ''}
+        data-desc={product.description ?? ''}
+        data-img={img?.url ?? ''}
+        data-brand={product.vendor ?? ''}
+        data-href={href}
+        data-currency={currency}
+        data-variant-id={canQuickAdd ? product.firstVariantId : ''}
+        data-variants={pickerData}
+        data-options={optionData}
+      >
+        <Icon name="eye" size={15} />
+      </button>
+    </div>
+  </div>
+  <div class="prod-body">
+    <div class="prod-meta">
+      {product.vendor && <span class="prod-brand">{product.vendor}</span>}
+    </div>
+    <h3 class="prod-title"><a href={href}>{product.title}</a></h3>
+    <div class="prod-foot">
+      <div class="prod-price">
+        <span class="now">{fromPrefix}{formatMoney(price)}</span>
+        {compareAt && off > 0 && <span class="was">{formatMoney(compareAt)}</span>}
+      </div>
+      {
+        swatches.length > 0 && (
+          <div class="prod-swatches">
+            {swatches.slice(0, 4).map((s) => (
+              <button
+                type="button"
+                class:list={['swatch', { 'is-unavailable': !s.available }]}
+                style={`background:${s.color}`}
+                title={s.available ? s.name : `${s.name} — sold out`}
+                aria-label={s.available ? s.name : `${s.name}, sold out`}
+                aria-disabled={!s.available}
+                data-swatch
+                data-name={s.name}
+                data-img={s.img ?? ''}
+                data-variant-id={s.variantId ?? ''}
+              />
+            ))}
+            {swatches.length > 4 && <span class="swatch-more">+{swatches.length - 4}</span>}
+          </div>
+        )
+      }
+    </div>
+  </div>
+</article>

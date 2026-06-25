@@ -1,0 +1,284 @@
+---
+// ============================================================
+//  Collection PLP (OMNIX) — products in a collection with sort +
+//  cursor pagination, on the OMNIX chrome (new header/footer/cart
+//  drawer). Reuses the shared `.prod-grid` ProductGrid.
+// ============================================================
+import Layout from '~/layouts/Layout.astro';
+import ProductGrid from '~/components/product/omnix/ProductGrid.astro';
+import Icon from '~/components/ui/omnix/Icon.astro';
+import { getCollection, COLLECTION_SORT_OPTIONS, resolveSort } from '~/lib/shopify';
+import { applyMarketCache } from '~/lib/market';
+import { paginationUrls } from '~/lib/pagination';
+import type { CollectionWithProducts } from '~/lib/shopify/types';
+
+const { handle } = Astro.params;
+const url = Astro.url;
+const sortValue = url.searchParams.get('sort') ?? COLLECTION_SORT_OPTIONS[0].value;
+const sort = resolveSort(COLLECTION_SORT_OPTIONS, sortValue);
+const after = url.searchParams.get('after');
+const before = url.searchParams.get('before');
+
+let collection: CollectionWithProducts | null = null;
+let prevUrl: string | null = null;
+let nextUrl: string | null = null;
+let loadFailed = false;
+
+try {
+  collection = await getCollection(
+    {
+      handle: handle!,
+      pageSize: 12,
+      after,
+      before,
+      sortKey: sort.sortKey,
+      reverse: sort.reverse,
+    },
+    Astro.locals.market,
+  );
+} catch (err) {
+  loadFailed = true;
+  console.error('[collection] load failed:', (err as Error).message);
+}
+
+// 404 only for a genuinely missing collection; transient errors → 503.
+if (loadFailed) {
+  Astro.response.status = 503;
+} else if (!collection) {
+  Astro.response.status = 404;
+}
+
+if (collection) {
+  ({ prevUrl, nextUrl } = paginationUrls(url, collection.products.pageInfo));
+  // Edge-cache the collection HTML (cart is client-side). Market-aware.
+  applyMarketCache(Astro.response.headers, Astro.locals.market);
+}
+
+const items = collection?.products.items ?? [];
+const countLabel = `${items.length} product${items.length === 1 ? '' : 's'} on this page`;
+
+// Structured data: CollectionPage + breadcrumb + an ItemList of the products on
+// this page, so category pages are eligible for breadcrumb/rich results.
+const origin = Astro.site?.href ?? Astro.url.origin;
+const collectionJsonLd = collection
+  ? [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: collection.seo?.title ?? collection.title,
+        description: collection.seo?.description ?? collection.description,
+        url: new URL(`/collections/${collection.handle}`, origin).href,
+        mainEntity: {
+          '@type': 'ItemList',
+          numberOfItems: items.length,
+          itemListElement: items.map((p, i) => ({
+            '@type': 'ListItem',
+            position: i + 1,
+            url: new URL(`/products/${p.handle}`, origin).href,
+            name: p.title,
+          })),
+        },
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: new URL('/', origin).href },
+          { '@type': 'ListItem', position: 2, name: 'Collections', item: new URL('/collections', origin).href },
+          { '@type': 'ListItem', position: 3, name: collection.title, item: new URL(`/collections/${collection.handle}`, origin).href },
+        ],
+      },
+    ]
+  : undefined;
+---
+
+{
+  collection ? (
+    <Layout
+      title={collection.seo?.title ?? collection.title}
+      description={collection.seo?.description ?? collection.description}
+      jsonLd={collectionJsonLd}
+    >
+      <section class="sec">
+        <div class="container">
+          <nav class="crumb" aria-label="Breadcrumb">
+            <a href="/">Home</a><span>/</span>
+            <a href="/collections">Collections</a><span>/</span>
+            <span class="cur">{collection.title}</span>
+          </nav>
+
+          <header class="coll-head">
+            <div class="coll-eyebrow">Collection</div>
+            <h1 class="h1">{collection.title}</h1>
+            {collection.description && <p class="coll-desc">{collection.description}</p>}
+          </header>
+
+          <div class="coll-toolbar">
+            <span class="coll-count">{countLabel}</span>
+            <form class="coll-sortwrap" method="get" id="collSortForm">
+              <label for="collSort">Sort by</label>
+              <select class="coll-sort" id="collSort" name="sort" onchange="this.form.submit()">
+                {COLLECTION_SORT_OPTIONS.map((o) => (
+                  <option value={o.value} selected={o.value === sort.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </form>
+          </div>
+
+          {
+            items.length > 0 ? (
+              <>
+                <ProductGrid products={items} eagerCount={4} />
+                {(prevUrl || nextUrl) && (
+                  <nav class="coll-pager" aria-label="Pagination">
+                    {prevUrl ? (
+                      <a class="btn btn-ghost" href={prevUrl}>
+                        <Icon name="arrow-left" size={15} stroke={2.2} /> Previous
+                      </a>
+                    ) : (
+                      <span class="btn btn-ghost is-disabled" aria-disabled="true">
+                        <Icon name="arrow-left" size={15} stroke={2.2} /> Previous
+                      </span>
+                    )}
+                    {nextUrl ? (
+                      <a class="btn btn-ghost" href={nextUrl}>
+                        Next <Icon name="arrow-right" size={15} stroke={2.2} />
+                      </a>
+                    ) : (
+                      <span class="btn btn-ghost is-disabled" aria-disabled="true">
+                        Next <Icon name="arrow-right" size={15} stroke={2.2} />
+                      </span>
+                    )}
+                  </nav>
+                )}
+              </>
+            ) : (
+              <div class="coll-empty">
+                <b>Nothing in this collection yet</b>
+                <p>This collection is empty right now. Check back soon.</p>
+                <a class="btn btn-primary" href="/products">Browse all products</a>
+              </div>
+            )
+          }
+        </div>
+      </section>
+    </Layout>
+  ) : (
+    <Layout title={loadFailed ? 'Something went wrong' : 'Collection not found'} description="This collection isn’t available." noindex>
+      <section class="sec">
+        <div class="container">
+          <div class="coll-empty coll-error">
+            <span class="coll-eyebrow">{loadFailed ? 'Error 503' : 'Error 404'}</span>
+            <b>{loadFailed ? 'Something went wrong' : 'Collection not found'}</b>
+            <p>
+              {loadFailed
+                ? "We couldn't load this collection right now. Please try again shortly."
+                : "We couldn't find that collection."}
+            </p>
+            <a class="btn btn-primary" href="/collections">All collections</a>
+          </div>
+        </div>
+      </section>
+    </Layout>
+  )
+}
+
+<style>
+  .crumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  .crumb a:hover { color: var(--text); }
+  .crumb .cur { color: var(--text); font-weight: 500; }
+
+  .coll-head { margin-bottom: 26px; }
+  .coll-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--electric);
+    margin-bottom: 10px;
+  }
+  .coll-head .h1 {
+    font-family: "Sora", system-ui, sans-serif;
+    font-size: clamp(1.9rem, 4vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin: 0;
+  }
+  .coll-desc {
+    margin: 12px 0 0;
+    max-width: 42rem;
+    color: var(--text-soft, #374151);
+    line-height: 1.6;
+  }
+
+  .coll-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-bottom: 18px;
+    margin-bottom: 26px;
+    border-bottom: 1px solid var(--border);
+  }
+  .coll-count { font-size: 0.85rem; color: var(--muted); }
+  .coll-sortwrap { display: flex; align-items: center; gap: 10px; }
+  .coll-sortwrap label { font-size: 0.82rem; color: var(--muted); }
+  .coll-sort {
+    appearance: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--white);
+    padding: 9px 34px 9px 14px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+  .coll-sort:hover { border-color: var(--electric); }
+
+  .coll-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 42px;
+  }
+  .btn-ghost {
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--text);
+  }
+  .btn-ghost:hover { border-color: var(--electric); color: var(--electric); }
+  .btn-ghost.is-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .coll-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    padding: 72px 20px;
+  }
+  .coll-empty b { font-size: 1.25rem; }
+  .coll-empty p { color: var(--muted); max-width: 30rem; margin: 0; }
+  .coll-empty .btn { margin-top: 14px; }
+  .coll-error .coll-eyebrow { margin-bottom: 0; }
+</style>
