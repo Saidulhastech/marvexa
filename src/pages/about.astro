@@ -1,114 +1,224 @@
 ---
 // ============================================================
-//  About (OMNIX "Modern") — static brand story page. Faithful
-//  reproduction of about-modern.html: hero collage + video,
-//  mission, journey timeline, why-us, team, stats counters, FAQ,
-//  newsletter CTA. Reveal + counters via a small vanilla script.
+//  About (MAISON "Modern") — static brand story page. Faithful
+//  reproduction of maison About.html: story hero, by-the-numbers,
+//  philosophy values, craft/atelier, our-promise, team, FAQ, and
+//  a closing CTA. Reveal + stat counters via a small vanilla script.
 // ============================================================
-import { Image } from 'astro:assets';
 import Layout from '~/layouts/Layout.astro';
-import { resolveImage } from '~/lib/asset';
 import '~/styles/about.css';
 
-const journey = [
-  { year: '2016', role: 'The beginning', img: 'md journey-01.jpg', alt: 'The Omnix beginning', desc: 'Two friends started Omnix from a Brooklyn apartment, tired of gadgets that worked but never felt good to own.', active: true },
-  { year: '2018', role: 'First flagship', img: 'md journey-02.jpg', alt: 'First flagship product', desc: 'Our debut headphones sold out in 72 hours — proof that people reward craft when they can feel it.' },
-  { year: '2020', role: 'Carbon-neutral', img: 'md journey-03.jpg', alt: 'Going carbon-neutral', desc: 'We rebuilt our supply chain around recyclable packaging and carbon-neutral shipping on every order.' },
-  { year: '2023', role: 'Across 3 continents', img: 'md journey-04.jpg', alt: 'Across three continents', desc: 'From one apartment to twelve flagship stores, bringing hands-on Omnix experiences closer to home.' },
-  { year: '2026', role: '250K+ customers', img: 'md journey-04-1.jpg', alt: 'A quarter-million customers', desc: 'Today we serve a quarter-million people across 47 countries — still chasing the same question we started with.' },
+const philosophy = [
+  {
+    num: '01',
+    title: 'Effortless Quality',
+    desc: "We select only long-staple natural fibres, tested for 200+ washes. A great garment shouldn't need to announce itself — you simply feel it the moment you put it on.",
+    path: '<path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="15"/>',
+  },
+  {
+    num: '02',
+    title: 'Considered Design',
+    desc: 'No trend-chasing. Each piece is designed to work across seasons, occasions, and years. We ask: will this still feel right in five years? If yes — we make it.',
+    path: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+  },
+  {
+    num: '03',
+    title: 'Comfort Without Compromise',
+    desc: 'Good clothes should disappear on your body. Fit, drape, and movement are refined across an average of 14 prototypes on different body types. Never rushed.',
+    path: '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',
+  },
+  {
+    num: '04',
+    title: 'Responsible Practice',
+    desc: 'Traceable supply chain, fair-wage partners, carbon-neutral shipping. We believe beautiful clothes and honest business are the same thing.',
+    path: '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+  },
+];
+
+const craft = [
+  { n: '01', t: 'Italian & Japanese Fabrics', d: 'Sourced directly from mills in Como, Biella, and Nishiwaki. No middlemen, no compromises.' },
+  { n: '02', t: '14 Prototypes Per Style', d: 'Fit, drape, and movement are refined on different body types before a single unit is produced.' },
+  { n: '03', t: '12-Point Quality Check', d: 'Seam strength, colourfastness, shrinkage — each piece is tested at every stage, not just the end.' },
+  { n: '04', t: 'Lifetime Repair Promise', d: 'Send any MAISON piece back for repair, forever. The most sustainable garment is one that lasts.' },
+];
+
+const promise = [
+  {
+    title: '30-Day Free Returns',
+    desc: 'Changed your mind? No problem. Return any item within 30 days, no questions asked. Free prepaid label included with every order.',
+    badge: 'No Questions Asked',
+    path: '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.99"/>',
+  },
+  {
+    title: 'Lifetime Repair Promise',
+    desc: 'We repair any MAISON piece for life, free of charge. A loose seam, worn button, or fraying hem — just send it back.',
+    badge: 'Forever, Free',
+    path: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  },
+  {
+    title: 'Carbon-Neutral Shipping',
+    desc: 'Every order is shipped carbon-neutral. We offset 100% of emissions through verified reforestation projects in partnership with Ecologi.',
+    badge: 'On Every Order',
+    path: '<rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
+  },
+  {
+    title: 'Secure, Flexible Payment',
+    desc: 'Shop with confidence using any major card, Apple Pay, or PayPal. All transactions are SSL-encrypted. We never store card details.',
+    badge: 'SSL Secured',
+    path: '<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>',
+  },
 ];
 
 const team = [
-  { name: 'Daniel Reyes', role: 'Co-Founder & CEO', img: 'team-01.jpg' },
-  { name: 'Aisha Karim', role: 'Co-Founder & CTO', img: 'team-02.jpg' },
-  { name: 'Marcus Ven', role: 'Head of Partnerships', img: 'team-03.jpg' },
-  { name: 'Priya Shah', role: 'Head of AI Tech', img: 'team-04.jpg' },
-  { name: 'Leo Tanaka', role: 'Head of Product', img: 'team-05.jpg' },
-  { name: 'Sofia Moretti', role: 'Head of Growth', img: 'team-06.jpg' },
+  { name: 'Sophie Laurent', role: 'Founder & Creative Director', bio: 'Parisian-trained with 15 years in luxury fashion. Founded MAISON with a vision for modern, refined dressing.', img: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=600&q=80&auto=format&fit=crop&crop=face' },
+  { name: 'Emeka Osei', role: 'Head of Materials', bio: 'Former textile specialist at Loro Piana. Sources every fabric personally from mills in Italy and Japan.', img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&q=80&auto=format&fit=crop&crop=face' },
+  { name: 'Mia Thornton', role: 'Brand Director', bio: '10 years in fashion marketing across Paris and New York. Shapes every touchpoint of the MAISON story.', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=80&auto=format&fit=crop&crop=face' },
+  { name: 'Jiro Nakamura', role: 'Lead Atelier', bio: 'Master tailor trained in Tokyo and Milan. Leads our atelier and oversees quality for every production run.', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80&auto=format&fit=crop&crop=face' },
+];
+
+const faqs = [
+  { q: 'What makes MAISON pieces different?', a: 'Every garment is cut from long-staple natural fibres sourced directly from mills in Italy and Japan, then refined across an average of fourteen prototypes. We design for years of wear, not a single season — honest pricing, considered design, made to last.', open: true },
+  { q: 'How should I care for my MAISON garments?', a: 'Each piece ships with a care card specific to its fabric. As a rule we recommend cold gentle washes, air-drying, and a cool iron. Cared for well, MAISON pieces are tested to hold their shape and colour through 200+ washes.' },
+  { q: 'What is the Lifetime Repair Promise?', a: 'Send any MAISON piece back to our atelier for repair, free of charge, forever. A loose seam, a worn button, a fraying hem — we mend it. The most sustainable garment is the one you keep.' },
+  { q: 'How long does shipping take?', a: 'Orders ship carbon-neutral and typically arrive in 2–5 business days, with tracking on every order. Shipping is complimentary on all orders over $250.' },
+  { q: 'Can I return or exchange an item?', a: 'Yes. We offer 30-day free returns on unworn items in their original condition — no questions asked. A prepaid label is included with every order, so exchanges are effortless.' },
+  { q: 'Where are MAISON clothes made?', a: 'In partner ateliers run by makers who have practised their craft for at least two generations, using fabrics milled in Como, Biella, and Nishiwaki. Our supply chain is fully traceable and built on fair-wage partnerships.' },
 ];
 ---
 
 <Layout
-  title="About Omnix"
-  description="Omnix is a team of passionate makers building technology that empowers people to live and work better — tested quality, backed for years, better for the planet."
+  title="About MAISON"
+  description="MAISON is a modern fashion house founded in Paris in 2019 — natural fibres, considered design, and craftsmanship built to last, with a lifetime repair promise on every piece."
 >
-  <main class="ab-main" id="aboutModern">
-    {/* Hero */}
-    <section class="ab-hero">
-      <div class="ab-wrap ab-hero-inner ab-reveal">
-        <h1>About <em>Omnix</em></h1>
-        <p>Omnix is a team of passionate makers dedicated to building technology that empowers people to live and work better.</p>
-      </div>
-      <div class="ab-wrap ab-hero-wide">
-        <div class="ab-hero-collage ab-reveal" data-d="1">
-          <div class="ab-hero-side">
-            <figure class="ab-hero-img"><Image src={resolveImage('md about-01.jpg')} alt="Inside the Omnix studio" width={520} height={347} /></figure>
-            <figure class="ab-hero-img"><Image src={resolveImage('md about-02.jpg')} alt="The Omnix team at work" width={520} height={347} /></figure>
+  <main id="aboutModern" class="about-pg">
+    {/* ── Story hero header ── */}
+    <div class="cart-hd-block ab-reveal">
+      <div class="cart-hd-inner">
+        <div class="cart-hd-toprow">
+          <nav class="cart-bc">
+            <a href="/">Home</a>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            <span class="cart-bc-cur">About Us</span>
+          </nav>
+          <div class="cart-hd-perks">
+            <span class="cart-hd-perk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> hello@maisonss26.com</span>
+            <span class="cart-hd-perk-div"></span>
+            <span class="cart-hd-perk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.54 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l.81-.81a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> +1 (212) 555-0140</span>
+            <span class="cart-hd-perk-div"></span>
+            <span class="cart-hd-perk cart-hd-perk--secure"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Free Shipping Over $250</span>
           </div>
-          <div class="ab-hero-video">
-            <video src="/Hero_electronics.mp4" poster={resolveImage('active-lifestyle.jpg').src} autoplay muted loop playsinline preload="metadata"></video>
-            <div class="ab-hero-vcap">
-              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-              <h3>A team committed to real impact</h3>
-              <p>A diverse group of thinkers and builders who care deeply about technology worth keeping.</p>
+        </div>
+        <div class="cart-hd-hero">
+          <div class="cart-hd-hero-left">
+            <div class="cart-hd-eyebrow">Our Story</div>
+            <h1 class="cart-hd-title">About MAISON</h1>
+            <p class="cart-hd-sub">Built on a belief that modern dressing should feel effortless, refined, and yours.</p>
+          </div>
+          <div class="cart-hd-stats">
+            <div class="cart-hd-stat">
+              <div class="cart-hd-stat-num">2019</div>
+              <div class="cart-hd-stat-lbl">Founded</div>
+            </div>
+            <div class="cart-hd-stat-div"></div>
+            <div class="cart-hd-stat">
+              <div class="cart-hd-stat-num">3</div>
+              <div class="cart-hd-stat-lbl">Stores</div>
+            </div>
+            <div class="cart-hd-stat-div"></div>
+            <div class="cart-hd-stat">
+              <div class="cart-hd-stat-num">80+</div>
+              <div class="cart-hd-stat-lbl">Countries</div>
             </div>
           </div>
-          <div class="ab-hero-side">
-            <figure class="ab-hero-img"><Image src={resolveImage('md about-03.jpg')} alt="Omnix product session" width={520} height={347} /></figure>
-            <figure class="ab-hero-img"><Image src={resolveImage('md about-04.jpg')} alt="Customers using Omnix" width={520} height={347} /></figure>
+        </div>
+      </div>
+    </div>
+
+    {/* ── Story ── */}
+    <section class="ab-story">
+      <div class="ab-story-grid">
+        <div class="ab-story-img ab-reveal">
+          <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&q=85&auto=format&fit=crop" alt="MAISON brand story" loading="lazy" />
+          <div class="ab-story-img-tag">Paris · 2019</div>
+        </div>
+        <div class="ab-story-txt ab-reveal" data-d="1">
+          <div class="ab-story-num">01 — Our Beginning</div>
+          <h2 class="ab-story-title">Dressed for the life<br />you actually live.</h2>
+          <p class="ab-story-body">MAISON was born from a simple frustration — fashion that looked beautiful in editorials but felt wrong in real life. Too stiff. Too fast. Too forgettable.<br /><br />Sophie Laurent founded MAISON in Paris in 2019 with one conviction: modern people deserve clothes built the old way. Thoughtfully designed, carefully sourced, made to last — not for a season, but for years.</p>
+          <div class="ab-story-milestones">
+            <div class="ab-story-ms"><span class="ab-story-ms-y">2019</span><span class="ab-story-ms-t">Founded in Paris with a debut collection of 12 pieces</span></div>
+            <div class="ab-story-ms"><span class="ab-story-ms-y">2021</span><span class="ab-story-ms-t">First flagship store — New York's West Village</span></div>
+            <div class="ab-story-ms"><span class="ab-story-ms-y">2024</span><span class="ab-story-ms-t">London &amp; LA stores — 5,000+ customers in 80 countries</span></div>
+          </div>
+          <div class="ab-story-sig">
+            <div class="ab-story-sig-av">SL</div>
+            <div>
+              <div class="ab-story-sig-name">Sophie Laurent</div>
+              <div class="ab-story-sig-role">Founder &amp; Creative Director</div>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    {/* What drives us */}
-    <section class="ab-mv">
-      <div class="ab-wrap">
-        <div class="ab-mv-lead ab-reveal">
-          <p class="ab-over">What drives us</p>
-          <h2>Built on trust and long-term thinking, we design technology that earns a permanent place in your life &mdash; <em>and keeps it for years.</em></h2>
-        </div>
-        <div class="ab-mv-grid2">
-          <div class="ab-mv-list">
-            <div class="ab-mv-item ab-reveal">
-              <span class="ab-mv-tag"><span class="num">//01</span> Our mission</span>
-              <h3>Technology that feels honest</h3>
-              <p>We started Omnix to make premium tech that's thoughtfully engineered, fairly priced, and backed by people who genuinely care &mdash; products we'd proudly keep ourselves.</p>
-            </div>
-            <div class="ab-mv-item ab-reveal" data-d="1">
-              <span class="ab-mv-tag"><span class="num">//02</span> Our vision</span>
-              <h3>Better, made the default</h3>
-              <p>A world where great technology is repairable, sustainable, and built to be passed on &mdash; not replaced every season. We're here to prove better is possible.</p>
-            </div>
-            <div class="ab-mv-item ab-reveal" data-d="2">
-              <span class="ab-mv-tag"><span class="num">//03</span> Our goals</span>
-              <h3>Built to last, for everyone</h3>
-              <p>Carbon-neutral shipping, a 2-year warranty, and a trade-in program that keeps good tech in use &mdash; for customers and the planet alike.</p>
-            </div>
+    {/* ── By the numbers ── */}
+    <div class="ab-nums">
+      <div class="ab-nums-inner ab-reveal">
+        <div class="ab-nums-label">MAISON by the numbers</div>
+        <div class="ab-nums-row">
+          <div class="ab-num-cell">
+            <div class="ab-num-bar"></div>
+            <div class="ab-num-n" data-count="5" data-suffix="K+">0</div>
+            <div class="ab-num-l">Customers</div>
+            <div class="ab-num-s">Across 80 countries</div>
           </div>
-          <figure class="ab-mv-media ab-reveal" data-d="1">
-            <Image src={resolveImage('ab mv media.jpg')} alt="The Omnix team at work" width={760} height={640} />
-          </figure>
+          <div class="ab-num-cell">
+            <div class="ab-num-bar"></div>
+            <div class="ab-num-n" data-count="3" data-suffix="">0</div>
+            <div class="ab-num-l">Flagship Stores</div>
+            <div class="ab-num-s">NY · LA · London</div>
+          </div>
+          <div class="ab-num-cell">
+            <div class="ab-num-bar"></div>
+            <div class="ab-num-n" data-count="4.9" data-dec="1" data-suffix="">0</div>
+            <div class="ab-num-l">Customer Rating</div>
+            <div class="ab-num-s">3,200+ verified reviews</div>
+          </div>
+          <div class="ab-num-cell">
+            <div class="ab-num-bar"></div>
+            <div class="ab-num-n" data-count="100" data-suffix="%">0</div>
+            <div class="ab-num-l">Natural Fibres</div>
+            <div class="ab-num-s">No synthetic blends</div>
+          </div>
+          <div class="ab-num-cell">
+            <div class="ab-num-bar"></div>
+            <div class="ab-num-n">&#8734;</div>
+            <div class="ab-num-l">Lifetime Repairs</div>
+            <div class="ab-num-s">Every piece, always</div>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
 
-    {/* Journey */}
-    <section class="ab-journey">
-      <div class="ab-wrap">
-        <div class="ab-sec-head center ab-reveal">
-          <p class="ab-over">Our journey</p>
-          <h2 class="ab-h2">From a garage idea to a global store.</h2>
+    {/* ── Philosophy ── */}
+    <section class="ab-phil">
+      <div class="ab-phil-c">
+        <div class="ab-phil-head ab-reveal">
+          <div class="ab-label">What We Stand For</div>
+          <h2 class="ab-phil-head-title">A philosophy built<br />into every stitch.</h2>
+          <p class="ab-phil-head-sub">Four values guide every decision — from how we source fabric to how we pack your order.</p>
         </div>
-        <div class="ab-jrny ab-reveal">
+        <div class="ab-phil-grid">
           {
-            journey.map((j) => (
-              <div class:list={['ab-jrny-panel', { active: j.active }]}>
-                <Image src={resolveImage(j.img)} alt={j.alt} width={520} height={580} />
-                <div class="ab-jrny-info">
-                  <p class="ab-jrny-year">{j.year}</p>
-                  <span class="ab-jrny-role">{j.role}</span>
-                  <p class="ab-jrny-desc">{j.desc}</p>
+            philosophy.map((p, i) => (
+              <div class="ab-phil-card ab-reveal" data-d={String(i % 2)}>
+                <div class="ab-phil-icon-wrap">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" set:html={p.path} />
+                </div>
+                <div class="ab-phil-card-body">
+                  <div class="ab-phil-card-num">{p.num}</div>
+                  <h3 class="ab-phil-card-title">{p.title}</h3>
+                  <p class="ab-phil-card-desc">{p.desc}</p>
                 </div>
               </div>
             ))
@@ -117,52 +227,82 @@ const team = [
       </div>
     </section>
 
-    {/* Why choose us */}
-    <section class="ab-why">
-      <div class="ab-wrap">
-        <div class="ab-why-grid">
-          <div class="ab-why-intro ab-reveal">
-            <p class="ab-over">Why choose us</p>
-            <h2 class="ab-h2">Reasons people stay with Omnix.</h2>
-            <p>We're not the cheapest, and we're fine with that. What keeps people coming back is technology that's built to last and a team that stands behind every order.</p>
-            <a href="/products" class="ab-btn solid">Shop the collection <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+    {/* ── Craft ── */}
+    <section class="ab-craft">
+      <div class="ab-craft-grid">
+        <div class="ab-craft-txt ab-reveal">
+          <div class="ab-label">How We Make It</div>
+          <h2 class="ab-craft-title">Craftsmanship as a standard, not a selling point.</h2>
+          <p class="ab-craft-body">Every MAISON piece passes through twelve quality checkpoints before leaving our atelier. We work exclusively with mills and manufacturers who have been in their craft for at least two generations.</p>
+          <div class="ab-craft-list">
+            {
+              craft.map((c) => (
+                <div class="ab-craft-item">
+                  <div class="ab-craft-n">{c.n}</div>
+                  <div>
+                    <div class="ab-craft-t">{c.t}</div>
+                    <div class="ab-craft-d">{c.d}</div>
+                  </div>
+                </div>
+              ))
+            }
           </div>
-          <div class="ab-why-stack">
-            <div class="ab-why-card ab-reveal">
-              <div class="ab-why-top"><span class="ab-why-num">01</span><span class="ab-why-rule"></span></div>
-              <h3>Tested quality</h3>
-              <p>Every product is hands-on tested in our lab. If it won't last years, it never reaches our shelves &mdash; no exceptions.</p>
-            </div>
-            <div class="ab-why-card dark ab-reveal">
-              <div class="ab-why-top"><span class="ab-why-num">02</span><span class="ab-why-rule"></span></div>
-              <h3>Backed for years</h3>
-              <p>A 2-year warranty with no fine print, plus real human support from people who actually use what they sell.</p>
-            </div>
-            <div class="ab-why-card blue ab-reveal">
-              <div class="ab-why-top"><span class="ab-why-num">03</span><span class="ab-why-rule"></span></div>
-              <h3>Better for the planet</h3>
-              <p>Recyclable packaging, carbon-neutral shipping, and a trade-in program built to keep technology in use for years.</p>
-            </div>
+        </div>
+        <div class="ab-craft-visual ab-reveal" data-d="1">
+          <div class="ab-craft-img"><img src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1100&q=85&auto=format&fit=crop" alt="MAISON craftsmanship" loading="lazy" /></div>
+          <div class="ab-craft-float">
+            <div class="ab-craft-float-n">12×</div>
+            <div class="ab-craft-float-l">Quality<br />Checkpoints</div>
           </div>
         </div>
       </div>
     </section>
 
-    {/* Team */}
-    <section class="ab-team" id="abTeamSec">
-      <div class="ab-wrap">
-        <div class="ab-sec-head center ab-reveal">
-          <p class="ab-over">The people</p>
-          <h2 class="ab-h2">The team behind it all.</h2>
+    {/* ── Promise ── */}
+    <section class="ab-promise">
+      <div class="ab-promise-c">
+        <div class="ab-promise-head ab-reveal">
+          <div class="ab-promise-ey">Our Promise to You</div>
+          <h2 class="ab-promise-title">Shop with complete<br />confidence.</h2>
+          <p class="ab-promise-sub">Everything we do is designed to make your experience with MAISON as effortless as our clothes.</p>
         </div>
-        <div class="ab-team-grid" id="abTeam">
+        <div class="ab-promise-grid">
+          {
+            promise.map((p, i) => (
+              <div class="ab-promise-item ab-reveal" data-d={String(i % 4)}>
+                <div class="ab-promise-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" set:html={p.path} />
+                </div>
+                <div class="ab-promise-item-title">{p.title}</div>
+                <p class="ab-promise-item-desc">{p.desc}</p>
+                <span class="ab-promise-badge">{p.badge}</span>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    {/* ── Team ── */}
+    <section class="ab-team">
+      <div class="ab-team-c">
+        <div class="ab-team-head ab-reveal">
+          <div class="ab-label">The People</div>
+          <h2 class="ab-team-title">Meet the team.</h2>
+        </div>
+        <div class="ab-team-grid">
           {
             team.map((m, i) => (
-              <div class="ab-member ab-reveal" data-d={String(i % 3)}>
-                <div class="ab-member-photo"><Image src={resolveImage(m.img)} alt={m.name} width={400} height={500} loading="lazy" /></div>
-                <div class="ab-member-info">
-                  <a class="ab-member-li" href="https://linkedin.com" target="_blank" rel="noopener" aria-label={`${m.name} on LinkedIn`}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14zM8.34 9.5H5.67V18h2.67V9.5zM7 6.06a1.55 1.55 0 1 0 0 3.1 1.55 1.55 0 0 0 0-3.1zM18.34 18v-4.67c0-2.49-1.33-3.65-3.11-3.65-1.44 0-2.08.79-2.44 1.35V9.5h-2.67V18h2.67v-4.34c0-1.15.22-2.26 1.64-2.26 1.4 0 1.42 1.31 1.42 2.34V18h2.5z"/></svg></a>
-                  <div class="ab-member-meta"><div class="ab-member-role">{m.role}</div><div class="ab-member-name">{m.name}</div></div>
+              <div class="ab-team-card ab-reveal" data-d={String(i % 4)}>
+                <div class="ab-team-photo"><img src={m.img} alt={m.name} loading="lazy" /></div>
+                <div class="ab-team-info">
+                  <div class="ab-team-role">{m.role}</div>
+                  <div class="ab-team-name">{m.name}</div>
+                  <div class="ab-team-bio">{m.bio}</div>
+                  <div class="ab-team-links">
+                    <a class="ab-team-lk" href="#" aria-label={`${m.name} on Instagram`}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+                    <a class="ab-team-lk" href="#" aria-label={`${m.name} on LinkedIn`}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+                  </div>
                 </div>
               </div>
             ))
@@ -171,74 +311,40 @@ const team = [
       </div>
     </section>
 
-    {/* By the numbers */}
-    <section class="ab-numbers">
-      <div class="ab-wrap ab-numbers-inner">
-        <div class="ab-numbers-head ab-reveal">
-          <p class="ab-over">By the numbers</p>
-          <h2>Ten years. One obsession.</h2>
-        </div>
-        <div class="ab-num-grid">
-          <div class="ab-reveal"><div class="ab-num" data-count="250" data-suffix="K+">0</div><div class="ab-num-label">Customers worldwide</div></div>
-          <div class="ab-reveal" data-d="1"><div class="ab-num" data-count="47" data-suffix="">0</div><div class="ab-num-label">Countries served</div></div>
-          <div class="ab-reveal" data-d="2"><div class="ab-num" data-count="12" data-suffix="">0</div><div class="ab-num-label">Flagship stores</div></div>
-          <div class="ab-reveal" data-d="3"><div class="ab-num" data-count="4.9" data-dec="1" data-suffix="&#9733;">0</div><div class="ab-num-label">Average rating</div></div>
-        </div>
-      </div>
-    </section>
-
-    {/* FAQ */}
+    {/* ── FAQ ── */}
     <section class="ab-faq">
-      <div class="ab-wrap">
-        <div class="ab-sec-head center ab-reveal">
-          <p class="ab-over">FAQ</p>
-          <h2 class="ab-h2">Questions, answered.</h2>
+      <div class="ab-faq-c">
+        <div class="ab-faq-head ab-reveal">
+          <div class="ab-label">Good to Know</div>
+          <h2 class="ab-faq-title">Questions, answered.</h2>
         </div>
-        <div class="ab-faq-list">
-          <details class="ab-faq-item ab-reveal" open>
-            <summary>What makes Omnix products different?<span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-            <div class="ab-faq-answer"><p>Every product is hands-on tested in our lab, and we only sell what we would happily keep ourselves. That means honest pricing, real reviews, and tech built to last for years &mdash; not seasons.</p></div>
-          </details>
-          <details class="ab-faq-item ab-reveal">
-            <summary>What does the warranty cover?<span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-            <div class="ab-faq-answer"><p>Every Omnix product includes a 2-year warranty with no fine print. If something fails through normal use, we repair or replace it quickly &mdash; no hassle.</p></div>
-          </details>
-          <details class="ab-faq-item ab-reveal">
-            <summary>How long does shipping take?<span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-            <div class="ab-faq-answer"><p>Orders ship carbon-neutral and typically arrive in 2&ndash;5 business days. Shipping is free on every order over &#36;500, with tracking included.</p></div>
-          </details>
-          <details class="ab-faq-item ab-reveal">
-            <summary>Can I return a product?<span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-            <div class="ab-faq-answer"><p>Yes. We offer 30-day returns on unused items in their original packaging. Start a return from your account and we will email you a prepaid label.</p></div>
-          </details>
-          <details class="ab-faq-item ab-reveal">
-            <summary>Do you offer trade-ins?<span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-            <div class="ab-faq-answer"><p>Absolutely. Our trade-in program keeps good technology in use longer. Send in an eligible device and get credit toward your next Omnix order.</p></div>
-          </details>
-          <details class="ab-faq-item ab-reveal">
-            <summary>How can I reach support?<span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-            <div class="ab-faq-answer"><p>Talk to real people via live chat, email, or phone &mdash; the same team that uses our products every day, before and long after you buy.</p></div>
-          </details>
+        <div class="ab-faq-list ab-reveal" data-d="1">
+          {
+            faqs.map((f) => (
+              <details class="ab-faq-item" open={f.open}>
+                <summary>
+                  <span>{f.q}</span>
+                  <span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+                </summary>
+                <div class="ab-faq-answer"><p>{f.a}</p></div>
+              </details>
+            ))
+          }
         </div>
       </div>
     </section>
 
-    {/* Final CTA (newsletter) */}
-    <section class="news">
-      <div class="container">
-        <div class="news-inner">
-          <div class="sec-eyebrow" style="color: var(--cyan); justify-content: center; display: inline-flex;">Join the inner circle</div>
-          <h2 class="h2">Get <span class="accent">10% off</span> your first order.</h2>
-          <p>Drop your email &mdash; we'll send early access to drops, restock alerts, and the occasional 30%-off Friday. Unsubscribe anytime.</p>
-          <form class="news-form" onsubmit="event.preventDefault(); this.querySelector('button').textContent='Subscribed ✓';">
-            <input type="email" placeholder="your@email.com" required />
-            <button type="submit" class="btn btn-primary">Subscribe</button>
-          </form>
-          <div class="news-perks">
-            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>10% off first order</span>
-            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>Early access to drops</span>
-            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>No spam, ever</span>
-          </div>
+    {/* ── Closing CTA ── */}
+    <section class="ab-cta">
+      <div class="ab-cta-c ab-reveal">
+        <div class="ab-cta-ey">Ready When You Are</div>
+        <h2 class="ab-cta-title">Find your next<br />everyday piece.</h2>
+        <p class="ab-cta-sub">Explore the collection — natural fibres, considered cuts, and a lifetime repair promise on every garment.</p>
+        <div class="ab-cta-actions">
+          <a href="/products" class="ab-cta-btn solid">Shop the collection
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <a href="/blog" class="ab-cta-btn line">Read the journal</a>
         </div>
       </div>
     </section>
@@ -246,14 +352,14 @@ const team = [
 </Layout>
 
 <script>
-  // Scroll-reveal + animated counters (matches about-modern.html).
+  // Scroll-reveal + animated stat counters (matches maison About.html).
   const root = document.getElementById('aboutModern');
   if (root) {
     const reveals = root.querySelectorAll('.ab-reveal');
     if ('IntersectionObserver' in window) {
       const io = new IntersectionObserver(
         (es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }),
-        { threshold: 0.14 },
+        { threshold: 0.12 },
       );
       reveals.forEach((el) => io.observe(el));
     } else {
@@ -264,21 +370,19 @@ const team = [
       const target = parseFloat(el.getAttribute('data-count') || '0');
       const dec = parseInt(el.getAttribute('data-dec') || '0', 10);
       const suffix = el.getAttribute('data-suffix') || '';
-      const dur = 1600;
+      const dur = 1500;
       let start: number | null = null;
       const step = (ts: number) => {
         if (start === null) start = ts;
         const p = Math.min((ts - start) / dur, 1);
         const eased = 1 - Math.pow(1 - p, 3);
         const val = (target * eased).toFixed(dec);
-        el.innerHTML =
-          (dec ? val : Math.round(Number(val)).toLocaleString('en-US')) +
-          '<span class="suf">' + suffix + '</span>';
+        el.textContent = (dec ? val : Math.round(Number(val)).toLocaleString('en-US')) + suffix;
         if (p < 1) requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
     };
-    const counters = root.querySelectorAll('.ab-num');
+    const counters = root.querySelectorAll('.ab-num-n[data-count]');
     if ('IntersectionObserver' in window) {
       const cio = new IntersectionObserver(
         (es) => es.forEach((e) => { if (e.isIntersecting) { animate(e.target); cio.unobserve(e.target); } }),

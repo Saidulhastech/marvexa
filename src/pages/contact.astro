@@ -1,293 +1,571 @@
 ---
 // ============================================================
-//  Contact (OMNIX) — bento redesign. Static page: contact bento
-//  grid, demo contact form (client-only success view) and FAQ.
+//  Contact (MAISON) — fashion reskin. Static page: hero header,
+//  split contact form + info sidebar, store locations, FAQ.
+//  Demo contact form (client-only validation + success view).
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
 import '~/styles/contact.css';
 ---
 
 <Layout
-  title="Contact"
-  description="Get in touch with OMNIX — live chat, email, phone, or send us a message. Real people, fast replies, and answers that actually solve it."
+  title="Contact — Maison"
+  description="Get in touch with Maison. Reach our team about orders, returns, sizing, wholesale or press — real people, replies within 24 hours, and three flagship stores worldwide."
 >
-  <main class="cn-main" id="contactModern">
-    <div class="cn-wrap">
-      <!-- Intro -->
-      <div class="cn-intro">
-        <div class="cn-intro-l">
-          <span class="cn-eyebrow"><span></span>Contact</span>
-          <h1>How can we <span class="hl">help you?</span></h1>
-          <p>Pick the channel that suits you, or send us a message &mdash; real people, fast replies, and answers that actually solve it.</p>
-        </div>
-        <div class="cn-intro-chip">
-          <span class="pulse"></span>
-          <span><b>We're online now</b><span class="t">Avg. reply in under 2 hours</span></span>
-        </div>
-      </div>
+  <main id="contactModern" class="contact-pg">
 
-      <!-- BENTO -->
-      <div class="cn-bento">
-        <!-- Chat (feature) -->
-        <div class="cn-tile chat">
-          <span class="cn-chat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg></span>
-          <div class="cn-chat-txt">
-            <h3>Live chat <span class="cn-chat-online"><span></span>Online</span></h3>
-            <p>Chat with a product specialist right now &mdash; typical wait under a minute.</p>
-          </div>
-          <button class="cn-chat-btn" id="cnChat">Start chat <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-        </div>
-
-        <!-- Email -->
-        <div class="cn-tile email cn-link-tile">
-          <div>
-            <span class="cn-t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg></span>
-            <h3>Email us</h3>
-            <span class="sub">Orders, returns &amp; general help</span>
-          </div>
-          <a class="val" href="mailto:support@omnix.com">support@omnix.com <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-        </div>
-
-        <!-- Call -->
-        <div class="cn-tile call cn-link-tile">
-          <div>
-            <span class="cn-t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
-            <h3>Call us</h3>
-            <span class="sub">Mon&ndash;Fri &middot; 9am&ndash;6pm EST</span>
-          </div>
-          <a class="val" href="tel:+18005550199">+1 (800) 555-0199 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-        </div>
-
-        <!-- Map -->
-        <div class="cn-tile map" id="cnMap">
-          <iframe src="https://www.google.com/maps?q=Downtown+Manhattan+New+York&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Omnix Flagship Store location"></iframe>
-          <div class="cn-map-card">
-            <span class="cn-map-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
-            <div class="cn-map-info"><b>Omnix Flagship Store</b><span>120 Innovation Ave, Downtown, NY</span></div>
-            <a class="cn-map-go" href="https://www.google.com/maps?q=Downtown+Manhattan+New+York" target="_blank" rel="noopener">Directions <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+    <!-- ── Hero header ── -->
+    <div class="cart-hd-block">
+      <div class="cart-hd-inner">
+        <div class="cart-hd-toprow">
+          <nav class="cart-bc" aria-label="breadcrumb">
+            <a href="/">Home</a>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+            <span class="cart-bc-cur">Contact</span>
+          </nav>
+          <div class="cart-hd-perks">
+            <span class="cart-hd-perk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg> hello@maison.com</span>
+            <span class="cart-hd-perk-div"></span>
+            <span class="cart-hd-perk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.54 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l.81-.81a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg> +1 (212) 555-0140</span>
+            <span class="cart-hd-perk-div"></span>
+            <span class="cart-hd-perk cart-hd-perk--secure"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> Mon&ndash;Fri, 9am&ndash;6pm EST</span>
           </div>
         </div>
-
-        <!-- Visit -->
-        <div class="cn-tile visit cn-link-tile">
-          <div>
-            <span class="cn-t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></span>
-            <h3>Visit us</h3>
-            <span class="sub">120 Innovation Ave<br>Downtown, NY 10013</span>
+        <div class="cart-hd-hero">
+          <div class="cart-hd-hero-left">
+            <div class="cart-hd-eyebrow">Get in Touch</div>
+            <h1 class="cart-hd-title">Contact Us</h1>
+            <p class="cart-hd-sub">We're here to help. Reach out and we'll get back to you within 24 hours.</p>
           </div>
-          <a class="val" href="#cnMap">View on map <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-        </div>
-
-        <!-- Social -->
-        <div class="cn-tile social">
-          <div>
-            <span class="cn-t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg></span>
-            <h3>Follow along</h3>
-          </div>
-          <div class="cn-social-row">
-            <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
-            <a href="#" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 1.5h3.5l-7.6 8.7 9 11.9h-7l-5.5-7.2-6.3 7.2H1.5l8.2-9.3L1 1.5h7.2l5 6.6 5.7-6.6zm-1.2 18.6h1.9L6.4 3.4H4.3l13.4 16.7z"/></svg></a>
-            <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 6.4a2.8 2.8 0 0 0-2-2C18.8 4 12 4 12 4s-6.8 0-8.5.4a2.8 2.8 0 0 0-2 2A29 29 0 0 0 1.5 12a29 29 0 0 0 .5 5.6 2.8 2.8 0 0 0 2 2C5.2 20 12 20 12 20s6.8 0 8.5-.4a2.8 2.8 0 0 0 2-2 29 29 0 0 0 .5-5.6 29 29 0 0 0-.5-5.6z"/><path d="M10 15l5-3-5-3z" fill="currentColor"/></svg></a>
-            <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
-          </div>
-        </div>
-
-        <!-- Hours -->
-        <div class="cn-tile hours">
-          <div class="cn-hours-head">
-            <span class="cn-t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-            <b>Support hours</b>
-          </div>
-          <div class="cn-hours-rows">
-            <div class="cn-hours-row"><span class="d">Mon &ndash; Thu</span><span class="h">9am &ndash; 6pm</span></div>
-            <div class="cn-hours-row"><span class="d">Friday</span><span class="h">9am &ndash; 5pm</span></div>
-            <div class="cn-hours-row"><span class="d">Saturday</span><span class="h">10am &ndash; 4pm</span></div>
-            <div class="cn-hours-row"><span class="d">Sunday</span><span class="h closed">Closed</span></div>
+          <div class="cart-hd-stats">
+            <div class="cart-hd-stat">
+              <div class="cart-hd-stat-num">&lt;24h</div>
+              <div class="cart-hd-stat-lbl">Response</div>
+            </div>
+            <div class="cart-hd-stat-div"></div>
+            <div class="cart-hd-stat">
+              <div class="cart-hd-stat-num">3</div>
+              <div class="cart-hd-stat-lbl">Locations</div>
+            </div>
+            <div class="cart-hd-stat-div"></div>
+            <div class="cart-hd-stat">
+              <div class="cart-hd-stat-num">4.9</div>
+              <div class="cart-hd-stat-lbl">Rating</div>
+            </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- FORM (dark panel) -->
-      <section class="cn-formsec">
-        <div class="cn-form-inner">
-          <div class="cn-form-head">
-            <span class="eb">Send a message</span>
-            <h2>Tell us what you need</h2>
-            <p>Fill out the form and we'll reply within one business day.</p>
+    <!-- ── Split layout: form + info sidebar ── -->
+    <div class="contact-layout">
+      <div class="contact-form-col">
+
+        <!-- CONTACT FORM -->
+        <div class="contact-section">
+          <div class="contact-section-hd">
+            <div class="contact-section-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg></div>
+            <h2 class="contact-section-title">Send a Message</h2>
+            <span class="contact-section-tag">24h reply</span>
           </div>
-          <form id="cnForm" novalidate>
-            <div class="cn-row">
-              <div class="cn-field">
-                <label class="cn-label" for="cnFname">First name</label>
-                <input type="text" class="cn-input" id="cnFname" placeholder="First name" autocomplete="given-name" required data-label="first name">
-                <span class="cn-err-msg">Required.</span>
+          <div class="contact-section-body">
+            <form id="cfForm" novalidate>
+              <div class="cf-row">
+                <div class="cf-field"><label for="cfFirst">First Name</label><input type="text" class="cf-input" placeholder="Jane" id="cfFirst" autocomplete="given-name" required data-label="first name" /><span class="cf-err">Required.</span></div>
+                <div class="cf-field"><label for="cfLast">Last Name</label><input type="text" class="cf-input" placeholder="Doe" id="cfLast" autocomplete="family-name" required data-label="last name" /><span class="cf-err">Required.</span></div>
               </div>
-              <div class="cn-field">
-                <label class="cn-label" for="cnLname">Last name</label>
-                <input type="text" class="cn-input" id="cnLname" placeholder="Last name" autocomplete="family-name" required data-label="last name">
-                <span class="cn-err-msg">Required.</span>
+              <div class="cf-row">
+                <div class="cf-field"><label for="cfEmail">Email Address</label><input type="email" class="cf-input" placeholder="jane@example.com" id="cfEmail" autocomplete="email" required data-label="email" /><span class="cf-err">Enter a valid email.</span></div>
+                <div class="cf-field"><label for="cfPhone">Phone (optional)</label><input type="tel" class="cf-input" placeholder="+1 (212) 555-0000" id="cfPhone" autocomplete="tel" /></div>
               </div>
-            </div>
-            <div class="cn-row">
-              <div class="cn-field">
-                <label class="cn-label" for="cnEmail">Email</label>
-                <input type="email" class="cn-input" id="cnEmail" placeholder="you@example.com" autocomplete="email" required data-label="email">
-                <span class="cn-err-msg">Enter a valid email.</span>
-              </div>
-              <div class="cn-field">
-                <label class="cn-label" for="cnPhone">Phone <span class="opt">(optional)</span></label>
-                <input type="tel" class="cn-input" id="cnPhone" placeholder="+1 (555) 000-0000" autocomplete="tel">
-              </div>
-            </div>
-            <div class="cn-row">
-              <div class="cn-field">
-                <label class="cn-label" for="cnSubject">Subject</label>
-                <select class="cn-select" id="cnSubject" required>
-                  <option value="">Choose a topic</option>
-                  <option>Order &amp; shipping</option>
-                  <option>Returns &amp; refunds</option>
-                  <option>Product question</option>
-                  <option>Warranty &amp; repairs</option>
-                  <option>Partnership / wholesale</option>
+              <div class="cf-field">
+                <label for="cfSubject">Subject</label>
+                <select class="cf-select" id="cfSubject" required>
+                  <option value="">Select a topic...</option>
+                  <option>Orders &amp; shipping</option>
+                  <option>Returns &amp; exchanges</option>
+                  <option>Product / sizing question</option>
+                  <option>Styling advice</option>
+                  <option>Wholesale</option>
+                  <option>Press</option>
                   <option>Something else</option>
                 </select>
-                <span class="cn-err-msg">Please choose a topic.</span>
+                <span class="cf-err">Please choose a topic.</span>
               </div>
-              <div class="cn-field">
-                <label class="cn-label" for="cnOrder">Order number <span class="opt">(optional)</span></label>
-                <input type="text" class="cn-input" id="cnOrder" placeholder="#OMX-00000">
+              <div class="cf-field"><label for="cfOrder">Order Number (optional)</label><input type="text" class="cf-input" placeholder="#MAISON-00000" id="cfOrder" /></div>
+              <div class="cf-field">
+                <label for="cfMsg">Your Message</label>
+                <textarea class="cf-textarea" placeholder="How can we help you today?" id="cfMsg" maxlength="500" required data-label="message"></textarea>
+                <div class="cf-char-count" id="cfChars">0/500</div>
+                <span class="cf-err">Please write your message.</span>
               </div>
-            </div>
-            <div class="cn-row c1">
-              <div class="cn-field">
-                <label class="cn-label" for="cnMessage">Message</label>
-                <textarea class="cn-textarea" id="cnMessage" placeholder="How can we help?" required data-label="message"></textarea>
-                <span class="cn-err-msg">Please write your message.</span>
-              </div>
-            </div>
-            <label class="cn-check"><input type="checkbox" id="cnConsent" required><span class="cn-check-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>I agree to the <a href="#">privacy policy</a> and consent to being contacted about my enquiry.</label>
-            <div class="cn-submit-wrap">
-              <button type="submit" class="cn-submit" id="cnSubmit">
-                <span class="cn-submit-spin"></span>
-                <svg class="send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-                <span class="cn-submit-txt">Send message</span>
-              </button>
-            </div>
-          </form>
+              <button type="submit" class="cf-submit" id="cfSubmit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg> <span class="cf-submit-txt">Send Message</span></button>
+            </form>
 
-          <!-- Success -->
-          <div class="cn-success" id="cnSuccess">
-            <div class="cn-success-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
-            <h3>Message sent!</h3>
-            <p>Thanks for reaching out, <span id="cnSuccessName">there</span>. Our team will get back to you within one business day.</p>
-            <button type="button" class="cn-success-btn" id="cnSendAnother"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Send another message</button>
+            <!-- Success state -->
+            <div class="cf-success" id="cfSuccess">
+              <div class="cf-success-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5" /></svg></div>
+              <h3>Message sent</h3>
+              <p>Thanks for reaching out, <span id="cfSuccessName">there</span>. Our team will get back to you within 24 hours.</p>
+              <button type="button" class="cf-success-btn" id="cfSendAnother"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg> Send another message</button>
+            </div>
           </div>
         </div>
-      </section>
 
-      <!-- FAQ -->
-      <section class="cn-faq">
-        <span class="cn-faq-eyebrow">FAQ</span>
-        <h2>Frequently asked questions</h2>
-        <p>Quick answers to the things customers ask most.</p>
-        <div class="cn-faq-list" id="cnFaqList">
-          <div class="cn-faq-item open">
-            <button type="button" class="cn-faq-trigger"><span class="cn-faq-q">How long does shipping take?</span><span class="cn-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-            <div class="cn-faq-body"><div class="cn-faq-body-inner">Standard delivery takes 5&ndash;7 business days, while Express arrives in 2 days. Shipping rates are calculated at checkout based on your address, and you can track every order from your account.</div></div>
+        <!-- SUPPORT PROMISE -->
+        <div class="contact-section">
+          <div class="contact-section-hd">
+            <div class="contact-section-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg></div>
+            <h2 class="contact-section-title">Our Support Promise</h2>
+            <span class="contact-section-tag">Always Here</span>
           </div>
-          <div class="cn-faq-item">
-            <button type="button" class="cn-faq-trigger"><span class="cn-faq-q">What is your return policy?</span><span class="cn-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-            <div class="cn-faq-body"><div class="cn-faq-body-inner">You can return any unused item within 30 days for a full refund. We cover the return shipping &mdash; just start a return from your order history and we'll email you a prepaid label.</div></div>
-          </div>
-          <div class="cn-faq-item">
-            <button type="button" class="cn-faq-trigger"><span class="cn-faq-q">Do your products come with a warranty?</span><span class="cn-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-            <div class="cn-faq-body"><div class="cn-faq-body-inner">Every Omnix product includes a 2-year manufacturer warranty covering defects. You can also add an Omnix Protection Plan at checkout for accidental damage and theft coverage.</div></div>
-          </div>
-          <div class="cn-faq-item">
-            <button type="button" class="cn-faq-trigger"><span class="cn-faq-q">Can I change or cancel my order?</span><span class="cn-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-            <div class="cn-faq-body"><div class="cn-faq-body-inner">Orders can be changed or cancelled within 1 hour of placing them, before they enter fulfilment. Contact us right away with your order number and we'll do our best to help.</div></div>
-          </div>
-          <div class="cn-faq-item">
-            <button type="button" class="cn-faq-trigger"><span class="cn-faq-q">Do you ship internationally?</span><span class="cn-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-            <div class="cn-faq-body"><div class="cn-faq-body-inner">Yes &mdash; we ship to over 60 countries. International shipping rates and delivery times are calculated at checkout based on your destination.</div></div>
+          <div class="support-promise-grid">
+            <div class="support-promise-item">
+              <div class="support-promise-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg></div>
+              <div class="support-promise-num">&lt;24h</div>
+              <div class="support-promise-title">Response Time</div>
+              <div class="support-promise-sub">Weekdays within 2 hours</div>
+            </div>
+            <div class="support-promise-item">
+              <div class="support-promise-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-3.99" /></svg></div>
+              <div class="support-promise-num">30</div>
+              <div class="support-promise-title">Day Free Returns</div>
+              <div class="support-promise-sub">No questions asked</div>
+            </div>
+            <div class="support-promise-item">
+              <div class="support-promise-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg></div>
+              <div class="support-promise-num">4.9</div>
+              <div class="support-promise-title">Customer Rating</div>
+              <div class="support-promise-sub">Rated by 3,200+ customers</div>
+            </div>
+            <div class="support-promise-item">
+              <div class="support-promise-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg></div>
+              <div class="support-promise-num">5K+</div>
+              <div class="support-promise-title">Happy Customers</div>
+              <div class="support-promise-sub">3 flagship stores worldwide</div>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
+
+      <!-- ── RIGHT info sidebar ── -->
+      <div class="contact-info-col">
+        <div class="contact-info-card">
+          <div class="contact-info-hd">
+            <div class="contact-info-hd-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg></div>
+            <div class="contact-info-hd-title" style="flex:1">Our Details</div>
+          </div>
+          <div class="contact-store">
+            <div class="contact-store-item">
+              <div class="contact-store-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg></div>
+              <div>
+                <div class="contact-store-lbl">Email</div>
+                <div class="contact-store-val">hello@maison.com<br /><span style="color:var(--muted);font-size:11px">Replies within 24 hours</span></div>
+              </div>
+            </div>
+            <div class="contact-store-divider"></div>
+            <div class="contact-store-item">
+              <div class="contact-store-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.54 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l.81-.81a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg></div>
+              <div>
+                <div class="contact-store-lbl">Phone</div>
+                <div class="contact-store-val">+1 (212) 555-0140<br /><span style="color:var(--muted);font-size:11px">Mon&ndash;Fri, 9am&ndash;6pm EST</span></div>
+              </div>
+            </div>
+            <div class="contact-store-divider"></div>
+            <div class="contact-store-item">
+              <div class="contact-store-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg></div>
+              <div>
+                <div class="contact-store-lbl">Flagship Store</div>
+                <div class="contact-store-val">142 Spring Street, SoHo<br />New York, NY 10012</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-info-card">
+          <div class="contact-info-hd">
+            <div class="contact-info-hd-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg></div>
+            <div class="contact-info-hd-title" style="flex:1">Store Hours</div>
+            <span class="contact-open-badge"><span class="contact-open-dot"></span> Open Now</span>
+          </div>
+          <div class="contact-hours">
+            <div class="contact-hour-row"><span class="contact-hour-day">Monday</span><span class="contact-hour-time">10:00 &ndash; 20:00</span></div>
+            <div class="contact-hour-row"><span class="contact-hour-day">Tuesday</span><span class="contact-hour-time">10:00 &ndash; 20:00</span></div>
+            <div class="contact-hour-row"><span class="contact-hour-day">Wednesday</span><span class="contact-hour-time">10:00 &ndash; 20:00</span></div>
+            <div class="contact-hour-row"><span class="contact-hour-day">Thursday</span><span class="contact-hour-time">10:00 &ndash; 20:00</span></div>
+            <div class="contact-hour-row"><span class="contact-hour-day">Friday</span><span class="contact-hour-time">10:00 &ndash; 20:00</span></div>
+            <div class="contact-hour-row"><span class="contact-hour-day">Saturday</span><span class="contact-hour-time">11:00 &ndash; 18:00</span></div>
+            <div class="contact-hour-row"><span class="contact-hour-day">Sunday</span><span class="contact-hour-time contact-hour-closed">Closed</span></div>
+          </div>
+        </div>
+
+        <div class="contact-info-card">
+          <div class="contact-info-hd">
+            <div class="contact-info-hd-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg></div>
+            <div class="contact-info-hd-title">Follow &amp; Connect</div>
+          </div>
+          <div class="contact-socials">
+            <a class="contact-soc-btn" href="https://instagram.com" target="_blank" rel="noopener">
+              <div class="contact-soc-icon ig"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg></div>
+              <div>
+                <div class="contact-soc-name">Instagram</div>
+                <div class="contact-soc-handle">@maison</div>
+              </div>
+            </a>
+            <a class="contact-soc-btn" href="#" rel="noopener">
+              <div class="contact-soc-icon tw"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z" /></svg></div>
+              <div>
+                <div class="contact-soc-name">Twitter/X</div>
+                <div class="contact-soc-handle">@maison</div>
+              </div>
+            </a>
+            <a class="contact-soc-btn" href="#" data-toast="WhatsApp opening...">
+              <div class="contact-soc-icon wa"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg></div>
+              <div>
+                <div class="contact-soc-name">WhatsApp</div>
+                <div class="contact-soc-handle">Chat with us</div>
+              </div>
+            </a>
+            <a class="contact-soc-btn" href="mailto:hello@maison.com">
+              <div class="contact-soc-icon em"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg></div>
+              <div>
+                <div class="contact-soc-name">Email</div>
+                <div class="contact-soc-handle">Direct mail</div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- ── STORE LOCATIONS ── -->
+    <div class="contact-stores-section">
+      <div class="contact-stores-inner">
+        <div class="contact-stores-top">
+          <div>
+            <div class="contact-stores-eyebrow">Retail Presence</div>
+            <h2 class="contact-stores-title">Our Locations</h2>
+          </div>
+          <a href="https://www.google.com/maps?q=142+Spring+Street+SoHo+New+York" target="_blank" rel="noopener" class="contact-map-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11" /></svg> View on Map</a>
+        </div>
+        <div class="contact-stores-grid">
+          <div class="store-card">
+            <div class="store-card-map">
+              <iframe src="https://www.google.com/maps?q=142+Spring+Street+SoHo+New+York&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Maison New York flagship store location"></iframe>
+              <div class="store-card-map-pin">
+                <div class="store-pin-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg></div>
+                <span class="store-pin-label">SoHo, New York</span>
+              </div>
+            </div>
+            <div class="store-card-body">
+              <h3 class="store-card-city">New York</h3>
+              <p class="store-card-addr">142 Spring Street, SoHo<br />New York, NY 10012, USA</p>
+              <div class="store-card-meta"><span class="store-chip open-chip"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg> Open Now</span><span class="store-chip"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> 10am &ndash; 8pm</span><span class="store-chip">Flagship</span></div>
+              <div class="store-card-dir">
+                <a class="store-dir-btn" href="https://www.google.com/maps?q=142+Spring+Street+SoHo+New+York" target="_blank" rel="noopener"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11" /></svg> Get Directions</a>
+                <span class="store-phone">+1 (212) 555-0140</span>
+              </div>
+            </div>
+          </div>
+          <div class="store-card">
+            <div class="store-card-map">
+              <iframe src="https://www.google.com/maps?q=8405+Melrose+Avenue+West+Hollywood&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Maison Los Angeles store location"></iframe>
+              <div class="store-card-map-pin">
+                <div class="store-pin-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg></div>
+                <span class="store-pin-label">Melrose, Los Angeles</span>
+              </div>
+            </div>
+            <div class="store-card-body">
+              <h3 class="store-card-city">Los Angeles</h3>
+              <p class="store-card-addr">8405 Melrose Avenue<br />West Hollywood, CA 90069, USA</p>
+              <div class="store-card-meta"><span class="store-chip open-chip"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg> Open Now</span><span class="store-chip"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> 11am &ndash; 7pm</span></div>
+              <div class="store-card-dir">
+                <a class="store-dir-btn" href="https://www.google.com/maps?q=8405+Melrose+Avenue+West+Hollywood" target="_blank" rel="noopener"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11" /></svg> Get Directions</a>
+                <span class="store-phone">+1 (323) 555-0188</span>
+              </div>
+            </div>
+          </div>
+          <div class="store-card">
+            <div class="store-card-map">
+              <iframe src="https://www.google.com/maps?q=24+Ledbury+Road+Notting+Hill+London&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Maison London store location"></iframe>
+              <div class="store-card-map-pin">
+                <div class="store-pin-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg></div>
+                <span class="store-pin-label">Notting Hill, London</span>
+              </div>
+            </div>
+            <div class="store-card-body">
+              <h3 class="store-card-city">London</h3>
+              <p class="store-card-addr">24 Ledbury Road, Notting Hill<br />London W11 2AB, UK</p>
+              <div class="store-card-meta"><span class="store-chip" style="color:var(--rust);border-color:rgba(180,87,63,.2);background:rgba(180,87,63,.07)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg> Opens 11am</span><span class="store-chip"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> 11am &ndash; 7pm</span></div>
+              <div class="store-card-dir">
+                <a class="store-dir-btn" href="https://www.google.com/maps?q=24+Ledbury+Road+Notting+Hill+London" target="_blank" rel="noopener"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11" /></svg> Get Directions</a>
+                <span class="store-phone">+44 20 7555 0172</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── FAQ ── -->
+    <div class="contact-faq-section">
+      <div class="contact-faq-inner">
+        <div class="faq-left">
+          <div class="faq-eyebrow">Help Center</div>
+          <h2 class="faq-title">Frequently Asked</h2>
+          <p class="faq-sub">Quick answers to our most common questions. Still stuck? We're always here.</p>
+          <div class="faq-contact-cards">
+            <a class="faq-contact-card" href="mailto:hello@maison.com">
+              <div class="faq-cc-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg></div>
+              <div>
+                <div class="faq-cc-label">Email Support</div>
+                <div class="faq-cc-val">hello@maison.com</div>
+              </div>
+              <span class="faq-cc-arr"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6" /></svg></span>
+            </a>
+            <a class="faq-contact-card" href="tel:+12125550140">
+              <div class="faq-cc-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.54 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l.81-.81a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg></div>
+              <div>
+                <div class="faq-cc-label">Call Us</div>
+                <div class="faq-cc-val">Mon&ndash;Fri, 9am&ndash;6pm EST</div>
+              </div>
+              <span class="faq-cc-arr"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6" /></svg></span>
+            </a>
+            <a class="faq-contact-card" href="#" data-toast="WhatsApp opening...">
+              <div class="faq-cc-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg></div>
+              <div>
+                <div class="faq-cc-label">WhatsApp</div>
+                <div class="faq-cc-val">Instant chat support</div>
+              </div>
+              <span class="faq-cc-arr"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6" /></svg></span>
+            </a>
+          </div>
+          <div class="faq-still-need">
+            <p class="faq-still-lbl">Can't find your answer?</p>
+            <button type="button" class="faq-chat-btn" id="faqJumpForm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg> Send a Message</button>
+          </div>
+        </div>
+        <div class="faq-right">
+          <div class="faq-count">9 questions answered</div>
+          <div class="faq-list" id="faqList">
+            <div class="faq-item open">
+              <button type="button" class="faq-q">
+                <span class="faq-q-num">01</span>
+                <span class="faq-q-text">How long does standard shipping take?</span>
+                <span class="faq-q-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line class="faq-icon-v" x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg></span>
+              </button>
+              <div class="faq-a-wrap">
+                <div class="faq-a">Standard shipping takes 3&ndash;5 business days within the US and 7&ndash;14 business days internationally. Express 1&ndash;2 day options are available at checkout. All orders over $250 qualify for free standard shipping.</div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-q">
+                <span class="faq-q-num">02</span>
+                <span class="faq-q-text">What is your return policy?</span>
+                <span class="faq-q-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line class="faq-icon-v" x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg></span>
+              </button>
+              <div class="faq-a-wrap">
+                <div class="faq-a">We offer free returns within 30 days of delivery. Items must be unworn, unwashed, and in original packaging with all tags attached. Use the prepaid return label included in your package &mdash; no restocking fee.</div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-q">
+                <span class="faq-q-num">03</span>
+                <span class="faq-q-text">How do I find my correct size?</span>
+                <span class="faq-q-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line class="faq-icon-v" x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg></span>
+              </button>
+              <div class="faq-a-wrap">
+                <div class="faq-a">Every product page includes a detailed size guide with measurements in US, EU, and UK sizing. Our SS26 pieces use a contemporary fit &mdash; slightly relaxed but tailored. When between sizes, go up for outerwear and down for knitwear.</div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-q">
+                <span class="faq-q-num">04</span>
+                <span class="faq-q-text">Can I change or cancel my order?</span>
+                <span class="faq-q-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line class="faq-icon-v" x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg></span>
+              </button>
+              <div class="faq-a-wrap">
+                <div class="faq-a">Orders can be modified or cancelled within 2 hours of placement. After that, our warehouse begins processing. Contact us immediately at hello@maison.com with your order number (#MAISON-00000) and we'll help.</div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-q">
+                <span class="faq-q-num">05</span>
+                <span class="faq-q-text">Do you offer gift wrapping?</span>
+                <span class="faq-q-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line class="faq-icon-v" x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg></span>
+              </button>
+              <div class="faq-a-wrap">
+                <div class="faq-a">Yes &mdash; complimentary gift wrapping is available at checkout for any order. You can include a personalised handwritten note up to 150 characters. All Maison pieces arrive in our signature cotton dust bag regardless of gift wrap.</div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-q">
+                <span class="faq-q-num">06</span>
+                <span class="faq-q-text">How do I care for my Maison pieces?</span>
+                <span class="faq-q-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line class="faq-icon-v" x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg></span>
+              </button>
+              <div class="faq-a-wrap">
+                <div class="faq-a">Care instructions are on each garment's interior label and product page. Most natural-fibre pieces are hand-wash or dry-clean only. Use a fabric steamer rather than a hot iron for knitwear. Store folded and avoid prolonged sunlight.</div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-q">
+                <span class="faq-q-num">07</span>
+                <span class="faq-q-text">Do you offer wholesale or press inquiries?</span>
+                <span class="faq-q-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line class="faq-icon-v" x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg></span>
+              </button>
+              <div class="faq-a-wrap">
+                <div class="faq-a">We welcome wholesale partnerships and press collaborations. Email press@maison.com with your publication or store name, audience reach, and a brief outline. Our team responds within 48 hours.</div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-q">
+                <span class="faq-q-num">08</span>
+                <span class="faq-q-text">What payment methods do you accept?</span>
+                <span class="faq-q-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line class="faq-icon-v" x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg></span>
+              </button>
+              <div class="faq-a-wrap">
+                <div class="faq-a">We accept all major credit and debit cards (Visa, Mastercard, Amex), Apple Pay, PayPal, and Shop Pay. All transactions are SSL secured. We do not store any card details on our servers.</div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-q">
+                <span class="faq-q-num">09</span>
+                <span class="faq-q-text">Do you ship internationally?</span>
+                <span class="faq-q-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line class="faq-icon-v" x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg></span>
+              </button>
+              <div class="faq-a-wrap">
+                <div class="faq-a">Yes &mdash; we ship to over 80 countries worldwide. International orders arrive within 7&ndash;14 business days. Customs duties and taxes may apply and are the responsibility of the recipient. An estimated duty is shown at checkout.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="cfToast"></div>
+    <button type="button" id="liveChatBtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg> <span>Live Chat</span><span class="chat-badge"></span></button>
+
   </main>
 </Layout>
 
 <script is:inline>
-  (function(){
+  (function () {
     var root = document.getElementById('contactModern');
     if (!root) return;
-    var $ = function(s){ return root.querySelector(s); };
-    var $$ = function(s){ return Array.prototype.slice.call(root.querySelectorAll(s)); };
+    var $ = function (s) { return root.querySelector(s); };
+    var $$ = function (s) { return Array.prototype.slice.call(root.querySelectorAll(s)); };
 
-    // Form validation + submit
-    function validate(){
+    /* ── Toast ── */
+    var toastEl = $('#cfToast');
+    var toastTimer = null;
+    function toast(msg) {
+      if (!toastEl) return;
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 3000);
+    }
+    $$('[data-toast]').forEach(function (el) {
+      el.addEventListener('click', function (e) { e.preventDefault(); toast(el.getAttribute('data-toast')); });
+    });
+    var liveChat = $('#liveChatBtn');
+    if (liveChat) liveChat.addEventListener('click', function () { toast('Live chat coming soon!'); });
+
+    /* ── Char counter ── */
+    var msgEl = $('#cfMsg');
+    var charsEl = $('#cfChars');
+    if (msgEl && charsEl) {
+      msgEl.addEventListener('input', function () { charsEl.textContent = msgEl.value.length + '/500'; });
+    }
+
+    /* ── Form validation + submit ── */
+    function validate() {
       var ok = true;
-      ['#cnFname','#cnLname','#cnEmail','#cnSubject','#cnMessage'].forEach(function(sel){
-        var el = $(sel); var field = el.closest('.cn-field');
+      [
+        { sel: '#cfFirst', email: false },
+        { sel: '#cfLast', email: false },
+        { sel: '#cfEmail', email: true },
+        { sel: '#cfSubject', email: false },
+        { sel: '#cfMsg', email: false }
+      ].forEach(function (f) {
+        var el = $(f.sel);
+        var field = el.closest('.cf-field');
         var val = el.value.trim();
         var bad = !val;
-        if (sel === '#cnEmail' && val) bad = !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val);
-        field.classList.toggle('err', bad);
+        if (f.email && val) bad = !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val);
+        if (field) field.classList.toggle('err', bad);
         if (bad) ok = false;
       });
-      var consent = $('#cnConsent');
-      if (!consent.checked) { ok = false; consent.closest('.cn-check').style.color = '#FCA5A5'; }
-      else consent.closest('.cn-check').style.color = '';
       return ok;
     }
-    $$('.cn-input, .cn-select, .cn-textarea').forEach(function(el){
-      el.addEventListener('input', function(){ var f = el.closest('.cn-field'); if (f) f.classList.remove('err'); });
-      el.addEventListener('change', function(){ var f = el.closest('.cn-field'); if (f) f.classList.remove('err'); });
-    });
-    $('#cnConsent').addEventListener('change', function(){ if (this.checked) this.closest('.cn-check').style.color = ''; });
 
-    $('#cnForm').addEventListener('submit', function(e){
-      e.preventDefault();
-      if (!validate()){
-        var firstErr = root.querySelector('.cn-field.err');
-        if (firstErr) firstErr.scrollIntoView({ behavior:'smooth', block:'center' });
-        return;
-      }
-      var btn = $('#cnSubmit');
-      btn.classList.add('loading'); btn.disabled = true;
-      setTimeout(function(){
-        btn.classList.remove('loading'); btn.disabled = false;
-        $('#cnSuccessName').textContent = $('#cnFname').value.trim() || 'there';
-        $('#cnForm').style.display = 'none';
-        $('#cnSuccess').classList.add('show');
-        $('#cnSuccess').scrollIntoView({ behavior:'smooth', block:'center' });
-      }, 1400);
-    });
-    $('#cnSendAnother').addEventListener('click', function(){
-      $('#cnForm').reset();
-      $('#cnForm').style.display = '';
-      $('#cnSuccess').classList.remove('show');
-      $('#cnForm').scrollIntoView({ behavior:'smooth', block:'start' });
+    $$('.cf-input, .cf-select, .cf-textarea').forEach(function (el) {
+      var clear = function () { var f = el.closest('.cf-field'); if (f) f.classList.remove('err'); };
+      el.addEventListener('input', clear);
+      el.addEventListener('change', clear);
     });
 
-    // Live chat nudge
-    var chat = $('#cnChat');
-    if (chat) chat.addEventListener('click', function(){
-      var orig = this.innerHTML; var self = this;
-      this.innerHTML = 'Connecting&hellip;';
-      setTimeout(function(){ self.innerHTML = orig; }, 1600);
+    var form = $('#cfForm');
+    var submitBtn = $('#cfSubmit');
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!validate()) {
+          var firstErr = root.querySelector('.cf-field.err');
+          if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          toast('Please fill in all required fields.');
+          return;
+        }
+        if (submitBtn) { submitBtn.classList.add('loading'); submitBtn.disabled = true; }
+        setTimeout(function () {
+          if (submitBtn) { submitBtn.classList.remove('loading'); submitBtn.disabled = false; }
+          $('#cfSuccessName').textContent = $('#cfFirst').value.trim() || 'there';
+          form.style.display = 'none';
+          $('#cfSuccess').classList.add('show');
+          $('#cfSuccess').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 1300);
+      });
+    }
+
+    var sendAnother = $('#cfSendAnother');
+    if (sendAnother) {
+      sendAnother.addEventListener('click', function () {
+        form.reset();
+        if (charsEl) charsEl.textContent = '0/500';
+        $$('.cf-field.err').forEach(function (f) { f.classList.remove('err'); });
+        $('#cfSuccess').classList.remove('show');
+        form.style.display = '';
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+
+    /* ── "Send a Message" jump from FAQ ── */
+    var jump = $('#faqJumpForm');
+    if (jump) jump.addEventListener('click', function () {
+      var t = root.querySelector('.contact-layout');
+      if (t) t.scrollIntoView({ behavior: 'smooth' });
     });
 
-    // FAQ accordion
-    $('#cnFaqList').addEventListener('click', function(e){
-      var trig = e.target.closest('.cn-faq-trigger'); if (!trig) return;
-      var item = trig.closest('.cn-faq-item');
-      var body = item.querySelector('.cn-faq-body');
-      var isOpen = item.classList.contains('open');
-      $$('.cn-faq-item').forEach(function(it){ it.classList.remove('open'); it.querySelector('.cn-faq-body').style.maxHeight = null; });
-      if (!isOpen){ item.classList.add('open'); body.style.maxHeight = body.scrollHeight + 'px'; }
+    /* ── FAQ accordion ── */
+    var faqList = $('#faqList');
+    if (faqList) {
+      faqList.addEventListener('click', function (e) {
+        var trig = e.target.closest('.faq-q');
+        if (!trig) return;
+        var item = trig.closest('.faq-item');
+        var wasOpen = item.classList.contains('open');
+        $$('.faq-item').forEach(function (it) { it.classList.remove('open'); });
+        if (!wasOpen) item.classList.add('open');
+      });
+    }
+
+    /* ── Highlight current day in store hours ── */
+    var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    var today = days[new Date().getDay()];
+    $$('.contact-hour-row').forEach(function (row) {
+      var day = row.querySelector('.contact-hour-day');
+      if (day && day.textContent.trim() === today) row.classList.add('today');
     });
-    var firstOpen = root.querySelector('.cn-faq-item.open .cn-faq-body');
-    if (firstOpen) firstOpen.style.maxHeight = firstOpen.scrollHeight + 'px';
   })();
 </script>
