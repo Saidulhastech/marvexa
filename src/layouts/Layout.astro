@@ -1,7 +1,7 @@
 ---
 // ============================================================
-//  Layout — OMNIX html shell. Loads the design system (plain CSS),
-//  Sora + Inter fonts, SEO <head>, and the vanilla chrome
+//  Layout — Maison html shell. Loads the design system (plain CSS),
+//  Plus Jakarta Sans + Inter fonts, SEO <head>, and the vanilla chrome
 //  (announcement, header, footer, cart drawer, mobile nav).
 // ============================================================
 import '~/styles/omnix.css';
@@ -59,17 +59,17 @@ const allJsonLd = [...baseJsonLd, ...pageJsonLd];
         cold connection (helps LCP on product grids/PDP). */}
     <link rel="preconnect" href="https://cdn.shopify.com" crossorigin />
 
-    {/* Fonts — Sora (display) · Inter (body), matching the OMNIX template */}
+    {/* Fonts — Plus Jakarta Sans (headings) · Inter (body), matching the Maison template */}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="preload"
       as="style"
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
     />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
     />
 
     <SEO {title} {description} {image} {type} {noindex} jsonLd={allJsonLd} />
