@@ -56,6 +56,15 @@ function cardAttrs(p: TProductCard): Record<string, string> {
 }
 
 const total = products.length;
+
+// Price slider bounds derived from the REAL product prices on this page (ominix
+// logic). Hardcoded bounds would filter out any product priced outside them —
+// so the default range must span the actual catalogue min/max.
+const priceNums = products
+  .map((p) => Number(p.priceRange.minVariantPrice.amount))
+  .filter((n) => Number.isFinite(n));
+const priceFloor = priceNums.length ? Math.floor(Math.min(...priceNums)) : 0;
+const priceCeil = priceNums.length ? Math.max(priceFloor + 10, Math.ceil(Math.max(...priceNums))) : 1000;
 ---
 
 <Layout title="Shop" description="Browse the full Maison collection — refined wardrobe essentials.">
@@ -250,10 +259,10 @@ const total = products.length;
                     type="number"
                     class="sb-price-input"
                     id="price-min-input"
-                    min="60"
-                    max="300"
-                    value="60"
-                    placeholder="60"
+                    min={priceFloor}
+                    max={priceCeil}
+                    value={priceFloor}
+                    placeholder={String(priceFloor)}
                     data-price-box="min"
                   />
                 </div>
@@ -264,10 +273,10 @@ const total = products.length;
                     type="number"
                     class="sb-price-input"
                     id="price-max-input"
-                    min="60"
-                    max="300"
-                    value="300"
-                    placeholder="300"
+                    min={priceFloor}
+                    max={priceCeil}
+                    value={priceCeil}
+                    placeholder={String(priceCeil)}
                     data-price-box="max"
                   />
                 </div>
@@ -278,9 +287,9 @@ const total = products.length;
                   type="range"
                   class="sb-slider"
                   id="sb-slider-min-r"
-                  min="60"
-                  max="300"
-                  value="60"
+                  min={priceFloor}
+                  max={priceCeil}
+                  value={priceFloor}
                   step="5"
                   data-price-slider
                 />
@@ -288,9 +297,9 @@ const total = products.length;
                   type="range"
                   class="sb-slider"
                   id="sb-slider-max-r"
-                  min="60"
-                  max="300"
-                  value="300"
+                  min={priceFloor}
+                  max={priceCeil}
+                  value={priceCeil}
                   step="5"
                   data-price-slider
                 />
@@ -1391,8 +1400,11 @@ const total = products.length;
     ratingLbl: string;
   }
 
-  const FLOOR = 60;
-  const CEIL = 300;
+  // Price bounds come from the rendered slider (server-derived from the real
+  // product price range) so the default range never filters products out.
+  const _priceSlider = document.getElementById('sb-slider-min-r') as HTMLInputElement | null;
+  const FLOOR = _priceSlider ? Number(_priceSlider.min) : 0;
+  const CEIL = _priceSlider ? Number(_priceSlider.max) : 1000;
 
   function freshState(): FilterState {
     return {
