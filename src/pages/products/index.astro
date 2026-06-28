@@ -406,9 +406,8 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
               </svg>
             </div>
             <div class="sb-group-body sb-avails" id="grp-avl-body">
-              <button class="sb-pill" data-pill-type="avail" data-pill-val="sale">On Sale</button>
-              <button class="sb-pill" data-pill-type="avail" data-pill-val="new">New Arrivals</button>
-              <button class="sb-pill" data-pill-type="avail" data-pill-val="bestseller">Best Sellers</button>
+              <button class="sb-pill" data-pill-type="avail" data-pill-val="instock">In Stock</button>
+              <button class="sb-pill" data-pill-type="avail" data-pill-val="outofstock">Out of Stock</button>
             </div>
           </div>
 
@@ -1495,13 +1494,11 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
       const co = (ds.occ || '').split(',').map((s) => s.trim()).filter(Boolean);
       if (!F.occs.some((o) => co.indexOf(o) > -1)) return false;
     }
-    // Availability
+    // Availability — real stock status from data-instock (1 = in stock).
     if (F.avails.length) {
       const ok = F.avails.some((a) => {
-        if (a === 'sale') return (ds.sale || '0') === '1';
-        if (a === 'new') return (ds.badge || '') === 'new';
-        // "bestseller" has no card data → treat as match-all (no-op).
-        if (a === 'bestseller') return true;
+        if (a === 'instock') return (ds.instock || '0') === '1';
+        if (a === 'outofstock') return (ds.instock || '0') === '0';
         return false;
       });
       if (!ok) return false;
@@ -1721,7 +1718,8 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
       });
     });
     F.avails.forEach((a) => {
-      addChip(cap(a), () => {
+      const availLabel = a === 'instock' ? 'In Stock' : a === 'outofstock' ? 'Out of Stock' : cap(a);
+      addChip(availLabel, () => {
         F.avails.splice(F.avails.indexOf(a), 1);
         document.querySelectorAll<HTMLElement>('.sb-pill[data-pill-type="avail"][data-pill-val="' + a + '"]')
           .forEach((p) => p.classList.remove('active'));
