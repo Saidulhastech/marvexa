@@ -176,7 +176,10 @@ const catalogue = Object.fromEntries(
   const readList = (): string[] => {
     try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
   };
-  const writeList = (l: string[]) => localStorage.setItem(KEY, JSON.stringify(l));
+  const writeList = (l: string[]) => {
+    // Guard against quota-exceeded / disabled storage so the UI still updates.
+    try { localStorage.setItem(KEY, JSON.stringify(l)); } catch { /* storage unavailable */ }
+  };
   // Keep the header compare badge in sync (it's owned by Overlays, which
   // only sets it on load — so reflect local changes here too).
   const syncBadge = (n: number) => {
@@ -253,11 +256,11 @@ const catalogue = Object.fromEntries(
 
     return `
       <div class="cmp-col">
-        <button class="cmp-rm" type="button" data-remove="${p.handle}" aria-label="Remove from compare">
+        <button class="cmp-rm" type="button" data-remove="${esc(p.handle)}" aria-label="Remove from compare">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
-        <a class="cmp-img" href="/products/${p.handle}">${p.image ? `<img src="${p.image}" alt="${esc(p.title)}">` : ''}</a>
-        <a class="cmp-name" href="/products/${p.handle}">${esc(p.title)}</a>
+        <a class="cmp-img" href="/products/${esc(p.handle)}">${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.title)}">` : ''}</a>
+        <a class="cmp-name" href="/products/${esc(p.handle)}">${esc(p.title)}</a>
         ${priceRow}
         ${swatchRow}
         <ul class="cmp-spec">${specs}</ul>

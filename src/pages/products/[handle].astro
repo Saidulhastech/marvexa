@@ -931,7 +931,13 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
             const v = currentVariant();
             if (!v || !v.available) return;
             if (btn) { btn.disabled = true; btn.dataset.label = btn.dataset.label || btn.innerHTML; }
-            await addItem(v.id, qty);
+            // addItem swallows its own errors and returns { cart }; treat a null
+            // cart as failure so we never show "Added" or leave the button stuck.
+            const res = await addItem(v.id, qty);
+            if (!res.cart) {
+              if (btn) { btn.innerHTML = btn.dataset.label || 'Add to cart'; btn.disabled = false; }
+              return;
+            }
             openCart();
             if (btn) {
               btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Added';

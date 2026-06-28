@@ -1595,6 +1595,12 @@ const total = products.length;
   }
 
   const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+  // Escape catalogue-derived labels before innerHTML interpolation.
+  const esc = (v: unknown): string =>
+    String(v ?? '').replace(
+      /[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
+    );
 
   // ── Chips ───────────────────────────────────────────────────────────────────
   function renderChips(): void {
@@ -1606,7 +1612,7 @@ const total = products.length;
       any = true;
       const c = document.createElement('span');
       c.className = 'chip';
-      c.innerHTML = label + '<span class="chip-x">&times;</span>';
+      c.innerHTML = esc(label) + '<span class="chip-x">&times;</span>';
       const x = c.querySelector('.chip-x');
       if (x) x.addEventListener('click', clearFn);
       chipsBar.appendChild(c);

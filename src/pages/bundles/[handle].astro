@@ -275,6 +275,12 @@ const bootData = { currency, components: bootComponents };
 
           const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: data.currency });
           const money = (n: number) => fmt.format(n);
+          // Escape component titles/option values before innerHTML interpolation.
+          const esc = (v: unknown) =>
+            String(v ?? '').replace(
+              /[&<>"']/g,
+              (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
+            );
 
           // Per-slot current selection (option name → value).
           const selection: Record<string, string>[] = data.components.map((c) => ({ ...c.defaultOpts }));
@@ -334,7 +340,7 @@ const bootData = { currency, components: bootComponents };
                 : `${c.title} — ${Object.values(selection[i]).join(' / ')}`;
               const price = v && v.available ? money(v.price) : '—';
               if (v && v.available) subtotal += v.price;
-              html += `<li><span>${label}</span><b>${price}</b></li>`;
+              html += `<li><span>${esc(label)}</span><b>${price}</b></li>`;
             });
             if (list) list.innerHTML = html;
             if (sub) sub.textContent = money(subtotal);

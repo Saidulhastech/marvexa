@@ -357,11 +357,11 @@ const extrasConfig = {
         const stockCls = md.availableForSale ? 'in' : 'low';
         const stockTxt = md.availableForSale ? 'In stock' : 'Backordered';
         return `
-        <div class="cm-item" data-id="${line.id}">
-          <div class="cm-thumb">${image ? `<img src="${image.url}" alt="${esc(image.altText ?? md.product.title)}" loading="lazy">` : ''}</div>
+        <div class="cm-item" data-id="${esc(line.id)}">
+          <div class="cm-thumb">${image ? `<img src="${esc(image.url)}" alt="${esc(image.altText ?? md.product.title)}" loading="lazy">` : ''}</div>
           <div class="cm-info">
             ${brand}
-            <a href="/products/${md.product.handle}" class="cm-name">${esc(md.product.title)}</a>
+            <a href="/products/${esc(md.product.handle)}" class="cm-name">${esc(md.product.title)}</a>
             ${vars}
             <div class="cm-stock ${stockCls}"><span class="cm-stock-dot"></span>${stockTxt}</div>
             <div class="cm-item-actions">

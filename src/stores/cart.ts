@@ -18,6 +18,37 @@ export const $busyLines = map<Record<string, boolean>>({});
 
 let initialized = false;
 
+// --- Concurrency control -------------------------------------------------
+// Cart mutations fire independently (qty steppers, gift toggle, coupon, note
+// debounce) and their /api/cart/* responses can race. Two guards keep the
+// authoritative cart consistent:
+//  1. A monotonic request sequence: each mutation stamps a seq before posting;
+//     `commitCart` only applies a response if no NEWER response landed first,
+//     so a slow earlier reply can't clobber a fresh later one (out-of-order).
+//  2. A ref-counted busy flag: the public `$cartBusy` atom stays a boolean for
+//     consumers, but is backed by a counter so an early-finishing mutation
+//     doesn't re-enable buttons while another is still in flight.
+let mutationSeq = 0;
+let lastAppliedSeq = 0;
+let busyCount = 0;
+
+/** Apply a cart only if a newer response hasn't already been committed. */
+function commitCart(cart: Cart | null, seq: number): void {
+  if (cart && seq >= lastAppliedSeq) {
+    lastAppliedSeq = seq;
+    $cart.set(cart);
+  }
+}
+
+function pushBusy(): void {
+  busyCount += 1;
+  $cartBusy.set(true);
+}
+function popBusy(): void {
+  busyCount = Math.max(0, busyCount - 1);
+  if (busyCount === 0) $cartBusy.set(false);
+}
+
 /** Hydrate the cart once on first island mount. */
 export async function initCart(): Promise<void> {
   if (initialized) return;
@@ -25,7 +56,7 @@ export async function initCart(): Promise<void> {
   try {
     const res = await fetch('/api/cart', { headers: { accept: 'application/json' } });
     const data = await res.json();
-    $cart.set(data.cart ?? null);
+    commitCart(data.cart ?? null, ++mutationSeq);
   } catch {
     /* offline / first load — leave cart null, surfaces empty state */
   }
@@ -57,8 +88,8 @@ async function post(url: string, body: unknown): Promise<MutationResponse> {
   return (await res.json()) as MutationResponse;
 }
 
-function applyResult(data: MutationResponse): MutationResponse {
-  if (data.cart) $cart.set(data.cart);
+function applyResult(data: MutationResponse, seq: number): MutationResponse {
+  commitCart(data.cart, seq);
   // Shopify RE-VALIDATES discount codes on every cart mutation. A stale/no-longer
   // applicable code on the cart makes cartLinesAdd/Update/Remove return a
   // discountCodes userError ("Enter a valid discount code") even though the line
@@ -86,17 +117,18 @@ export async function addItem(
   options: { open?: boolean } = {},
 ): Promise<MutationResponse> {
   const { open = true } = options;
-  $cartBusy.set(true);
+  pushBusy();
   $cartError.set(null);
   try {
-    const data = applyResult(await post('/api/cart/add', { merchandiseId, quantity }));
+    const seq = ++mutationSeq;
+    const data = applyResult(await post('/api/cart/add', { merchandiseId, quantity }), seq);
     if (open && data.cart) openCart();
     return data;
   } catch {
     $cartError.set('Could not add to cart. Please try again.');
     return { cart: null };
   } finally {
-    $cartBusy.set(false);
+    popBusy();
   }
 }
 
@@ -117,17 +149,18 @@ export async function addBundle(
     $cartError.set('This bundle has nothing available to add.');
     return { cart: null };
   }
-  $cartBusy.set(true);
+  pushBusy();
   $cartError.set(null);
   try {
-    const data = applyResult(await post('/api/cart/add-bundle', { lines: clean }));
+    const seq = ++mutationSeq;
+    const data = applyResult(await post('/api/cart/add-bundle', { lines: clean }), seq);
     if (open && data.cart) openCart();
     return data;
   } catch {
     $cartError.set('Could not add the bundle. Please try again.');
     return { cart: null };
   } finally {
-    $cartBusy.set(false);
+    popBusy();
   }
 }
 
@@ -136,7 +169,7 @@ export async function addBundle(
  * shopper's persistent cart isn't polluted if they abandon checkout.
  */
 export async function buyNow(merchandiseId: string, quantity = 1): Promise<void> {
-  $cartBusy.set(true);
+  pushBusy();
   $cartError.set(null);
   try {
     const res = await fetch('/api/cart/buy-now', {
@@ -154,15 +187,20 @@ export async function buyNow(merchandiseId: string, quantity = 1): Promise<void>
   } catch {
     $cartError.set('Could not start checkout. Please try again.');
   } finally {
-    $cartBusy.set(false);
+    popBusy();
   }
 }
 
 export async function updateItem(lineId: string, quantity: number): Promise<void> {
+  // Drop overlapping clicks on the same line: the next absolute quantity is
+  // derived from the current store, so firing a second request before the
+  // first resolves would post a stale base and lose an update.
+  if ($busyLines.get()[lineId]) return;
   $busyLines.setKey(lineId, true);
   $cartError.set(null);
   try {
-    applyResult(await post('/api/cart/update', { lineId, quantity }));
+    const seq = ++mutationSeq;
+    applyResult(await post('/api/cart/update', { lineId, quantity }), seq);
   } catch {
     $cartError.set('Could not update the cart.');
   } finally {
@@ -171,10 +209,12 @@ export async function updateItem(lineId: string, quantity: number): Promise<void
 }
 
 export async function removeItem(lineId: string): Promise<void> {
+  if ($busyLines.get()[lineId]) return;
   $busyLines.setKey(lineId, true);
   $cartError.set(null);
   try {
-    applyResult(await post('/api/cart/remove', { lineId }));
+    const seq = ++mutationSeq;
+    applyResult(await post('/api/cart/remove', { lineId }), seq);
   } catch {
     $cartError.set('Could not remove the item.');
   } finally {
@@ -190,14 +230,15 @@ export async function removeItem(lineId: string): Promise<void> {
 export async function clearCart(): Promise<void> {
   const lineIds = ($cart.get()?.lines ?? []).map((l) => l.id);
   if (!lineIds.length) return;
-  $cartBusy.set(true);
+  pushBusy();
   $cartError.set(null);
   try {
-    applyResult(await post('/api/cart/remove', { lineIds }));
+    const seq = ++mutationSeq;
+    applyResult(await post('/api/cart/remove', { lineIds }), seq);
   } catch {
     $cartError.set('Could not clear the cart.');
   } finally {
-    $cartBusy.set(false);
+    popBusy();
   }
 }
 
@@ -206,15 +247,15 @@ export async function clearCart(): Promise<void> {
  * order in the Shopify admin. Errors are non-fatal — kept off the global banner.
  */
 export async function setNote(note: string): Promise<MutationResponse> {
-  $cartBusy.set(true);
+  pushBusy();
   try {
     const data = await post('/api/cart/note', { note });
-    if (data.cart) $cart.set(data.cart);
+    commitCart(data.cart, ++mutationSeq);
     return data;
   } catch {
     return { cart: null, error: 'Could not save the note.' };
   } finally {
-    $cartBusy.set(false);
+    popBusy();
   }
 }
 
@@ -225,15 +266,15 @@ export async function setNote(note: string): Promise<MutationResponse> {
 export async function setAttributes(
   attributes: { key: string; value: string }[],
 ): Promise<MutationResponse> {
-  $cartBusy.set(true);
+  pushBusy();
   try {
     const data = await post('/api/cart/attributes', { attributes });
-    if (data.cart) $cart.set(data.cart);
+    commitCart(data.cart, ++mutationSeq);
     return data;
   } catch {
     return { cart: null, error: 'Could not save cart details.' };
   } finally {
-    $cartBusy.set(false);
+    popBusy();
   }
 }
 
@@ -245,15 +286,15 @@ export async function setAttributes(
  * discount code" at the top of the cart long after the coupon attempt.
  */
 export async function applyDiscount(codes: string[]): Promise<MutationResponse> {
-  $cartBusy.set(true);
+  pushBusy();
   try {
     const data = await post('/api/cart/discount', { codes });
-    if (data.cart) $cart.set(data.cart); // keep the cart fresh (totals/chips)
+    commitCart(data.cart, ++mutationSeq); // keep the cart fresh (totals/chips)
     return data;
   } catch {
     return { cart: null, error: 'Could not reach the server. Please try again.' };
   } finally {
-    $cartBusy.set(false);
+    popBusy();
   }
 }
 
@@ -263,14 +304,14 @@ export async function applyDiscount(codes: string[]): Promise<MutationResponse> 
  * checkout). Falls back to the cached url, and surfaces an error if none.
  */
 export async function checkout(): Promise<void> {
-  $cartBusy.set(true);
+  pushBusy();
   try {
     let url = $cart.get()?.checkoutUrl ?? null;
     try {
       const res = await fetch('/api/cart', { headers: { accept: 'application/json' } });
       const data = (await res.json()) as { cart: Cart | null };
       if (data.cart) {
-        $cart.set(data.cart);
+        commitCart(data.cart, ++mutationSeq);
         url = data.cart.checkoutUrl;
       } else {
         url = null; // cart expired server-side
@@ -284,6 +325,6 @@ export async function checkout(): Promise<void> {
       $cartError.set('Your cart has expired. Please add items again.');
     }
   } finally {
-    $cartBusy.set(false);
+    popBusy();
   }
 }

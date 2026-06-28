@@ -102,8 +102,13 @@ const tabs = allTabs
     };
     tabBtns.forEach((btn) =>
       btn.addEventListener('click', () => {
-        tabBtns.forEach((b) => b.classList.remove('is-active'));
+        tabBtns.forEach((b) => {
+          b.classList.remove('is-active');
+          // Keep the ARIA state in sync for screen readers, not just the class.
+          if (b.getAttribute('role') === 'tab') b.setAttribute('aria-selected', 'false');
+        });
         btn.classList.add('is-active');
+        if (btn.getAttribute('role') === 'tab') btn.setAttribute('aria-selected', 'true');
         apply(btn.dataset.tab || 'best-sellers');
       }),
     );
