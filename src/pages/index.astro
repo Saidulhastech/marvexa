@@ -6,9 +6,9 @@
 //  used as-is — never modified.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
-import { getProducts } from '~/lib/shopify';
+import { getProducts, getAllCollections } from '~/lib/shopify';
 import { applyMarketCache } from '~/lib/market';
-import type { ProductCard } from '~/lib/shopify/types';
+import type { ProductCard, Collection } from '~/lib/shopify/types';
 
 import Hero from '~/components/home/maison/Hero.astro';
 import Categories from '~/components/home/maison/Categories.astro';
@@ -22,12 +22,19 @@ import Journal from '~/components/home/maison/Journal.astro';
 import Newsletter from '~/components/home/maison/Newsletter.astro';
 
 let products: ProductCard[] = [];
+let collections: Collection[] = [];
 let loadError = false;
 
 const market = Astro.locals.market;
 try {
-  const page = await getProducts({ pageSize: 12, sortKey: 'BEST_SELLING' }, market);
+  // Fetch products + real collections together so the category grid reflects
+  // the actual storefront (no hardcoded category cards / fake counts).
+  const [page, cols] = await Promise.all([
+    getProducts({ pageSize: 12, sortKey: 'BEST_SELLING' }, market),
+    getAllCollections(),
+  ]);
   products = page.items;
+  collections = cols;
 } catch (err) {
   console.error('[home] Shopify load failed:', (err as Error).message);
   loadError = true;
@@ -56,7 +63,7 @@ const bestSellers = products.slice(0, 3);
     ) : (
       <>
         <Hero />
-        <Categories />
+        <Categories collections={collections} />
         <NewArrivals products={newArrivals} />
         <Lookbook />
         <BestSellers products={bestSellers} />

@@ -1,6 +1,24 @@
 ---
+import type { Collection } from '~/lib/shopify/types';
+
+interface Props {
+  collections: Collection[];
+}
+const { collections } = Astro.props;
+
+// Fallback editorial art (authored order) for collections without a Shopify
+// featured image — keeps the look when a collection has no image set.
+const fallbacks = [
+  'https://images.unsplash.com/photo-1612215327100-60fc5c4d7938?q=80&w=1964&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1496345875659-11f7dd282d1d?q=80&w=2070&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1751107386020-f8f69ae5c16c?q=80&w=2070&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1571582665859-4a5f472ee21b?q=80&w=1934&auto=format&fit=crop',
+];
+// Real collections drive the grid (first 4) — no hardcoded categories/counts.
+const cards = collections.slice(0, 4);
 ---
 
+{cards.length > 0 && (
 <section class="cat3" aria-label="Browse collections">
 
   <!-- Centered header, 1-line title -->
@@ -10,68 +28,25 @@
     <p class="cat3__desc">From everyday essentials to standout pieces — discover your style.</p>
   </div>
 
-  <!-- 4 equal cards -->
+  <!-- Equal cards, one per real collection -->
   <div class="cat3__grid rv d1">
-
-    <!-- Women -->
-    <a class="cat3__card" href="/collections/women">
-      <div class="cat3__cimg"
-        style="background-image:url('https://images.unsplash.com/photo-1612215327100-60fc5c4d7938?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); background-position: center 8%;">
-      </div>
-      <div class="cat3__cshade"></div>
-      <div class="cat3__cbody">
-        <span class="cat3__cname">Women</span>
-        <span class="cat3__ccount">214 styles</span>
-        <span class="cat3__csub">Dresses · Tops · Outerwear</span>
-        <span class="cat3__cbtn">Shop Now</span>
-      </div>
-    </a>
-
-    <!-- Men -->
-    <a class="cat3__card" href="/collections/men">
-      <div class="cat3__cimg"
-        style="background-image:url('https://images.unsplash.com/photo-1496345875659-11f7dd282d1d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); background-position: center 18%;">
-      </div>
-      <div class="cat3__cshade"></div>
-      <div class="cat3__cbody">
-        <span class="cat3__cname">Men</span>
-        <span class="cat3__ccount">178 styles</span>
-        <span class="cat3__csub">Shirts · Trousers · Jackets</span>
-        <span class="cat3__cbtn">Shop Now</span>
-      </div>
-    </a>
-
-    <!-- Bags -->
-    <a class="cat3__card" href="/collections/bags">
-      <div class="cat3__cimg"
-        style="background-image:url('https://images.unsplash.com/photo-1751107386020-f8f69ae5c16c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); background-position: center 42%;">
-      </div>
-      <div class="cat3__cshade"></div>
-      <div class="cat3__cbody">
-        <span class="cat3__cname">Bags</span>
-        <span class="cat3__ccount">96 styles</span>
-        <span class="cat3__csub">Tote · Crossbody · Clutch</span>
-        <span class="cat3__cbtn">Shop Now</span>
-      </div>
-    </a>
-
-    <!-- Accessories -->
-    <a class="cat3__card" href="/collections/accessories">
-      <div class="cat3__cimg"
-        style="background-image:url('https://images.unsplash.com/photo-1571582665859-4a5f472ee21b?q=80&w=1934&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); background-position: center 35%;">
-      </div>
-      <div class="cat3__cshade"></div>
-      <div class="cat3__cbody">
-        <span class="cat3__cname">Accessories</span>
-        <span class="cat3__ccount">88 styles</span>
-        <span class="cat3__csub">Jewellery · Belts · Scarves</span>
-        <span class="cat3__cbtn">Shop Now</span>
-      </div>
-    </a>
-
+    {cards.map((c, i) => (
+      <a class="cat3__card" href={`/collections/${c.handle}`}>
+        <div class="cat3__cimg" style={`background-image:url('${c.image?.url ?? fallbacks[i % fallbacks.length]}');`}></div>
+        <div class="cat3__cshade"></div>
+        <div class="cat3__cbody">
+          <span class="cat3__cname">{c.title}</span>
+          {c.productCount != null && (
+            <span class="cat3__ccount">{c.productCount}{c.productCountPlus ? '+' : ''} {c.productCount === 1 ? 'style' : 'styles'}</span>
+          )}
+          <span class="cat3__cbtn">Shop Now</span>
+        </div>
+      </a>
+    ))}
   </div>
 
 </section>
+)}
 
 <style>
   .cat3 {
