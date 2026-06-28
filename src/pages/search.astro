@@ -49,15 +49,15 @@ const countLabel = q ? `${total} result${total === 1 ? '' : 's'} for “${q}”`
 ---
 
 <Layout title={q ? `Search · ${q}` : 'Search'} description="Search the full catalogue." noindex>
-  <section class="sec">
-    <div class="container">
+  <section class="coll-sec">
+    <div class="wrap">
       <nav class="crumb" aria-label="Breadcrumb">
         <a href="/">Home</a><span>/</span><span class="cur">Search</span>
       </nav>
 
       <header class="coll-head">
         <div class="coll-eyebrow">Search</div>
-        <h1 class="h1">{q ? q : 'Search the catalogue'}</h1>
+        <h1 class="coll-title">{q ? q : 'Search the catalogue'}</h1>
       </header>
 
       <form class="srch-box" method="get" action="/search" role="search">
@@ -140,33 +140,44 @@ const countLabel = q ? `${total} result${total === 1 ? '' : 's'} for “${q}”`
 </Layout>
 
 <style>
+  /* Search results — Maison skin. Clears the fixed header. */
+  .coll-sec { background: var(--bg); padding: 106px 0 80px; }
+
   .crumb {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.82rem;
+    gap: 7px;
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 500;
     color: var(--muted);
-    margin-bottom: 22px;
+    padding: 18px 0;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
   }
+  .crumb a { color: var(--muted); text-decoration: none; transition: color var(--ease); }
   .crumb a:hover { color: var(--text); }
-  .crumb .cur { color: var(--text); font-weight: 500; }
+  .crumb span { opacity: .4; }
+  .crumb .cur { color: var(--text); font-weight: 600; opacity: 1; }
 
-  .coll-head { margin-bottom: 22px; }
+  .coll-head { margin-bottom: 24px; }
   .coll-eyebrow {
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--electric);
-    margin-bottom: 10px;
-  }
-  .coll-head .h1 {
-    font-family: "Sora", system-ui, sans-serif;
-    font-size: clamp(1.9rem, 4vw, 2.8rem);
+    font-family: var(--fb);
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .coll-title {
+    font-family: var(--fh);
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 700;
+    letter-spacing: -1.2px;
     line-height: 1.05;
+    color: var(--text);
     margin: 0;
     word-break: break-word;
   }
@@ -175,14 +186,15 @@ const countLabel = q ? `${total} result${total === 1 ? '' : 's'} for “${q}”`
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 6px 6px 6px 16px;
+    padding: 6px 6px 6px 18px;
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: 10px;
     background: var(--white);
-    margin-bottom: 30px;
+    margin-bottom: 32px;
     max-width: 640px;
+    transition: border-color var(--ease);
   }
-  .srch-box:focus-within { border-color: var(--electric); }
+  .srch-box:focus-within { border-color: var(--text); }
   .srch-box svg { color: var(--muted); flex-shrink: 0; }
   .srch-box input {
     flex: 1;
@@ -192,15 +204,16 @@ const countLabel = q ? `${total} result${total === 1 ? '' : 's'} for “${q}”`
     -webkit-appearance: none;
     appearance: none;
     background: transparent;
-    font-size: 0.95rem;
+    font-family: var(--fb);
+    font-size: 14px;
     color: var(--text);
-    padding: 10px 0;
+    padding: 11px 0;
   }
   .srch-box input:focus,
   .srch-box input:focus-visible { outline: 0; box-shadow: none; }
   .srch-box input::-webkit-search-decoration,
   .srch-box input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
-  .srch-box .btn { padding: 11px 22px; }
+  .srch-box .btn { padding: 12px 24px; border-radius: 8px; }
 
   .coll-toolbar {
     display: flex;
@@ -209,41 +222,63 @@ const countLabel = q ? `${total} result${total === 1 ? '' : 's'} for “${q}”`
     gap: 16px;
     flex-wrap: wrap;
     padding-bottom: 18px;
-    margin-bottom: 26px;
+    margin-bottom: 32px;
     border-bottom: 1px solid var(--border);
   }
-  .coll-count { font-size: 0.85rem; color: var(--muted); }
+  .coll-count { font-family: var(--fb); font-size: 12px; color: var(--muted); }
   .coll-sortwrap { display: flex; align-items: center; gap: 10px; }
-  .coll-sortwrap label { font-size: 0.82rem; color: var(--muted); }
+  .coll-sortwrap label {
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
   .coll-sort {
     appearance: none;
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 8px;
     background: var(--white);
-    padding: 9px 34px 9px 14px;
-    font-size: 0.85rem;
-    font-weight: 500;
+    padding: 10px 36px 10px 14px;
+    font-family: var(--fb);
+    font-size: 13px;
+    font-weight: 600;
     color: var(--text);
     cursor: pointer;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
+    transition: border-color var(--ease);
   }
-  .coll-sort:hover { border-color: var(--electric); }
+  .coll-sort:hover { border-color: var(--text); }
 
   .coll-pager {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 14px;
-    margin-top: 42px;
+    margin-top: 48px;
   }
   .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 13px 24px;
     border: 1px solid var(--border);
+    border-radius: 8px;
     background: var(--white);
     color: var(--text);
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color var(--ease), color var(--ease), background var(--ease);
   }
-  .btn-ghost:hover { border-color: var(--electric); color: var(--electric); }
+  .btn-ghost:hover { border-color: var(--text); background: var(--text); color: var(--bg); }
   .btn-ghost.is-disabled { opacity: 0.4; pointer-events: none; }
 
   .coll-empty {
@@ -252,9 +287,11 @@ const countLabel = q ? `${total} result${total === 1 ? '' : 's'} for “${q}”`
     align-items: center;
     text-align: center;
     gap: 10px;
-    padding: 64px 20px;
+    padding: 80px 20px;
   }
-  .coll-empty b { font-size: 1.25rem; }
-  .coll-empty p { color: var(--muted); max-width: 30rem; margin: 0; }
-  .coll-empty .btn { margin-top: 14px; }
+  .coll-empty b { font-family: var(--fh); font-size: 22px; font-weight: 700; letter-spacing: -.5px; color: var(--text); }
+  .coll-empty p { font-family: var(--fb); color: var(--muted); max-width: 30rem; margin: 0; }
+  .coll-empty .btn { margin-top: 16px; }
+
+  @media (max-width: 760px) { .coll-sec { padding-top: 88px; } }
 </style>
