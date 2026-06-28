@@ -65,6 +65,54 @@ const priceNums = products
   .filter((n) => Number.isFinite(n));
 const priceFloor = priceNums.length ? Math.floor(Math.min(...priceNums)) : 0;
 const priceCeil = priceNums.length ? Math.max(priceFloor + 10, Math.ceil(Math.max(...priceNums))) : 1000;
+
+// Category facets derived from real productType values with counts (ominix
+// logic). The sidebar was hardcoded to the design mockup's taxonomy
+// (Women/Men/Bags…), which never matches a real catalogue — so selecting any
+// category filtered the grid to 0. data-fcat is lowercased to match each
+// card's data-cat (= productType.toLowerCase()).
+function countByType(values: string[]): [string, number][] {
+  const m = new Map<string, number>();
+  for (const v of values) {
+    const k = v?.trim();
+    if (k) m.set(k, (m.get(k) ?? 0) + 1);
+  }
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+}
+const categories = countByType(products.map((p) => p.productType ?? ''));
+const newCount = products.filter((p) => p.isNew).length;
+const saleCount = products.filter(
+  (p) =>
+    Number(p.compareAtPriceRange?.minVariantPrice?.amount || 0) >
+    Number(p.priceRange.minVariantPrice.amount || 0),
+).length;
+
+// Colour / size / material / occasion facets — ALSO hardcoded to the design
+// mockup originally. Derive every one from the real catalogue so a pill never
+// filters to 0, and so empty groups (vocab absent from the store) hide cleanly.
+const colorMap = new Map<string, string>();
+for (const p of products)
+  for (const s of p.swatches ?? [])
+    if (s?.name && s?.color) colorMap.set(s.name.toLowerCase(), s.color);
+const colors = [...colorMap.entries()]; // [name, cssColor]
+
+const sizeSet = new Set<string>();
+for (const p of products) {
+  const sizeOpt = (p.options ?? []).find((o) => /size/i.test(o.name));
+  for (const v of sizeOpt?.optionValues ?? []) if (v?.name) sizeSet.add(v.name);
+}
+const sizes = [...sizeSet];
+
+const matSet = new Set<string>();
+const occSet = new Set<string>();
+for (const p of products)
+  for (const t of (p.tags ?? []).map((x) => x.toLowerCase())) {
+    if (MATERIALS.includes(t)) matSet.add(t);
+    if (OCCASIONS.includes(t)) occSet.add(t);
+  }
+const materials = MATERIALS.filter((m) => matSet.has(m));
+const occasions = OCCASIONS.filter((o) => occSet.has(o));
+const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 ---
 
 <Layout title="Shop" description="Browse the full Maison collection — refined wardrobe essentials.">
@@ -171,18 +219,20 @@ const priceCeil = priceNums.length ? Math.max(priceFloor + 10, Math.ceil(Math.ma
             </div>
             <div class="sb-group-body sb-cats" id="grp-cat-body">
               <button class="sb-cat active" data-fcat="">All Products <span class="sb-cat-ct">{total}</span></button>
-              <button class="sb-cat" data-fcat="women">Women <span class="sb-cat-ct">9</span></button>
-              <button class="sb-cat" data-fcat="men">Men <span class="sb-cat-ct">7</span></button>
-              <button class="sb-cat" data-fcat="bags">Bags <span class="sb-cat-ct">5</span></button>
-              <button class="sb-cat" data-fcat="accessories">Accessories <span class="sb-cat-ct">4</span></button>
-              <button class="sb-cat" data-fcat="new" data-special="new">New Arrivals <span class="sb-cat-ct">7</span
-                ></button>
-              <button class="sb-cat" data-fcat="sale" data-special="sale">On Sale <span class="sb-cat-ct">3</span
-                ></button>
+              {categories.map(([type, count]) => (
+                <button class="sb-cat" data-fcat={type.toLowerCase()}>{type} <span class="sb-cat-ct">{count}</span></button>
+              ))}
+              {newCount > 0 && (
+                <button class="sb-cat" data-fcat="new" data-special="new">New Arrivals <span class="sb-cat-ct">{newCount}</span></button>
+              )}
+              {saleCount > 0 && (
+                <button class="sb-cat" data-fcat="sale" data-special="sale">On Sale <span class="sb-cat-ct">{saleCount}</span></button>
+              )}
             </div>
           </div>
 
           <!-- COLOR -->
+          {colors.length > 0 && (
           <div class="sb-group" id="grp-color">
             <div class="sb-group-hd" data-toggle="grp-color">
               <span class="sb-group-label">Color</span>
@@ -192,34 +242,17 @@ const priceCeil = priceNums.length ? Math.max(priceFloor + 10, Math.ceil(Math.ma
               </svg>
             </div>
             <div class="sb-group-body sb-colors" id="grp-color-body">
-              <div class="sb-swatch-wrap" data-color="ivory">
-                <div class="sb-swatch" style="background:#F5F0E8;border-color:#D8D5CE"></div>
-              </div>
-              <div class="sb-swatch-wrap" data-color="stone">
-                <div class="sb-swatch" style="background:#D4C5A9"></div>
-              </div>
-              <div class="sb-swatch-wrap" data-color="camel">
-                <div class="sb-swatch" style="background:#C8B8A2"></div>
-              </div>
-              <div class="sb-swatch-wrap" data-color="black">
-                <div class="sb-swatch" style="background:#1D1D1B"></div>
-              </div>
-              <div class="sb-swatch-wrap" data-color="charcoal">
-                <div class="sb-swatch" style="background:#3D3D3B"></div>
-              </div>
-              <div class="sb-swatch-wrap" data-color="slate">
-                <div class="sb-swatch" style="background:#6B7FA3"></div>
-              </div>
-              <div class="sb-swatch-wrap" data-color="olive">
-                <div class="sb-swatch" style="background:#7A8F3A"></div>
-              </div>
-              <div class="sb-swatch-wrap" data-color="rust">
-                <div class="sb-swatch" style="background:#B4573F"></div>
-              </div>
+              {colors.map(([name, css]) => (
+                <div class="sb-swatch-wrap" data-color={name} title={titleCase(name)}>
+                  <div class="sb-swatch" style={`background:${css}`}></div>
+                </div>
+              ))}
             </div>
           </div>
+          )}
 
           <!-- SIZE -->
+          {sizes.length > 0 && (
           <div class="sb-group" id="grp-size">
             <div class="sb-group-hd" data-toggle="grp-size">
               <span class="sb-group-label">Size</span>
@@ -229,18 +262,10 @@ const priceCeil = priceNums.length ? Math.max(priceFloor + 10, Math.ceil(Math.ma
               </svg>
             </div>
             <div class="sb-group-body sb-sizes" id="grp-size-body">
-              <button class="sb-size">XS</button>
-              <button class="sb-size">S</button>
-              <button class="sb-size">M</button>
-              <button class="sb-size">L</button>
-              <button class="sb-size">XL</button>
-              <button class="sb-size">XXL</button>
-              <button class="sb-size">28</button>
-              <button class="sb-size">30</button>
-              <button class="sb-size">32</button>
-              <button class="sb-size">34</button>
+              {sizes.map((s) => <button class="sb-size">{s}</button>)}
             </div>
           </div>
+          )}
 
           <!-- PRICE -->
           <div class="sb-group" id="grp-price">
@@ -336,6 +361,7 @@ const priceCeil = priceNums.length ? Math.max(priceFloor + 10, Math.ceil(Math.ma
           </div>
 
           <!-- MATERIAL -->
+          {materials.length > 0 && (
           <div class="sb-group" id="grp-mat">
             <div class="sb-group-hd" data-toggle="grp-mat">
               <span class="sb-group-label">Material</span>
@@ -345,18 +371,15 @@ const priceCeil = priceNums.length ? Math.max(priceFloor + 10, Math.ceil(Math.ma
               </svg>
             </div>
             <div class="sb-group-body sb-mats" id="grp-mat-body">
-              <button class="sb-pill" data-fmat="linen" data-pill-type="mat" data-pill-val="linen">Linen</button>
-              <button class="sb-pill" data-fmat="wool" data-pill-type="mat" data-pill-val="wool">Wool</button>
-              <button class="sb-pill" data-fmat="cotton" data-pill-type="mat" data-pill-val="cotton">Cotton</button>
-              <button class="sb-pill" data-fmat="silk" data-pill-type="mat" data-pill-val="silk">Silk</button>
-              <button class="sb-pill" data-fmat="leather" data-pill-type="mat" data-pill-val="leather">Leather</button>
-              <button class="sb-pill" data-fmat="cashmere" data-pill-type="mat" data-pill-val="cashmere"
-                >Cashmere</button
-              >
+              {materials.map((m) => (
+                <button class="sb-pill" data-pill-type="mat" data-pill-val={m}>{titleCase(m)}</button>
+              ))}
             </div>
           </div>
+          )}
 
           <!-- OCCASION -->
+          {occasions.length > 0 && (
           <div class="sb-group" id="grp-occ">
             <div class="sb-group-hd" data-toggle="grp-occ">
               <span class="sb-group-label">Occasion</span>
@@ -366,13 +389,12 @@ const priceCeil = priceNums.length ? Math.max(priceFloor + 10, Math.ceil(Math.ma
               </svg>
             </div>
             <div class="sb-group-body sb-occs" id="grp-occ-body">
-              <button class="sb-pill" data-pill-type="occ" data-pill-val="everyday">Everyday</button>
-              <button class="sb-pill" data-pill-type="occ" data-pill-val="work">Work</button>
-              <button class="sb-pill" data-pill-type="occ" data-pill-val="weekend">Weekend</button>
-              <button class="sb-pill" data-pill-type="occ" data-pill-val="evening">Evening</button>
-              <button class="sb-pill" data-pill-type="occ" data-pill-val="resort">Resort</button>
+              {occasions.map((o) => (
+                <button class="sb-pill" data-pill-type="occ" data-pill-val={o}>{titleCase(o)}</button>
+              ))}
             </div>
           </div>
+          )}
 
           <!-- AVAILABILITY -->
           <div class="sb-group" id="grp-avl">
