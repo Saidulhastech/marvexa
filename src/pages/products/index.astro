@@ -1482,7 +1482,9 @@ const total = products.length;
     if (elh) elh.textContent = String(n);
   }
 
-  function doFilter(): void {
+  // Raw filter pass — no URL write. Used by popstate / initial hydrate so
+  // back/forward navigation doesn't re-push history entries.
+  function doFilterRaw(): void {
     let shown = 0;
     cards().forEach((c) => {
       if (matchCard(c)) {
@@ -1500,6 +1502,13 @@ const total = products.length;
     if (noMatch) noMatch.style.display = shown === 0 && originalOrder.length > 0 ? '' : 'none';
     updateCount(shown);
     renderChips();
+  }
+
+  // Single funnel for user-driven changes: filter, then mirror state into the
+  // URL so it's shareable, bookmarkable, and survives a reload (ominix logic).
+  function doFilter(): void {
+    doFilterRaw();
+    writeUrl();
   }
 
   // ── Category ────────────────────────────────────────────────────────────────
@@ -1825,7 +1834,110 @@ const total = products.length;
     b.addEventListener('click', () => setView(parseInt(b.dataset.view || '3', 10)));
   });
 
-  // Initial paint
-  updateSliderFill(FLOOR, CEIL);
-  renderChips();
+  // ── URL state sync ───────────────────────────────────────────────────────────
+  // Filter state lives in the address bar so it's shareable, bookmarkable, and
+  // survives a reload / the sort control — ported from the ominix shop
+  // controller and adapted to Maison's F-state + .sb-* design hooks.
+  // replaceState (not push) keeps history clean while tweaking facets; any
+  // non-filter params (e.g. ?sort=) are preserved untouched.
+  const FILTER_PARAMS = ['cat', 'special', 'color', 'size', 'mat', 'occ', 'avail', 'rate', 'min', 'max'];
+
+  function writeUrl(): void {
+    const url = new URL(window.location.href);
+    const p = url.searchParams;
+    FILTER_PARAMS.forEach((k) => p.delete(k));
+    if (F.cat) p.set('cat', F.cat);
+    if (F.catSpecial) p.set('special', F.catSpecial);
+    if (F.colors.length) p.set('color', F.colors.join(','));
+    if (F.sizes.length) p.set('size', F.sizes.join(','));
+    if (F.mats.length) p.set('mat', F.mats.join(','));
+    if (F.occs.length) p.set('occ', F.occs.join(','));
+    if (F.avails.length) p.set('avail', F.avails.join(','));
+    if (F.rating) p.set('rate', String(F.rating));
+    if (F.prMin > FLOOR) p.set('min', String(F.prMin));
+    if (F.prMax < CEIL) p.set('max', String(F.prMax));
+    const qs = p.toString();
+    window.history.replaceState(null, '', url.pathname + (qs ? '?' + qs : ''));
+  }
+
+  // Hydrate F + the sidebar UI (.active classes, price slider/boxes) from the
+  // URL. Sets state only — the caller runs the filter pass afterwards.
+  function applyUrl(): void {
+    const p = new URL(window.location.href).searchParams;
+    const list = (k: string) => (p.get(k) ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+
+    const special = p.get('special') || '';
+    const cat = p.get('cat') || '';
+    if (special || cat) {
+      document.querySelectorAll<HTMLElement>('.sb-cat').forEach((b) => b.classList.remove('active'));
+      if (special) {
+        F.catSpecial = special;
+        document.querySelector<HTMLElement>('.sb-cat[data-special="' + special + '"]')?.classList.add('active');
+      } else {
+        F.cat = cat;
+        document.querySelector<HTMLElement>('.sb-cat[data-fcat="' + cat + '"]')?.classList.add('active');
+      }
+    }
+    list('color').forEach((c) => {
+      F.colors.push(c);
+      document.querySelectorAll<HTMLElement>('.sb-swatch-wrap[data-color="' + c + '"]').forEach((s) => s.classList.add('active'));
+    });
+    list('size').forEach((sz) => {
+      F.sizes.push(sz);
+      document.querySelectorAll<HTMLElement>('.sb-size').forEach((s) => {
+        if ((s.textContent || '').trim().toLowerCase() === sz) s.classList.add('active');
+      });
+    });
+    const pills = (param: string, arr: string[], type: PillType) =>
+      list(param).forEach((v) => {
+        arr.push(v);
+        document.querySelectorAll<HTMLElement>('.sb-pill[data-pill-type="' + type + '"][data-pill-val="' + v + '"]')
+          .forEach((el) => el.classList.add('active'));
+      });
+    pills('mat', F.mats, 'mat');
+    pills('occ', F.occs, 'occ');
+    pills('avail', F.avails, 'avail');
+
+    const rate = p.get('rate');
+    if (rate) {
+      const el = document.querySelector<HTMLElement>('.sb-rating[data-rating="' + rate + '"]');
+      if (el) {
+        el.classList.add('active');
+        F.rating = parseFloat(rate);
+        F.ratingLbl = el.dataset.ratingLbl || '';
+      }
+    }
+
+    const min = p.get('min');
+    const max = p.get('max');
+    if (min) F.prMin = Math.max(FLOOR, parseFloat(min) || FLOOR);
+    if (max) F.prMax = Math.min(CEIL, parseFloat(max) || CEIL);
+    const mn = document.getElementById('sb-slider-min-r') as HTMLInputElement | null;
+    const mx = document.getElementById('sb-slider-max-r') as HTMLInputElement | null;
+    const minBox = document.getElementById('price-min-input') as HTMLInputElement | null;
+    const maxBox = document.getElementById('price-max-input') as HTMLInputElement | null;
+    if (mn) mn.value = String(F.prMin);
+    if (mx) mx.value = String(F.prMax);
+    if (minBox) minBox.value = String(F.prMin);
+    if (maxBox) maxBox.value = String(F.prMax);
+    updateSliderFill(F.prMin, F.prMax);
+  }
+
+  // Back/forward between filter states → reset the UI, re-hydrate from the URL,
+  // and re-render WITHOUT writing history (raw pass).
+  window.addEventListener('popstate', () => {
+    F = freshState();
+    document.querySelectorAll<HTMLElement>('.sb-cat').forEach((b) => b.classList.remove('active'));
+    document.querySelector<HTMLElement>('.sb-cat[data-fcat=""]')?.classList.add('active');
+    document.querySelectorAll<HTMLElement>('.sb-swatch-wrap,.sb-size,.sb-rating,.sb-pill')
+      .forEach((el) => el.classList.remove('active'));
+    resetPriceUI();
+    applyUrl();
+    doFilterRaw();
+  });
+
+  // Initial paint — hydrate from the URL first, then filter (raw: don't rewrite
+  // the incoming URL / push history on load).
+  applyUrl();
+  doFilterRaw();
 </script>
