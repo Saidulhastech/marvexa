@@ -250,7 +250,7 @@ const articleJsonLd = post
 <style>
   /* Reading progress */
   .post-progress { position: sticky; top: 0; z-index: 30; height: 3px; background: transparent; }
-  .post-progress span { display: block; height: 100%; width: 0; background: var(--electric); transition: width .1s linear; }
+  .post-progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
 
   .post { padding-bottom: 72px; }
 
@@ -267,14 +267,14 @@ const articleJsonLd = post
   .post-hdr-wrap .post-title,
   .post-hdr-wrap .post-excerpt { max-width: 760px; }
   .post-back { display: inline-block; font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-bottom: 22px; }
-  .post-back:hover { color: var(--electric); }
+  .post-back:hover { color: var(--accent); }
   .post-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
   .post-title {
-    font-family: "Sora", system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700;
     letter-spacing: -0.025em; line-height: 1.07; margin: 0;
   }
-  .post-excerpt { margin: 18px 0 0; font-size: 1.16rem; color: var(--text-soft, #374151); line-height: 1.6; }
+  .post-excerpt { margin: 18px 0 0; font-size: 1.16rem; color: var(--muted, #374151); line-height: 1.6; }
 
   .post-meta {
     display: flex; align-items: center; justify-content: space-between;
@@ -286,7 +286,7 @@ const articleJsonLd = post
   .post-author span { display: flex; flex-direction: column; line-height: 1.35; }
   .post-author b { color: var(--text); font-weight: 600; }
   .post-author em { font-style: normal; font-size: 0.82rem; color: var(--muted); }
-  .post-author:hover b { color: var(--electric); }
+  .post-author:hover b { color: var(--accent); }
   .post-date { font-size: 0.85rem; color: var(--muted); }
 
   .post-share { display: flex; align-items: center; gap: 8px; }
@@ -295,15 +295,15 @@ const articleJsonLd = post
     border: 1px solid var(--border); border-radius: 10px; background: var(--white);
     color: var(--text); cursor: pointer; transition: all .15s; position: relative;
   }
-  .post-share-btn:hover { border-color: var(--electric); color: var(--electric); }
+  .post-share-btn:hover { border-color: var(--accent); color: var(--accent); }
   .post-share-btn.is-copied::after {
     content: "Copied!"; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
-    background: var(--tech-black); color: #fff; font-size: 11px; font-weight: 600;
+    background: var(--text); color: #fff; font-size: 11px; font-weight: 600;
     padding: 4px 8px; border-radius: 6px; white-space: nowrap;
   }
 
   /* Hero */
-  .post-hero { margin: 30px auto 8px; border-radius: 20px; overflow: hidden; background: var(--frost); }
+  .post-hero { margin: 30px auto 8px; border-radius: 20px; overflow: hidden; background: var(--bg2); }
   .post-hero img { width: 100%; height: auto; display: block; }
 
   /* Body + TOC layout */
@@ -329,28 +329,28 @@ const articleJsonLd = post
   }
   .post-toc-link.sub { padding-left: 26px; font-size: 0.83rem; }
   .post-toc-link:hover { color: var(--text); }
-  .post-toc-link.is-active { color: var(--electric); border-left-color: var(--electric); font-weight: 600; }
+  .post-toc-link.is-active { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
 
   /* Author card */
   .post-authorcard {
     display: flex; gap: 18px; margin-top: 48px; padding: 26px;
-    border: 1px solid var(--border); border-radius: 18px; background: var(--frost);
+    border: 1px solid var(--border); border-radius: 18px; background: var(--bg2);
   }
   .post-authorcard img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
   .pa-by { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-  .pa-name { display: inline-block; margin-top: 4px; font-family: "Sora", system-ui, sans-serif; font-weight: 700; font-size: 1.15rem; color: var(--text); }
-  .pa-name:hover { color: var(--electric); }
+  .pa-name { display: inline-block; margin-top: 4px; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-weight: 700; font-size: 1.15rem; color: var(--text); }
+  .pa-name:hover { color: var(--accent); }
   .pa-role { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
-  .pa-bio { margin: 12px 0 0; color: var(--text-soft, #374151); line-height: 1.6; }
-  .pa-link { display: inline-block; margin-top: 12px; color: var(--electric); font-weight: 600; font-size: 0.9rem; }
+  .pa-bio { margin: 12px 0 0; color: var(--muted, #374151); line-height: 1.6; }
+  .pa-link { display: inline-block; margin-top: 12px; color: var(--accent); font-weight: 600; font-size: 0.9rem; }
 
   /* End CTA */
   .post-cta {
     display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
     margin: 60px auto 0; padding: 32px 36px; border-radius: 20px;
-    background: linear-gradient(135deg, var(--tech-black), #1b2436); color: #fff;
+    background: linear-gradient(135deg, var(--text), #1b2436); color: #fff;
   }
-  .post-cta h3 { font-family: "Sora", system-ui, sans-serif; font-size: 1.5rem; margin: 0; }
+  .post-cta h3 { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 1.5rem; margin: 0; }
   .post-cta p { margin: 8px 0 0; color: rgba(255,255,255,.7); }
   .post-cta-form { display: flex; gap: 10px; flex: 1; min-width: 260px; max-width: 420px; }
   .post-cta-form input {
@@ -361,32 +361,32 @@ const articleJsonLd = post
   .post-cta-done { margin: 0; font-weight: 600; }
 
   .post-related-h {
-    font-family: "Sora", system-ui, sans-serif; font-size: 1.6rem; font-weight: 700;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 1.6rem; font-weight: 700;
     margin: 68px auto 24px;
   }
 
   .nf2 { text-align: center; padding: 80px 20px; }
-  .nf2-eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--electric); margin-bottom: 12px; }
-  .nf2 .h1 { font-family: "Sora", system-ui, sans-serif; font-size: clamp(2rem,6vw,3rem); font-weight: 700; margin: 0; }
+  .nf2-eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .nf2 .h1 { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: clamp(2rem,6vw,3rem); font-weight: 700; margin: 0; }
   .nf2 p { color: var(--muted); margin: 12px 0 22px; }
 
   /* Rich text (MDX body) */
-  .rte { color: var(--text-soft, #374151); line-height: 1.8; font-size: 1.07rem; }
+  .rte { color: var(--muted, #374151); line-height: 1.8; font-size: 1.07rem; }
   .rte > * + * { margin-top: 1.2rem; }
   .rte h2, .rte h3 {
-    font-family: "Sora", system-ui, sans-serif; color: var(--text);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--text);
     letter-spacing: -0.01em; line-height: 1.25; scroll-margin-top: 90px;
   }
   .rte h2 { font-size: 1.6rem; margin-top: 2.6rem; }
   .rte h3 { font-size: 1.28rem; margin-top: 2rem; }
-  .rte a { color: var(--electric); text-decoration: underline; text-underline-offset: 3px; }
+  .rte a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
   .rte strong { color: var(--text); font-weight: 600; }
   .rte ul, .rte ol { padding-left: 1.3rem; }
   .rte ul { list-style: disc; }
   .rte ol { list-style: decimal; }
   .rte li + li { margin-top: 0.45rem; }
   .rte blockquote {
-    border-left: 3px solid var(--electric); padding: 4px 0 4px 18px; margin-left: 0;
+    border-left: 3px solid var(--accent); padding: 4px 0 4px 18px; margin-left: 0;
     font-style: italic; color: var(--text); font-size: 1.15rem;
   }
 </style>

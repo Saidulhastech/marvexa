@@ -12,7 +12,7 @@ const n = (await getEntry('newsletter', 'main'))!.data;
 <section class="news">
   <div class="container">
     <div class="news-inner">
-      {n.eyebrow && <div class="sec-eyebrow" style="color: var(--cyan); justify-content: center; display: inline-flex;">{n.eyebrow}</div>}
+      {n.eyebrow && <div class="sec-eyebrow" style="color: var(--accent-dk); justify-content: center; display: inline-flex;">{n.eyebrow}</div>}
       <h2 class="h2" set:html={n.title} />
       {n.body && <p>{n.body}</p>}
       <form class="news-form" id="newsForm" novalidate aria-label="Newsletter signup">
