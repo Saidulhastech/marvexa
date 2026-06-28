@@ -18,23 +18,6 @@ const announcements = defineCollection({
   schema: z.object({ icon: z.string().default('spark'), text: z.string() }),
 });
 
-const navigation = defineCollection({
-  loader: file('src/content/navigation.yaml'),
-  schema: z.object({
-    topLinks: z.array(z.object({ label: z.string(), href: z.string().default('#'), badge: z.string().optional() })).default([]),
-    mega: z
-      .object({
-        columns: z.array(z.object({ heading: z.string(), links: z.array(link) })).default([]),
-        feature: z
-          .object({ tag: z.string(), title: z.string(), body: z.string(), image: z.string() })
-          .optional(),
-      })
-      .optional(),
-    mobile: z.array(link).default([]),
-    metaLinks: z.array(link).default([]),
-  }),
-});
-
 const footer = defineCollection({
   loader: file('src/content/footer.yaml'),
   schema: z.object({
@@ -234,7 +217,6 @@ const authors = defineCollection({
 
 export const collections = {
   announcements,
-  navigation,
   footer,
   hero,
   trust,

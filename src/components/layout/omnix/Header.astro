@@ -10,48 +10,28 @@
 //  controller. Header scroll state + announce-collapse are local JS.
 // ============================================================
 import { BRAND } from '~/config/omnix';
+import { getAllCollections } from '~/lib/shopify';
+import type { Collection } from '~/lib/shopify/types';
 
-// Primary nav (mega columns). Hrefs map to storefront routes.
-const womenMega = {
-  clothing: [
-    { label: 'Dresses', href: '/collections/dresses', badge: 'New' },
-    { label: 'Blazers & Jackets', href: '/collections/blazers' },
-    { label: 'Tops & Shirts', href: '/collections/tops' },
-    { label: 'Trousers & Shorts', href: '/collections/trousers' },
-    { label: 'Knitwear', href: '/collections/knitwear' },
-    { label: 'Skirts', href: '/collections/skirts', badge: 'Sale', rust: true },
-  ],
-  shopBy: [
-    { label: 'New Arrivals', href: '/products?sort=newest' },
-    { label: 'Best Sellers', href: '/products' },
-    { label: 'Organic Linen Edit', href: '/collections/linen' },
-    { label: 'Under $150', href: '/collections/under-150' },
-    { label: 'Sale Items', href: '/collections/sale', badge: '50% Off', rust: true },
-  ],
-  img: { src: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&auto=format&fit=crop&q=80', label: 'SS26 Drop', href: '/collections/women' },
-};
-const menMega = {
-  clothing: [
-    { label: 'Shirts', href: '/collections/shirts', badge: 'New' },
-    { label: 'Blazers & Jackets', href: '/collections/blazers' },
-    { label: 'Trousers', href: '/collections/trousers' },
-    { label: 'Shorts', href: '/collections/shorts' },
-    { label: 'Knitwear', href: '/collections/knitwear' },
-    { label: 'T-Shirts', href: '/collections/tshirts', badge: 'Sale', rust: true },
-  ],
-  shopBy: [
-    { label: 'New Arrivals', href: '/products?sort=newest' },
-    { label: 'Best Sellers', href: '/products' },
-    { label: 'Linen Collection', href: '/collections/linen' },
-    { label: 'Under $120', href: '/collections/under-120' },
-    { label: 'Sale Items', href: '/collections/sale', badge: '40% Off', rust: true },
-  ],
-  img: { src: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=200&auto=format&fit=crop&q=80', label: "Men's Edit", href: '/collections/men' },
-};
-const megas = [
-  { name: 'Women', data: womenMega },
-  { name: 'Men', data: menMega },
-];
+// Nav is driven by REAL Shopify collections so it never links to handles the
+// store doesn't have (the old hardcoded Women/Men/Bags/Sale links were a
+// design-mockup leftover). A failure degrades to New Arrivals + All Products.
+let collections: Collection[] = [];
+try {
+  collections = await getAllCollections();
+} catch (err) {
+  console.error('[header] collections load failed:', (err as Error).message);
+}
+
+// "Shop" mega: real collections split across two columns + a featured tile.
+const navCollections = collections.slice(0, 12);
+const half = Math.ceil(navCollections.length / 2);
+const megaColA = navCollections.slice(0, half);
+const megaColB = navCollections.slice(half);
+const featured = navCollections[0];
+const featuredImg =
+  featured?.image?.url ??
+  'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&auto=format&fit=crop&q=80';
 
 const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
 ---
@@ -66,50 +46,44 @@ const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
     <nav class="header__nav" role="navigation" aria-label="Main">
       <a href="/products?sort=newest" class="nav-link new-a">New Arrivals</a>
 
-      {
-        megas.map((m) => (
-          <div class="nav-link has-mega" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false">
-            {m.name}
-            <svg class="nav-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-            <div class="mega" role="menu">
-              <div>
-                <div class="mega__col-title">Clothing</div>
-                <div class="mega__links">
-                  {m.data.clothing.map((l) => (
-                    <a href={l.href} class="mega__link">
-                      {l.label}
-                      {l.badge && <span class:list={['mega__link-badge', { rust: l.rust }]}>{l.badge}</span>}
-                    </a>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <div class="mega__col-title">Shop By</div>
-                <div class="mega__links">
-                  {m.data.shopBy.map((l) => (
-                    <a href={l.href} class="mega__link">
-                      {l.label}
-                      {l.badge && <span class:list={['mega__link-badge', { rust: l.rust }]}>{l.badge}</span>}
-                    </a>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <a href={m.data.img.href} class="mega__img-card">
-                  <img src={m.data.img.src} alt={`${m.name} campaign`} />
-                  <span class="mega__img-label">{m.data.img.label}</span>
-                </a>
+      {navCollections.length > 0 && (
+        <div class="nav-link has-mega" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false">
+          Shop
+          <svg class="nav-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+          <div class="mega" role="menu">
+            <div>
+              <div class="mega__col-title">Collections</div>
+              <div class="mega__links">
+                {megaColA.map((c) => (
+                  <a href={`/collections/${c.handle}`} class="mega__link">{c.title}</a>
+                ))}
               </div>
             </div>
+            {megaColB.length > 0 && (
+              <div>
+                <div class="mega__col-title">More</div>
+                <div class="mega__links">
+                  {megaColB.map((c) => (
+                    <a href={`/collections/${c.handle}`} class="mega__link">{c.title}</a>
+                  ))}
+                </div>
+              </div>
+            )}
+            {featured && (
+              <div>
+                <a href={`/collections/${featured.handle}`} class="mega__img-card">
+                  <img src={featuredImg} alt={`${featured.title} collection`} />
+                  <span class="mega__img-label">{featured.title}</span>
+                </a>
+              </div>
+            )}
           </div>
-        ))
-      }
+        </div>
+      )}
 
-      <a href="/collections/bags" class="nav-link">Bags</a>
-      <a href="/collections/accessories" class="nav-link">Accessories</a>
-      <a href="/collections/sale" class="nav-link sale">Sale</a>
+      <a href="/products" class="nav-link">All Products</a>
     </nav>
 
     <div class="header__actions">
@@ -152,12 +126,11 @@ const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
     </button>
   </div>
   <nav class="mob-menu__nav">
-    <a href="/products?sort=newest" class="mob-nav-link new-a">New Arrivals<span class="mob-nav-badge">SS26</span></a>
-    <a href="/collections/women" class="mob-nav-link">Women</a>
-    <a href="/collections/men" class="mob-nav-link">Men</a>
-    <a href="/collections/bags" class="mob-nav-link">Bags</a>
-    <a href="/collections/accessories" class="mob-nav-link">Accessories</a>
-    <a href="/collections/sale" class="mob-nav-link sale">Sale<span class="mob-nav-badge rust">Up to 50%</span></a>
+    <a href="/products?sort=newest" class="mob-nav-link new-a">New Arrivals<span class="mob-nav-badge">New</span></a>
+    {navCollections.map((c) => (
+      <a href={`/collections/${c.handle}`} class="mob-nav-link">{c.title}</a>
+    ))}
+    <a href="/products" class="mob-nav-link">All Products</a>
   </nav>
   <div class="mob-menu__info">
     <div class="mob-info-item">
