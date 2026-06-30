@@ -147,6 +147,9 @@ const eyebrow = product.productType?.trim() || product.vendor?.trim() || '';
         data-href={href}
         data-variant-id={canQuickAdd ? product.firstVariantId : ''}
         data-needs-picker={needsPicker ? '1' : ''}
+        data-variants={pickerData}
+        data-options={optionData}
+        data-currency={currency}
       >
         <Icon name="heart" size={15} />
       </button>
