@@ -6,6 +6,7 @@
 //  a closing CTA. Reveal + stat counters via a small vanilla script.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
+import { resolveImage } from '~/lib/asset';
 import '~/styles/about.css';
 import Testimonials from '~/components/home/marvexa/Testimonials.astro';
 import Newsletter from '~/components/home/marvexa/Newsletter.astro';
@@ -72,10 +73,10 @@ const promise = [
 ];
 
 const team = [
-  { name: 'Sophie Laurent', role: 'Founder & Creative Director', bio: 'Parisian-trained with 15 years in luxury fashion. Founded MARVEXA with a vision for modern, refined dressing.', img: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=600&q=80&auto=format&fit=crop&crop=face' },
-  { name: 'Emeka Osei', role: 'Head of Materials', bio: 'Former textile specialist at Loro Piana. Sources every fabric personally from mills in Italy and Japan.', img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&q=80&auto=format&fit=crop&crop=face' },
-  { name: 'Mia Thornton', role: 'Brand Director', bio: '10 years in fashion marketing across Paris and New York. Shapes every touchpoint of the MARVEXA story.', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=80&auto=format&fit=crop&crop=face' },
-  { name: 'Jiro Nakamura', role: 'Lead Atelier', bio: 'Master tailor trained in Tokyo and Milan. Leads our atelier and oversees quality for every production run.', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80&auto=format&fit=crop&crop=face' },
+  { name: 'Sophie Laurent', role: 'Founder & Creative Director', bio: 'Parisian-trained with 15 years in luxury fashion. Founded MARVEXA with a vision for modern, refined dressing.', img: resolveImage('team-sophie.webp').src },
+  { name: 'Emeka Osei', role: 'Head of Materials', bio: 'Former textile specialist at Loro Piana. Sources every fabric personally from mills in Italy and Japan.', img: resolveImage('team-emeka.webp').src },
+  { name: 'Mia Thornton', role: 'Brand Director', bio: '10 years in fashion marketing across Paris and New York. Shapes every touchpoint of the MARVEXA story.', img: resolveImage('person-05.webp').src },
+  { name: 'Jiro Nakamura', role: 'Lead Atelier', bio: 'Master tailor trained in Tokyo and Milan. Leads our atelier and oversees quality for every production run.', img: resolveImage('person-02.webp').src },
 ];
 
 ---
@@ -132,7 +133,7 @@ const team = [
     <section class="ab-story">
       <div class="ab-story-grid">
         <div class="ab-story-img ab-reveal">
-          <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&q=85&auto=format&fit=crop" alt="MARVEXA brand story" loading="lazy" />
+          <img src={resolveImage('about-story.webp').src} alt="MARVEXA brand story" loading="lazy" />
           <div class="ab-story-img-tag">Paris · 2019</div>
         </div>
         <div class="ab-story-txt ab-reveal" data-d="1">
@@ -243,7 +244,7 @@ const team = [
           </div>
         </div>
         <div class="ab-craft-visual ab-reveal" data-d="1">
-          <div class="ab-craft-img"><img src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1100&q=85&auto=format&fit=crop" alt="MARVEXA craftsmanship" loading="lazy" /></div>
+          <div class="ab-craft-img"><img src={resolveImage('about-craft.webp').src} alt="MARVEXA craftsmanship" loading="lazy" /></div>
           <div class="ab-craft-float">
             <div class="ab-craft-float-n">12×</div>
             <div class="ab-craft-float-l">Quality<br />Checkpoints</div>

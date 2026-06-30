@@ -6,6 +6,8 @@
 //  styles actually apply to them; the client script only drives
 //  reveal-on-scroll + the lightbox (open / nav / keyboard / swipe).
 // ============================================================
+import { resolveImage } from '~/lib/asset';
+
 interface SfPhoto {
   thumb: string;
   full: string;
@@ -13,44 +15,43 @@ interface SfPhoto {
   alt: string;
 }
 
+// Local optimized assets; thumb + full share one file (CSS handles tile size).
+const feed = (name: string) => resolveImage(name).src;
+
 const sfPhotos: SfPhoto[] = [
   {
-    thumb:
-      'https://images.unsplash.com/photo-1608748010899-18f300247112?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    full:
-      'https://images.unsplash.com/photo-1608748010899-18f300247112?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    thumb: feed('feed-01.webp'),
+    full: feed('feed-01.webp'),
     handle: '@alicemartin',
     alt: 'Community look — minimal linen set',
   },
   {
-    thumb: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=700&q=82',
-    full: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=1400&q=90',
+    thumb: feed('feed-02.webp'),
+    full: feed('feed-02.webp'),
     handle: '@sofiablanc',
     alt: 'Community look — summer dress',
   },
   {
-    thumb: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=700&q=82',
-    full: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1400&q=90',
+    thumb: feed('feed-03.webp'),
+    full: feed('feed-03.webp'),
     handle: '@emmakirk',
     alt: 'Community look — monochrome coat',
   },
   {
-    thumb: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=700&q=82',
-    full: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=1400&q=90',
+    thumb: feed('feed-04.webp'),
+    full: feed('feed-04.webp'),
     handle: '@laurenchen',
     alt: 'Community look — casual layers',
   },
   {
-    thumb: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=700&q=82',
-    full: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1400&q=90',
+    thumb: feed('feed-05.webp'),
+    full: feed('feed-05.webp'),
     handle: '@ninalevi',
     alt: 'Community look — tailored trousers',
   },
   {
-    thumb:
-      'https://images.unsplash.com/photo-1632149877166-f75d49000351?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    full:
-      'https://images.unsplash.com/photo-1632149877166-f75d49000351?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    thumb: feed('feed-06.webp'),
+    full: feed('feed-06.webp'),
     handle: '@zoepark',
     alt: 'Community look — street style',
   },

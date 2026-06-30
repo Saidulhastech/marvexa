@@ -5,7 +5,8 @@
 //  Images are stored as bare filenames and resolved at render via
 //  ~/lib/asset → optimized with Astro <Image />.
 // ============================================================
-import { defineCollection, z } from 'astro:content';
+import { defineCollection } from 'astro:content';
+import { z } from 'astro/zod';
 import { file, glob } from 'astro/loaders';
 
 // ---- shared field shapes ---------------------------------------------------

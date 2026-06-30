@@ -5,7 +5,6 @@ import {
   MONEY_FRAGMENT,
   IMAGE_FRAGMENT,
   VARIANT_FRAGMENT,
-  PRODUCT_CARD_FRAGMENT,
   CARD_FRAGMENTS,
 } from './fragments';
 

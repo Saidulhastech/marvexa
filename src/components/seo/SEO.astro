@@ -46,7 +46,22 @@ const blocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 <meta property="og:title" content={pageTitle} />
 <meta property="og:description" content={description} />
 <meta property="og:url" content={canonical} />
-{ogImage && <meta property="og:image" content={ogImage} />}
+{
+  ogImage && (
+    <>
+      <meta property="og:image" content={ogImage} />
+      <meta property="og:image:alt" content={pageTitle} />
+      {/* Dimensions are known only for the default branded card (1200×630).
+          A page-supplied `image` may differ, so don't assert its size. */}
+      {!image && (
+        <>
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+        </>
+      )}
+    </>
+  )
+}
 
 {/* Twitter */}
 <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
@@ -56,6 +71,6 @@ const blocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 
 {
   blocks.map((block) => (
-    <script type="application/ld+json" set:html={JSON.stringify(block)} />
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(block)} />
   ))
 }

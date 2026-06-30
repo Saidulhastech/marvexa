@@ -1,4 +1,6 @@
 ---
+import { resolveImage } from '~/lib/asset';
+const campaignImg = resolveImage('campaign-ss26.webp').src;
 ---
 
 <section class="campaign" aria-label="Seasonal campaign banner">
@@ -29,7 +31,7 @@
       <!-- Right: image panel -->
       <div class="campaign__img-panel">
         <img
-          src="https://images.unsplash.com/photo-1612731486606-2614b4d74921?q=80&w=2020&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          src={campaignImg}
           alt="SS 2026 Campaign" class="campaign__img" loading="lazy" />
       </div>
     </div>

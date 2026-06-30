@@ -10,6 +10,7 @@
 //  controller. Header scroll state + announce-collapse are local JS.
 // ============================================================
 import { BRAND } from '~/config/marvexa';
+import { resolveImage } from '~/lib/asset';
 import { getAllCollections, getProducts } from '~/lib/shopify';
 import type { Collection, ProductCard } from '~/lib/shopify/types';
 
@@ -97,7 +98,7 @@ const MEGAS: Mega[] = [
         ],
       },
     ],
-    image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&auto=format&fit=crop&q=80',
+    image: resolveImage('feed-03.webp').src,
     imageLabel: 'SS26 Drop',
   },
   {
@@ -126,7 +127,7 @@ const MEGAS: Mega[] = [
         ],
       },
     ],
-    image: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=200&auto=format&fit=crop&q=80',
+    image: resolveImage('nav-promo-02.webp').src,
     imageLabel: "Men's Edit",
   },
 ];

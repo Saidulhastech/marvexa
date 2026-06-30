@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-**Marvexa** — a headless Shopify storefront (modern fashion theme) built with **Astro 6 in SSR mode**, deployed to **Cloudflare Workers** via `@astrojs/cloudflare`. The Shopify Storefront API is the data source; all Shopify traffic is server-side so the private token never reaches the browser. Node `>=22.12.0`.
+**Marvexa** — a headless Shopify storefront (modern fashion theme) built with **Astro 7 in SSR mode**, deployed to **Cloudflare Workers** via `@astrojs/cloudflare`. The Shopify Storefront API is the data source; all Shopify traffic is server-side so the private token never reaches the browser. Node `>=22.12.0`.
 
 > Naming note: the brand is "Marvexa" (`src/config/marvexa.ts` → `BRAND.name`). The theme namespace is `marvexa` throughout: `src/components/home/marvexa/*` is the Marvexa homepage; `*/marvexa/*` (layout/product/ui/collection) is the shared chrome/product/collection layer. `maison-modern-html/` is the static HTML design reference, not part of the build.
 

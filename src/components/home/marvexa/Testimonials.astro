@@ -6,6 +6,8 @@
 //  only crossfades between them (active class), drives the
 //  thumbs / arrows / counter, autoplay, swipe and keyboard.
 // ============================================================
+import { resolveImage } from '~/lib/asset';
+
 interface Review {
   portrait: string;
   thumb: string;
@@ -16,10 +18,13 @@ interface Review {
   quote: string;
 }
 
+// Local optimized portraits; portrait + thumb share one file (CSS sizes the thumb).
+const face = (name: string) => resolveImage(name).src;
+
 const reviews: Review[] = [
   {
-    portrait: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&q=88',
-    thumb: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&q=80',
+    portrait: face('person-01.webp'),
+    thumb: face('person-01.webp'),
     name: 'Sophie M.',
     loc: 'London, UK',
     product: 'Linen Blazer',
@@ -28,8 +33,8 @@ const reviews: Review[] = [
       'The linen blazer has become my absolute go-to piece. Effortlessly polished, incredibly comfortable — I reach for it every single week without thinking twice.',
   },
   {
-    portrait: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=88',
-    thumb: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&q=80',
+    portrait: face('person-02.webp'),
+    thumb: face('person-02.webp'),
     name: 'James R.',
     loc: 'New York, US',
     product: 'Wool Blend Coat',
@@ -38,8 +43,8 @@ const reviews: Review[] = [
       'Finally a brand that truly gets quality. The wool coat is exceptional — warm, structured, and honestly gets better with every single wear. Worth every penny.',
   },
   {
-    portrait: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=600&q=88',
-    thumb: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&q=80',
+    portrait: face('person-03.webp'),
+    thumb: face('person-03.webp'),
     name: 'Amara K.',
     loc: 'Paris, France',
     product: 'Silk Slip Dress',
@@ -48,8 +53,8 @@ const reviews: Review[] = [
       "I've never received so many compliments on my wardrobe. Everything fits like it was made for me. I genuinely will not shop anywhere else from now on.",
   },
   {
-    portrait: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=600&q=88',
-    thumb: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&q=80',
+    portrait: face('person-04.webp'),
+    thumb: face('person-04.webp'),
     name: 'David K.',
     loc: 'Toronto, Canada',
     product: 'Cashmere Turtleneck',
@@ -58,8 +63,8 @@ const reviews: Review[] = [
       'The cashmere sweater is genuinely the softest thing I own. The quality is remarkable — it still looks brand new after a full year of regular wear.',
   },
   {
-    portrait: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=88',
-    thumb: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&q=80',
+    portrait: face('person-05.webp'),
+    thumb: face('person-05.webp'),
     name: 'Emma L.',
     loc: 'Stockholm, Sweden',
     product: 'Cotton Poplin Shirt',

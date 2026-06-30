@@ -1,8 +1,8 @@
 # Cloudflare Workers config for the Astro SSR storefront.
-# Built by @astrojs/cloudflare. With Astro 6 the adapter exposes a unified
+# Built by @astrojs/cloudflare. With Astro 7 the adapter exposes a unified
 # entrypoint that handles both `astro dev` and production — point `main` at it
 # (NOT the built ./dist/_worker.js path, which doesn't exist before the build).
-name = "ominix"
+name = "marvexa"
 main = "@astrojs/cloudflare/entrypoints/server"
 compatibility_date = "2024-11-01"
 # Astro + deps use Node built-ins (crypto, etc.) — required on Workers.

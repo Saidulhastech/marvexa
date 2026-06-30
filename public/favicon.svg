@@ -1,12 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <defs>
-    <linearGradient id="omx" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2563EB"/>
-      <stop offset="1" stop-color="#22D3EE"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="16" fill="url(#omx)"/>
-  <text x="32" y="34" fill="#fff" font-family="'Sora','Segoe UI',system-ui,sans-serif"
-        font-size="38" font-weight="700" text-anchor="middle" dominant-baseline="central"
-        letter-spacing="-1">O</text>
+  <rect width="64" height="64" rx="14" fill="#7A8F3A"/>
+  <polyline points="18,47 18,17 32,33 46,17 46,47" fill="none" stroke="#fff"
+            stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

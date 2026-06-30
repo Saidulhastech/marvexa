@@ -1,8 +1,9 @@
 // ============================================================
-//  Cart store (nanostores) — shared across every React island.
-//  Astro mounts islands as separate roots, so a framework-agnostic
-//  store is the right tool to keep the header badge, the drawer,
-//  and the PDP buttons in sync. All mutations hit same-origin
+//  Cart store (nanostores) — shared across every Astro <script>.
+//  Astro mounts each component script as a separate root, so a
+//  framework-agnostic store is the right tool to keep the header
+//  badge, the drawer, and the PDP buttons in sync. All mutations
+//  hit same-origin
 //  /api/cart/* (server-side Shopify with the private token).
 // ============================================================
 import { atom, map } from 'nanostores';

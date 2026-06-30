@@ -286,7 +286,7 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
       jsonLd={pdpJsonLd}
     >
       <div class="pm-main" id="prodModern">
-        <script type="application/json" id="pmBoot" set:html={JSON.stringify(bootData)} />
+        <script type="application/json" id="pmBoot" is:inline set:html={JSON.stringify(bootData)} />
 
         <div class="pm-wrap">
           {/* Breadcrumb */}

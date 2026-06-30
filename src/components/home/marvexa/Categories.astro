@@ -1,5 +1,6 @@
 ---
 import type { Collection } from '~/lib/shopify/types';
+import { resolveImage } from '~/lib/asset';
 
 interface Props {
   collections: Collection[];
@@ -9,10 +10,10 @@ const { collections } = Astro.props;
 // Fallback editorial art (authored order) for collections without a Shopify
 // featured image — keeps the look when a collection has no image set.
 const fallbacks = [
-  'https://images.unsplash.com/photo-1612215327100-60fc5c4d7938?q=80&w=1964&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1496345875659-11f7dd282d1d?q=80&w=2070&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1751107386020-f8f69ae5c16c?q=80&w=2070&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1571582665859-4a5f472ee21b?q=80&w=1934&auto=format&fit=crop',
+  resolveImage('cat-fallback-01.webp').src,
+  resolveImage('cat-fallback-02.webp').src,
+  resolveImage('cat-fallback-03.webp').src,
+  resolveImage('cat-fallback-04.webp').src,
 ];
 // Real collections drive the grid (first 4) — no hardcoded categories/counts.
 const cards = collections.slice(0, 4);

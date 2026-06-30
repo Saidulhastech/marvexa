@@ -17,7 +17,7 @@
 - id: look-01
   label: "Look 01 — SS 2026"
   order: 0
-  image: "https://images.unsplash.com/photo-1672753755304-140359dc739a?q=80&w=1200&auto=format&fit=crop"
+  image: "look-01.webp"
   items:
     - { top: "30%", left: "38%" }
     - { top: "62%", left: "32%" }
@@ -26,7 +26,7 @@
 - id: look-02
   label: "Look 02 — AW 2026"
   order: 1
-  image: "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1200&auto=format&fit=crop"
+  image: "look-02.webp"
   items:
     - { top: "28%", left: "42%" }
     - { top: "60%", left: "38%" }
@@ -35,7 +35,7 @@
 - id: look-03
   label: "Look 03 — Resort 2026"
   order: 2
-  image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1200&auto=format&fit=crop"
+  image: "feed-03.webp"
   items:
     - { top: "42%", left: "40%" }
     - { top: "22%", left: "72%", cardLeft: true }

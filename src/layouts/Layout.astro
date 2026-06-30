@@ -31,13 +31,23 @@ interface Props {
 const { title, description, image, type, noindex, jsonLd, noFooter = false, transparentHeader = false } = Astro.props;
 
 // Site-wide JSON-LD: Organization + WebSite (merged with any page blocks).
+// Only include `sameAs` profiles that point at a real account (a path beyond
+// the bare domain). Placeholder homepages like "https://instagram.com" would
+// emit invalid/misleading structured data, so they're dropped.
+const sameAs = [BRAND.social.instagram, BRAND.social.twitter, BRAND.social.youtube].filter((href) => {
+  try {
+    return new URL(href).pathname.replace(/\/+$/, '') !== '';
+  } catch {
+    return false;
+  }
+});
 const baseJsonLd: Record<string, unknown>[] = [
   {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: BRAND.legalName,
     url: Astro.site?.href ?? Astro.url.origin,
-    sameAs: [BRAND.social.instagram, BRAND.social.twitter, BRAND.social.youtube],
+    ...(sameAs.length > 0 ? { sameAs } : {}),
   },
   {
     '@context': 'https://schema.org',

@@ -66,8 +66,8 @@ function cardAttrs(p: TProductCard): Record<string, string> {
 
 const total = products.length;
 
-// Price slider bounds derived from the REAL product prices on this page (ominix
-// logic). Hardcoded bounds would filter out any product priced outside them —
+// Price slider bounds derived from the REAL product prices on this page.
+// Hardcoded bounds would filter out any product priced outside them —
 // so the default range must span the actual catalogue min/max.
 const priceNums = products
   .map((p) => Number(p.priceRange.minVariantPrice.amount))
@@ -75,8 +75,8 @@ const priceNums = products
 const priceFloor = priceNums.length ? Math.floor(Math.min(...priceNums)) : 0;
 const priceCeil = priceNums.length ? Math.max(priceFloor + 10, Math.ceil(Math.max(...priceNums))) : 1000;
 
-// Category facets derived from real productType values with counts (ominix
-// logic). The sidebar was hardcoded to the design mockup's taxonomy
+// Category facets derived from real productType values with counts.
+// The sidebar was hardcoded to the design mockup's taxonomy
 // (Women/Men/Bags…), which never matches a real catalogue — so selecting any
 // category filtered the grid to 0. data-fcat is lowercased to match each
 // card's data-cat (= productType.toLowerCase()).
@@ -1563,7 +1563,7 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   }
 
   // Single funnel for user-driven changes: filter, then mirror state into the
-  // URL so it's shareable, bookmarkable, and survives a reload (ominix logic).
+  // URL so it's shareable, bookmarkable, and survives a reload.
   function doFilter(): void {
     doFilterRaw();
     writeUrl();
@@ -1916,8 +1916,8 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
   // ── URL state sync ───────────────────────────────────────────────────────────
   // Filter state lives in the address bar so it's shareable, bookmarkable, and
-  // survives a reload / the sort control — ported from the ominix shop
-  // controller and adapted to Marvexa's F-state + .sb-* design hooks.
+  // survives a reload / the sort control — built on Marvexa's F-state
+  // + .sb-* design hooks.
   // replaceState (not push) keeps history clean while tweaking facets; any
   // non-filter params (e.g. ?sort=) are preserved untouched.
   const FILTER_PARAMS = ['cat', 'special', 'color', 'size', 'mat', 'occ', 'avail', 'rate', 'min', 'max'];
