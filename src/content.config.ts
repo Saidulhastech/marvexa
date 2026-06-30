@@ -11,7 +11,6 @@ import { file, glob } from 'astro/loaders';
 
 // ---- shared field shapes ---------------------------------------------------
 const link = z.object({ label: z.string(), href: z.string().default('#') });
-const cta = z.object({ label: z.string(), href: z.string().default('#') });
 
 // ---- chrome ----------------------------------------------------------------
 const announcements = defineCollection({
@@ -34,77 +33,11 @@ const footer = defineCollection({
 });
 
 // ---- home sections ---------------------------------------------------------
-const heroSlide = z.object({
-  headingLead: z.string(),
-  headingAccent: z.string(),
-  headingTail: z.string(),
-  sub: z.string().optional(),
-  image: z.string(),
-  primary: cta.optional(),
-  secondary: cta.optional(),
-});
-
-// Small companion-card slide — the right hero card rotates through these.
-const heroSmSlide = z.object({
-  eyebrow: z.string().optional(),
-  desc: z.string().optional(),
-  image: z.string().optional(),
-  watermark: z.string().optional(),
-  para: z.string().optional(),
-  cta: cta.optional(),
-});
-
-const hero = defineCollection({
-  loader: file('src/content/hero.yaml'),
-  schema: z.object({
-    // Large lead card — first slide is the default; `slides` rotates it.
-    headingLead: z.string(),
-    headingAccent: z.string(),
-    headingTail: z.string(),
-    sub: z.string().optional(),
-    image: z.string(),
-    primary: cta.optional(),
-    secondary: cta.optional(),
-    slides: z.array(heroSlide).default([]),
-    // Small companion card — top-level fields are the default; `smSlides` rotates it.
-    smEyebrow: z.string().optional(),
-    smDesc: z.string().optional(),
-    smImage: z.string().optional(),
-    smWatermark: z.string().optional(),
-    smPara: z.string().optional(),
-    smCta: cta.optional(),
-    smSlides: z.array(heroSmSlide).default([]),
-  }),
-});
-
-const trust = defineCollection({
-  loader: file('src/content/trust.yaml'),
-  schema: z.object({ icon: z.string().default('check'), title: z.string(), body: z.string() }),
-});
-
 // Best-Sellers proof strip (home). `rating` stat/label may be replaced at
 // render time with real aggregate review data.
 const proof = defineCollection({
   loader: file('src/content/proof.yaml'),
   schema: z.object({ icon: z.string().default('check'), stat: z.string(), label: z.string() }),
-});
-
-// Two promo banners (Trade-in / Gaming).
-const promo = defineCollection({
-  loader: file('src/content/promo.yaml'),
-  schema: z.object({
-    tag: z.string().optional(),
-    title: z.string(), // may contain <br>
-    body: z.string().optional(),
-    image: z.string(),
-    cta: cta.optional(),
-  }),
-});
-
-// Scrolling marquee items (image + label, alternating accent).
-const marquee = defineCollection({
-  loader: file('src/content/marquee.yaml'),
-  schema: z.object({ label: z.string(), image: z.string(), accent: z.boolean().default(false) }),
 });
 
 // Lookbook ("Shop the Look") — curated outfit looks. Each YAML list entry is
@@ -130,73 +63,6 @@ const lookbook = defineCollection({
         }),
       )
       .default([]),
-  }),
-});
-
-const spotlight = defineCollection({
-  loader: file('src/content/spotlight.yaml'),
-  schema: z.object({
-    eyebrow: z.string().optional(),
-    badge: z.string().optional(),
-    title: z.string(), // may contain <br>
-    body: z.string().optional(),
-    image: z.string(),
-    priceNow: z.string().optional(),
-    priceWas: z.string().optional(),
-    features: z.array(z.string()).default([]),
-    primary: cta.optional(),
-    secondary: cta.optional(),
-    order: z.number().default(0),
-  }),
-});
-
-// "Compare top models" — flagship comparison columns.
-// PRODUCT is pulled LIVE from Shopify when `handle` is set (name/price/image/
-// href auto-fill). `name`/`price`/`image` act as fallback/override if no handle
-// or the product is missing. Specs + best badge + order stay editorial — Shopify
-// has no native spec source (wire metafields later if you want them live).
-const compare = defineCollection({
-  loader: file('src/content/compare.yaml'),
-  schema: z.object({
-    handle: z.string().optional(),
-    name: z.string().optional(),
-    price: z.string().optional(),
-    image: z.string().optional(),
-    best: z.boolean().default(false),
-    bestLabel: z.string().optional(),
-    specs: z.array(z.object({ label: z.string(), value: z.string() })).default([]),
-    href: z.string().default('/products'),
-    order: z.number().default(0),
-  }),
-});
-
-const brands = defineCollection({
-  loader: file('src/content/brands.yaml'),
-  schema: z.object({ name: z.string(), logo: z.string().optional() }),
-});
-
-const newsletter = defineCollection({
-  loader: file('src/content/newsletter.yaml'),
-  schema: z.object({
-    eyebrow: z.string().optional(),
-    title: z.string(), // may contain <span class="accent">…</span>
-    body: z.string().optional(),
-    placeholder: z.string().default('Enter your email'),
-    cta: z.string().default('Subscribe'),
-    perks: z.array(z.string()).default([]),
-  }),
-});
-
-const testimonials = defineCollection({
-  loader: glob({ pattern: '**/*.md', base: 'src/content/testimonials' }),
-  schema: z.object({
-    quote: z.string(),
-    author: z.string(),
-    role: z.string().optional(),
-    rating: z.number().min(1).max(5).default(5),
-    avatar: z.string().optional(),
-    verified: z.boolean().default(true),
-    order: z.number().default(0),
   }),
 });
 
@@ -236,17 +102,8 @@ const authors = defineCollection({
 export const collections = {
   announcements,
   footer,
-  hero,
-  trust,
   proof,
-  promo,
-  marquee,
   lookbook,
-  spotlight,
-  compare,
-  brands,
-  newsletter,
-  testimonials,
   blog,
   authors,
 };
