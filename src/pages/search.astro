@@ -1,11 +1,12 @@
 ---
 // ============================================================
-//  Search results (OMNIX) — full product search with sort +
-//  cursor pagination, on the OMNIX chrome. Shares `.prod-grid`.
+//  Search results (MARVEXA) — full product search with sort +
+//  cursor pagination, on the MARVEXA chrome. Shares `.prod-grid`.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
-import ProductGrid from '~/components/product/omnix/ProductGrid.astro';
-import Icon from '~/components/ui/omnix/Icon.astro';
+import ProductGrid from '~/components/product/marvexa/ProductGrid.astro';
+import Newsletter from '~/components/home/marvexa/Newsletter.astro';
+import Icon from '~/components/ui/marvexa/Icon.astro';
 import { searchProducts, SEARCH_SORT_OPTIONS, resolveSort } from '~/lib/shopify';
 import { paginationUrls } from '~/lib/pagination';
 import type { ProductCard } from '~/lib/shopify/types';
@@ -60,7 +61,7 @@ const countLabel = q ? `${total} result${total === 1 ? '' : 's'} for “${q}”`
         <h1 class="coll-title">{q ? q : 'Search the catalogue'}</h1>
       </header>
 
-      <form class="srch-box" method="get" action="/search" role="search">
+      <form class="srch-box" method="get" action="/search" role="search" id="srchForm">
         <Icon name="search" size={18} />
         <input
           type="search"
@@ -70,6 +71,15 @@ const countLabel = q ? `${total} result${total === 1 ? '' : 's'} for “${q}”`
           autocomplete="off"
           aria-label="Search products"
         />
+        <button
+          type="button"
+          class="srch-clear"
+          id="srchClear"
+          aria-label="Clear search"
+          hidden={!q}
+        >
+          <Icon name="x" size={16} stroke={2.2} />
+        </button>
         <button type="submit" class="btn btn-primary">Search</button>
       </form>
 
@@ -137,10 +147,35 @@ const countLabel = q ? `${total} result${total === 1 ? '' : 's'} for “${q}”`
       }
     </div>
   </section>
+
+  {/* Newsletter CTA (overlaps the footer) — bg synced to the section above */}
+  <Newsletter surface="var(--bg)" padTop="0" />
 </Layout>
 
+<script>
+  // Strip empty fields on submit so clearing the box yields a clean /search
+  // URL (no lingering ?q=). Disabled fields aren't sent with a GET form.
+  const f = document.getElementById('srchForm') as HTMLFormElement | null;
+  f?.addEventListener('submit', () => {
+    f.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input, select')
+      .forEach((el) => { if (!el.value.trim()) el.disabled = true; });
+  });
+
+  // Custom ✕ — cross-browser clear. Visible only when the field has text.
+  const qInput = f?.querySelector<HTMLInputElement>('input[name="q"]');
+  const clearBtn = document.getElementById('srchClear') as HTMLButtonElement | null;
+  const syncClear = () => { if (clearBtn) clearBtn.hidden = !qInput?.value.trim(); };
+  qInput?.addEventListener('input', syncClear);
+  clearBtn?.addEventListener('click', () => {
+    if (qInput) { qInput.value = ''; qInput.focus(); }
+    syncClear();
+    // Wipe the URL params if a search is currently reflected there.
+    if (location.search) window.location.href = '/search';
+  });
+</script>
+
 <style>
-  /* Search results — Maison skin. Clears the fixed header. */
+  /* Search results — Marvexa skin. Clears the fixed header. */
   .coll-sec { background: var(--bg); padding: 106px 0 80px; }
 
   .crumb {
@@ -211,9 +246,28 @@ const countLabel = q ? `${total} result${total === 1 ? '' : 's'} for “${q}”`
   }
   .srch-box input:focus,
   .srch-box input:focus-visible { outline: 0; box-shadow: none; }
+  /* Hide the native search affordances — a custom ✕ replaces them so the
+     behaviour is identical across browsers (Firefox has no native ✕). */
   .srch-box input::-webkit-search-decoration,
   .srch-box input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
   .srch-box .btn { padding: 12px 24px; border-radius: 8px; }
+
+  .srch-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background var(--ease), color var(--ease);
+  }
+  .srch-clear:hover { background: var(--bg2); color: var(--text); }
+  .srch-clear[hidden] { display: none; }
 
   .coll-toolbar {
     display: flex;

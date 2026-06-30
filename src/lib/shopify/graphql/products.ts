@@ -83,6 +83,16 @@ export const PRODUCT_BY_HANDLE_QUERY = /* GraphQL */ `
         value
         type
       }
+      # Optional Materials & Care + Shipping & Returns (custom metafields, JSON
+      # list OR a single text value). Fall back to template boilerplate when absent.
+      materialsCareMetafield: metafield(namespace: "custom", key: "materials_care") {
+        value
+        type
+      }
+      shippingReturnsMetafield: metafield(namespace: "custom", key: "shipping_returns") {
+        value
+        type
+      }
       # Optional individual reviews (JSON list) — populated by a reviews app.
       reviewsMetafield: metafield(namespace: "custom", key: "reviews") {
         value
@@ -151,121 +161,6 @@ export const PRODUCT_BY_HANDLE_QUERY = /* GraphQL */ `
       seo {
         title
         description
-      }
-    }
-  }
-`;
-
-/**
- * Fixed-price bundle products — pure Shopify standard, NO app / Cart Transform.
- * A bundle is an ordinary product (its own SKU, priced as the bundle) tagged
- * `bundle`. Its contents are declared in a standard `list.product_reference`
- * metafield `custom.bundle_items` — read live for the "what's included" list.
- * "Add bundle" drops the ONE bundle variant into the cart like any product.
- *
- * Trade-off vs a Cart Transform bundle: component inventory is NOT deducted —
- * the bundle carries its own stock. Fine when you pick/stock it as a unit.
- */
-export const BUNDLE_PRODUCTS_QUERY = /* GraphQL */ `
-  ${MONEY_FRAGMENT}
-  ${IMAGE_FRAGMENT}
-  query BundleProducts(
-    $query: String = "tag:bundle"
-    $first: Int = 6
-    $country: CountryCode
-    $language: LanguageCode
-  ) @inContext(country: $country, language: $language) {
-    products(first: $first, query: $query, sortKey: BEST_SELLING) {
-      edges {
-        node {
-          id
-          title
-          handle
-          vendor
-          availableForSale
-          featuredImage {
-            ...ImageFields
-          }
-          priceRange {
-            minVariantPrice {
-              ...Money
-            }
-          }
-          compareAtPriceRange {
-            minVariantPrice {
-              ...Money
-            }
-          }
-          variants(first: 1) {
-            edges {
-              node {
-                id
-                availableForSale
-                price {
-                  ...Money
-                }
-                compareAtPrice {
-                  ...Money
-                }
-              }
-            }
-          }
-          # Bundle contents — a standard list.product_reference metafield.
-          bundleItems: metafield(namespace: "custom", key: "bundle_items") {
-            references(first: 12) {
-              edges {
-                node {
-                  ... on Product {
-                    id
-                    title
-                    vendor
-                    featuredImage {
-                      ...ImageFields
-                    }
-                    priceRange {
-                      minVariantPrice {
-                        ...Money
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-`;
-
-/**
- * One bundle by handle, with each component product's FULL card data (options
- * + variants) — powers the build-your-own bundle configurator at /bundles/*.
- * The shopper picks a variant per component; we add each chosen variant as its
- * own cart line. The bundle product is just the container (tag + metafield).
- */
-export const BUNDLE_BY_HANDLE_QUERY = /* GraphQL */ `
-  ${CARD_FRAGMENTS}
-  query BundleByHandle($handle: String!, $country: CountryCode, $language: LanguageCode)
-  @inContext(country: $country, language: $language) {
-    product(handle: $handle) {
-      id
-      title
-      handle
-      description
-      featuredImage {
-        ...ImageFields
-      }
-      bundleItems: metafield(namespace: "custom", key: "bundle_items") {
-        references(first: 12) {
-          edges {
-            node {
-              ... on Product {
-                ...ProductCard
-              }
-            }
-          }
-        }
       }
     }
   }

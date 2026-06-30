@@ -1,69 +1,174 @@
 ---
-// Custom 404 (OMNIX chrome).
+// Custom 404 — Marvexa editorial chrome.
 import Layout from '~/layouts/Layout.astro';
-import Icon from '~/components/ui/omnix/Icon.astro';
+import Icon from '~/components/ui/marvexa/Icon.astro';
+
+const links = [
+  { href: '/products', label: 'Shop All' },
+  { href: '/collections', label: 'Collections' },
+  { href: '/about', label: 'Our Story' },
+  { href: '/contact', label: 'Contact' },
+];
 ---
 
 <Layout title="Page not found (404)" description="The page you’re looking for doesn’t exist or has moved." noindex>
-  <section class="sec nf">
+  <section class="nf">
     <div class="container nf-inner">
-      <p class="nf-eyebrow">Error 404</p>
+      <div class="nf-eyebrow">Error 404 — Page Not Found</div>
+
+      <div class="nf-numeral" aria-hidden="true">
+        <span>4</span><span class="outline">0</span><span>4</span>
+      </div>
+
       <h1 class="nf-title">Lost the thread</h1>
       <p class="nf-body">
-        This page doesn't exist — the link may be broken or the piece has sold out. Let's get you
-        back to something good.
+        This page doesn’t exist — the link may be broken or the piece has sold out.
+        Let’s get you back to something good.
       </p>
+
       <div class="nf-actions">
-        <a href="/" class="btn btn-primary">
+        <a href="/" class="btn btn-accent">
           <Icon name="arrow-right" size={16} stroke={2.2} /> Back home
         </a>
-        <a href="/products" class="btn btn-ghost">Shop all products</a>
+        <a href="/products" class="btn btn-outline">Shop all products</a>
+      </div>
+
+      <div class="nf-links">
+        <span class="nf-links__label">Or explore</span>
+        <nav class="nf-links__nav">
+          {links.map((l) => (
+            <a href={l.href} class="nf-link">{l.label}</a>
+          ))}
+        </nav>
       </div>
     </div>
   </section>
 </Layout>
 
 <style>
+  .nf {
+    position: relative;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
   .nf-inner {
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: clamp(80px, 14vw, 150px) 20px;
+    padding: clamp(120px, 16vw, 200px) 20px clamp(80px, 10vw, 130px);
   }
+
   .nf-eyebrow {
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
     text-transform: uppercase;
     color: var(--accent);
-    margin: 0 0 14px;
+    margin-bottom: 28px;
   }
-  .nf-title {
-    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-    font-size: clamp(2.6rem, 8vw, 4.5rem);
+  .nf-eyebrow::before,
+  .nf-eyebrow::after {
+    content: '';
+    width: 28px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .nf-numeral {
+    font-family: var(--fh);
+    font-size: clamp(120px, 26vw, 300px);
     font-weight: 700;
-    letter-spacing: -0.03em;
+    line-height: 0.82;
+    letter-spacing: -8px;
+    color: var(--text);
+    margin-bottom: 8px;
+    user-select: none;
+  }
+  .nf-numeral .outline {
+    -webkit-text-stroke: 2px var(--accent);
+    color: transparent;
+  }
+
+  .nf-title {
+    font-family: var(--fh);
+    font-size: clamp(2.4rem, 6vw, 3.8rem);
+    font-weight: 700;
+    letter-spacing: -1.5px;
     line-height: 1;
     margin: 0;
+    color: var(--text);
   }
+
   .nf-body {
     margin: 18px 0 0;
-    max-width: 30rem;
+    max-width: 32rem;
+    font-family: var(--fb);
     color: var(--muted);
     line-height: 1.6;
   }
+
   .nf-actions {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 12px;
-    margin-top: 34px;
+    gap: 14px;
+    margin-top: 36px;
   }
-  .btn-ghost {
-    border: 1px solid var(--border);
-    background: var(--white);
+
+  .nf-links {
+    margin-top: 56px;
+    padding-top: 28px;
+    border-top: 1px solid var(--border);
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .nf-links__label {
+    font-family: var(--fb);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .nf-links__nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 28px;
+  }
+  .nf-link {
+    font-family: var(--fb);
+    font-size: 13px;
+    font-weight: 600;
     color: var(--text);
+    position: relative;
+    transition: color var(--ease);
   }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .nf-link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -3px;
+    width: 0;
+    height: 1.5px;
+    background: var(--accent);
+    transition: width var(--ease);
+  }
+  .nf-link:hover { color: var(--accent); }
+  .nf-link:hover::after { width: 100%; }
+
+  @media (max-width: 600px) {
+    .nf-numeral { letter-spacing: -4px; }
+    .nf-numeral .outline { -webkit-text-stroke-width: 1.5px; }
+  }
 </style>

@@ -1,12 +1,14 @@
 ---
 // ============================================================
-//  About (MAISON "Modern") — static brand story page. Faithful
-//  reproduction of maison About.html: story hero, by-the-numbers,
+//  About (MARVEXA "Modern") — static brand story page. Faithful
+//  reproduction of marvexa About.html: story hero, by-the-numbers,
 //  philosophy values, craft/atelier, our-promise, team, FAQ, and
 //  a closing CTA. Reveal + stat counters via a small vanilla script.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
 import '~/styles/about.css';
+import Testimonials from '~/components/home/marvexa/Testimonials.astro';
+import Newsletter from '~/components/home/marvexa/Newsletter.astro';
 
 const philosophy = [
   {
@@ -39,7 +41,7 @@ const craft = [
   { n: '01', t: 'Italian & Japanese Fabrics', d: 'Sourced directly from mills in Como, Biella, and Nishiwaki. No middlemen, no compromises.' },
   { n: '02', t: '14 Prototypes Per Style', d: 'Fit, drape, and movement are refined on different body types before a single unit is produced.' },
   { n: '03', t: '12-Point Quality Check', d: 'Seam strength, colourfastness, shrinkage — each piece is tested at every stage, not just the end.' },
-  { n: '04', t: 'Lifetime Repair Promise', d: 'Send any MAISON piece back for repair, forever. The most sustainable garment is one that lasts.' },
+  { n: '04', t: 'Lifetime Repair Promise', d: 'Send any MARVEXA piece back for repair, forever. The most sustainable garment is one that lasts.' },
 ];
 
 const promise = [
@@ -51,7 +53,7 @@ const promise = [
   },
   {
     title: 'Lifetime Repair Promise',
-    desc: 'We repair any MAISON piece for life, free of charge. A loose seam, worn button, or fraying hem — just send it back.',
+    desc: 'We repair any MARVEXA piece for life, free of charge. A loose seam, worn button, or fraying hem — just send it back.',
     badge: 'Forever, Free',
     path: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
   },
@@ -70,25 +72,17 @@ const promise = [
 ];
 
 const team = [
-  { name: 'Sophie Laurent', role: 'Founder & Creative Director', bio: 'Parisian-trained with 15 years in luxury fashion. Founded MAISON with a vision for modern, refined dressing.', img: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=600&q=80&auto=format&fit=crop&crop=face' },
+  { name: 'Sophie Laurent', role: 'Founder & Creative Director', bio: 'Parisian-trained with 15 years in luxury fashion. Founded MARVEXA with a vision for modern, refined dressing.', img: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=600&q=80&auto=format&fit=crop&crop=face' },
   { name: 'Emeka Osei', role: 'Head of Materials', bio: 'Former textile specialist at Loro Piana. Sources every fabric personally from mills in Italy and Japan.', img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&q=80&auto=format&fit=crop&crop=face' },
-  { name: 'Mia Thornton', role: 'Brand Director', bio: '10 years in fashion marketing across Paris and New York. Shapes every touchpoint of the MAISON story.', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=80&auto=format&fit=crop&crop=face' },
+  { name: 'Mia Thornton', role: 'Brand Director', bio: '10 years in fashion marketing across Paris and New York. Shapes every touchpoint of the MARVEXA story.', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=80&auto=format&fit=crop&crop=face' },
   { name: 'Jiro Nakamura', role: 'Lead Atelier', bio: 'Master tailor trained in Tokyo and Milan. Leads our atelier and oversees quality for every production run.', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80&auto=format&fit=crop&crop=face' },
 ];
 
-const faqs = [
-  { q: 'What makes MAISON pieces different?', a: 'Every garment is cut from long-staple natural fibres sourced directly from mills in Italy and Japan, then refined across an average of fourteen prototypes. We design for years of wear, not a single season — honest pricing, considered design, made to last.', open: true },
-  { q: 'How should I care for my MAISON garments?', a: 'Each piece ships with a care card specific to its fabric. As a rule we recommend cold gentle washes, air-drying, and a cool iron. Cared for well, MAISON pieces are tested to hold their shape and colour through 200+ washes.' },
-  { q: 'What is the Lifetime Repair Promise?', a: 'Send any MAISON piece back to our atelier for repair, free of charge, forever. A loose seam, a worn button, a fraying hem — we mend it. The most sustainable garment is the one you keep.' },
-  { q: 'How long does shipping take?', a: 'Orders ship carbon-neutral and typically arrive in 2–5 business days, with tracking on every order. Shipping is complimentary on all orders over $250.' },
-  { q: 'Can I return or exchange an item?', a: 'Yes. We offer 30-day free returns on unworn items in their original condition — no questions asked. A prepaid label is included with every order, so exchanges are effortless.' },
-  { q: 'Where are MAISON clothes made?', a: 'In partner ateliers run by makers who have practised their craft for at least two generations, using fabrics milled in Como, Biella, and Nishiwaki. Our supply chain is fully traceable and built on fair-wage partnerships.' },
-];
 ---
 
 <Layout
-  title="About MAISON"
-  description="MAISON is a modern fashion house founded in Paris in 2019 — natural fibres, considered design, and craftsmanship built to last, with a lifetime repair promise on every piece."
+  title="About MARVEXA"
+  description="MARVEXA is a modern fashion house founded in Paris in 2019 — natural fibres, considered design, and craftsmanship built to last, with a lifetime repair promise on every piece."
 >
   <main id="aboutModern" class="about-pg">
     {/* ── Story hero header ── */}
@@ -101,17 +95,17 @@ const faqs = [
             <span class="cart-bc-cur">About Us</span>
           </nav>
           <div class="cart-hd-perks">
-            <span class="cart-hd-perk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> hello@maisonss26.com</span>
+            <span class="cart-hd-perk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> hello@marvexass26.com</span>
             <span class="cart-hd-perk-div"></span>
             <span class="cart-hd-perk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.54 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l.81-.81a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> +1 (212) 555-0140</span>
             <span class="cart-hd-perk-div"></span>
-            <span class="cart-hd-perk cart-hd-perk--secure"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Free Shipping Over $250</span>
+            <span class="cart-hd-perk cart-hd-perk--secure"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Free Shipping Over $99</span>
           </div>
         </div>
         <div class="cart-hd-hero">
           <div class="cart-hd-hero-left">
             <div class="cart-hd-eyebrow">Our Story</div>
-            <h1 class="cart-hd-title">About MAISON</h1>
+            <h1 class="cart-hd-title">About MARVEXA</h1>
             <p class="cart-hd-sub">Built on a belief that modern dressing should feel effortless, refined, and yours.</p>
           </div>
           <div class="cart-hd-stats">
@@ -138,13 +132,13 @@ const faqs = [
     <section class="ab-story">
       <div class="ab-story-grid">
         <div class="ab-story-img ab-reveal">
-          <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&q=85&auto=format&fit=crop" alt="MAISON brand story" loading="lazy" />
+          <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&q=85&auto=format&fit=crop" alt="MARVEXA brand story" loading="lazy" />
           <div class="ab-story-img-tag">Paris · 2019</div>
         </div>
         <div class="ab-story-txt ab-reveal" data-d="1">
           <div class="ab-story-num">01 — Our Beginning</div>
           <h2 class="ab-story-title">Dressed for the life<br />you actually live.</h2>
-          <p class="ab-story-body">MAISON was born from a simple frustration — fashion that looked beautiful in editorials but felt wrong in real life. Too stiff. Too fast. Too forgettable.<br /><br />Sophie Laurent founded MAISON in Paris in 2019 with one conviction: modern people deserve clothes built the old way. Thoughtfully designed, carefully sourced, made to last — not for a season, but for years.</p>
+          <p class="ab-story-body">MARVEXA was born from a simple frustration — fashion that looked beautiful in editorials but felt wrong in real life. Too stiff. Too fast. Too forgettable.<br /><br />Sophie Laurent founded MARVEXA in Paris in 2019 with one conviction: modern people deserve clothes built the old way. Thoughtfully designed, carefully sourced, made to last — not for a season, but for years.</p>
           <div class="ab-story-milestones">
             <div class="ab-story-ms"><span class="ab-story-ms-y">2019</span><span class="ab-story-ms-t">Founded in Paris with a debut collection of 12 pieces</span></div>
             <div class="ab-story-ms"><span class="ab-story-ms-y">2021</span><span class="ab-story-ms-t">First flagship store — New York's West Village</span></div>
@@ -164,7 +158,7 @@ const faqs = [
     {/* ── By the numbers ── */}
     <div class="ab-nums">
       <div class="ab-nums-inner ab-reveal">
-        <div class="ab-nums-label">MAISON by the numbers</div>
+        <div class="ab-nums-label">MARVEXA by the numbers</div>
         <div class="ab-nums-row">
           <div class="ab-num-cell">
             <div class="ab-num-bar"></div>
@@ -233,7 +227,7 @@ const faqs = [
         <div class="ab-craft-txt ab-reveal">
           <div class="ab-label">How We Make It</div>
           <h2 class="ab-craft-title">Craftsmanship as a standard, not a selling point.</h2>
-          <p class="ab-craft-body">Every MAISON piece passes through twelve quality checkpoints before leaving our atelier. We work exclusively with mills and manufacturers who have been in their craft for at least two generations.</p>
+          <p class="ab-craft-body">Every MARVEXA piece passes through twelve quality checkpoints before leaving our atelier. We work exclusively with mills and manufacturers who have been in their craft for at least two generations.</p>
           <div class="ab-craft-list">
             {
               craft.map((c) => (
@@ -249,7 +243,7 @@ const faqs = [
           </div>
         </div>
         <div class="ab-craft-visual ab-reveal" data-d="1">
-          <div class="ab-craft-img"><img src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1100&q=85&auto=format&fit=crop" alt="MAISON craftsmanship" loading="lazy" /></div>
+          <div class="ab-craft-img"><img src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1100&q=85&auto=format&fit=crop" alt="MARVEXA craftsmanship" loading="lazy" /></div>
           <div class="ab-craft-float">
             <div class="ab-craft-float-n">12×</div>
             <div class="ab-craft-float-l">Quality<br />Checkpoints</div>
@@ -264,7 +258,7 @@ const faqs = [
         <div class="ab-promise-head ab-reveal">
           <div class="ab-promise-ey">Our Promise to You</div>
           <h2 class="ab-promise-title">Shop with complete<br />confidence.</h2>
-          <p class="ab-promise-sub">Everything we do is designed to make your experience with MAISON as effortless as our clothes.</p>
+          <p class="ab-promise-sub">Everything we do is designed to make your experience with MARVEXA as effortless as our clothes.</p>
         </div>
         <div class="ab-promise-grid">
           {
@@ -300,8 +294,8 @@ const faqs = [
                   <div class="ab-team-name">{m.name}</div>
                   <div class="ab-team-bio">{m.bio}</div>
                   <div class="ab-team-links">
-                    <a class="ab-team-lk" href="#" aria-label={`${m.name} on Instagram`}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
-                    <a class="ab-team-lk" href="#" aria-label={`${m.name} on LinkedIn`}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+                    <a class="ab-team-lk" href="https://instagram.com" target="_blank" rel="noopener" aria-label={`${m.name} on Instagram`}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+                    <a class="ab-team-lk" href="https://linkedin.com" target="_blank" rel="noopener" aria-label={`${m.name} on LinkedIn`}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
                   </div>
                 </div>
               </div>
@@ -311,48 +305,16 @@ const faqs = [
       </div>
     </section>
 
-    {/* ── FAQ ── */}
-    <section class="ab-faq">
-      <div class="ab-faq-c">
-        <div class="ab-faq-head ab-reveal">
-          <div class="ab-label">Good to Know</div>
-          <h2 class="ab-faq-title">Questions, answered.</h2>
-        </div>
-        <div class="ab-faq-list ab-reveal" data-d="1">
-          {
-            faqs.map((f) => (
-              <details class="ab-faq-item" open={f.open}>
-                <summary>
-                  <span>{f.q}</span>
-                  <span class="ab-faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
-                </summary>
-                <div class="ab-faq-answer"><p>{f.a}</p></div>
-              </details>
-            ))
-          }
-        </div>
-      </div>
-    </section>
-
-    {/* ── Closing CTA ── */}
-    <section class="ab-cta">
-      <div class="ab-cta-c ab-reveal">
-        <div class="ab-cta-ey">Ready When You Are</div>
-        <h2 class="ab-cta-title">Find your next<br />everyday piece.</h2>
-        <p class="ab-cta-sub">Explore the collection — natural fibres, considered cuts, and a lifetime repair promise on every garment.</p>
-        <div class="ab-cta-actions">
-          <a href="/products" class="ab-cta-btn solid">Shop the collection
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </a>
-          <a href="/blog" class="ab-cta-btn line">Read the journal</a>
-        </div>
-      </div>
-    </section>
+    {/* ── Testimonials ── */}
+    <Testimonials />
   </main>
+
+  {/* ── Newsletter CTA (last — overlaps the footer; bg synced to Testimonials) ── */}
+  <Newsletter surface="var(--bg)" padTop="0" />
 </Layout>
 
 <script>
-  // Scroll-reveal + animated stat counters (matches maison About.html).
+  // Scroll-reveal + animated stat counters (matches marvexa About.html).
   const root = document.getElementById('aboutModern');
   if (root) {
     const reveals = root.querySelectorAll('.ab-reveal');

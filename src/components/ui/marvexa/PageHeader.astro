@@ -1,0 +1,93 @@
+---
+// ============================================================
+//  PageHeader — the Shop (/products) header block as a shared
+//  component so utility pages (wishlist, compare, …) match it:
+//  a full-width bg2 banner (clears the fixed header) holding the
+//  breadcrumb + perks row on top and the page hero (eyebrow, title,
+//  subtitle on the left, an optional action on the right) below.
+//  Mirrors /products `.shop-hd-block`. Styles are global (.pgbc-*).
+//
+//  Render at the TOP of the page, then follow with the content in
+//  `<section class="sec sec--bar">`.
+// ============================================================
+interface Crumb {
+  label: string;
+  href?: string;
+}
+interface Props {
+  breadcrumbs: Crumb[];
+  eyebrow: string;
+  title: string;
+  subtitle?: string;
+  /** id for the subtitle node (so page scripts can update its text). */
+  subId?: string;
+  /** Show the store-perks cluster on the right of the breadcrumb row. */
+  perks?: boolean;
+}
+const { breadcrumbs, eyebrow, title, subtitle, subId, perks = true } = Astro.props;
+---
+
+<div class="pgbc-block">
+  <div class="pgbc-inner">
+
+    <div class="pgbc-row">
+      <nav class="pgbc" aria-label="Breadcrumb">
+        {
+          breadcrumbs.map((c, i) => {
+            const isLast = i === breadcrumbs.length - 1;
+            return (
+              <>
+                {c.href && !isLast ? (
+                  <a href={c.href}>{c.label}</a>
+                ) : (
+                  <span class="pgbc-cur" aria-current={isLast ? 'page' : undefined}>{c.label}</span>
+                )}
+                {!isLast && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                )}
+              </>
+            );
+          })
+        }
+      </nav>
+
+      {perks && (
+        <div class="pgbc-perks">
+          <span class="pgbc-perk">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M5 8h14M5 8a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2" />
+            </svg>
+            Free Shipping over $99
+          </span>
+          <span class="pgbc-div"></span>
+          <span class="pgbc-perk">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M9 14 4 9l5-5" />
+              <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+            </svg>
+            Free Returns
+          </span>
+          <span class="pgbc-div"></span>
+          <span class="pgbc-perk pgbc-perk--live">
+            <span class="pgbc-dot"></span>
+            SS26 — Live Now
+          </span>
+        </div>
+      )}
+    </div>
+
+    <div class="pgbc-hero">
+      <div class="pgbc-hero-left">
+        <div class="pgbc-eyebrow">{eyebrow}</div>
+        <h1 class="pgbc-title">{title}</h1>
+        {subtitle && <p class="pgbc-sub" id={subId}>{subtitle}</p>}
+      </div>
+      <div class="pgbc-hero-right">
+        <slot name="action" />
+      </div>
+    </div>
+
+  </div>
+</div>

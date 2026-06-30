@@ -1,15 +1,15 @@
-# Scrolling product marquee (OMNIX). Alternating accent items.
+# Scrolling product marquee (MARVEXA). Alternating accent items.
 - id: i1
   label: "OmniBuds Pro"
-  image: "hero-banner-buds.png"
+  image: "hero-banner-buds.webp"
   accent: false
 - id: i2
   label: "Watch Ultra"
-  image: "hero-banner-watch.png"
+  image: "hero-banner-watch.webp"
   accent: true
 - id: i3
   label: "Studio Pro"
-  image: "hero-banner-headphones.png"
+  image: "hero-banner-headphones.webp"
   accent: false
 - id: i4
   label: "Beam 360"
@@ -17,15 +17,15 @@
   accent: true
 - id: i5
   label: "OmniBuds Air"
-  image: "hero-banner-buds.png"
+  image: "hero-banner-buds.webp"
   accent: false
 - id: i6
   label: "Watch Active"
-  image: "hero-banner-watch.png"
+  image: "hero-banner-watch.webp"
   accent: true
 - id: i7
   label: "Studio One"
-  image: "hero-banner-headphones.png"
+  image: "hero-banner-headphones.webp"
   accent: false
 - id: i8
   label: "Beam Mini"

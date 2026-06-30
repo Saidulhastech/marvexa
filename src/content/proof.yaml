@@ -1,0 +1,19 @@
+# Best-Sellers trust/proof strip (Marvexa). icon → ~/components/ui/marvexa/Icon names.
+# The `rating` item's stat/label are overridden at runtime with the real
+# aggregate review data when products carry ratings; the rest are brand promises.
+- id: rating
+  icon: star
+  stat: "4.8 / 5"
+  label: "Average rating across verified reviews"
+- id: shipping
+  icon: truck
+  stat: "Free Shipping"
+  label: "On all orders over $99. Delivered in 2–4 days"
+- id: returns
+  icon: refresh
+  stat: "30-Day Returns"
+  label: "No questions asked. Free returns on every order"
+- id: secure
+  icon: shield
+  stat: "Secure Checkout"
+  label: "SSL encrypted. Your data is always protected"

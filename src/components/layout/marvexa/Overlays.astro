@@ -1,23 +1,27 @@
 ---
 // ============================================================
-//  Overlays (OMNIX) — search overlay, account drawer, wishlist
+//  Overlays (MARVEXA) — search overlay, account drawer, wishlist
 //  drawer, newsletter popup, back-to-top + the global UI controller
 //  that opens/closes them via [data-open]/[data-close] triggers and
 //  ⌘K / Esc. Cart opening is delegated to the nanostore.
 //  Account → links to real /account routes. Wishlist → localStorage
 //  (no Shopify wishlist). Newsletter → UI only.
 // ============================================================
-import Icon from '~/components/ui/omnix/Icon.astro';
-import { BRAND } from '~/config/omnix';
+import Icon from '~/components/ui/marvexa/Icon.astro';
+import { BRAND } from '~/config/marvexa';
 import { resolveImage } from '~/lib/asset';
-import { getProducts } from '~/lib/shopify';
+import { getProducts, type ProductCard } from '~/lib/shopify';
+import { formatMoney } from '~/lib/money';
 import { Image } from 'astro:assets';
 
-// Trending pills from real catalog data — the categories/brands of the
-// current best-sellers. Falls back to a static list if Shopify is unreachable.
+// Trending pills + "Popular right now" cards from real catalog data — the
+// categories/brands and top best-sellers. Falls back to a static list if
+// Shopify is unreachable.
 let trending: string[] = [];
+let popular: ProductCard[] = [];
 try {
   const { items } = await getProducts({ pageSize: 16, sortKey: 'BEST_SELLING' }, Astro.locals.market);
+  popular = items.slice(0, 4);
   const seen = new Set<string>();
   for (const p of items) {
     for (const term of [p.productType, p.vendor]) {
@@ -45,16 +49,34 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
 <div class="search-overlay" id="searchOverlay">
   <div class="search-box">
     <form class="search-input-row" id="searchForm">
-      <span class="search-ic"><Icon name="search" size={18} /></span>
-      <input type="search" id="searchInput" name="q" aria-label="Search products, brands, categories" placeholder="Search products, brands, categories…" autocomplete="off" />
+      <span class="search-ic"><Icon name="search" size={20} /></span>
+      <input type="search" id="searchInput" name="q" aria-label="Search styles, collections, products" placeholder="Search styles, collections, products…" autocomplete="off" />
       <span class="search-spinner" id="searchSpinner" aria-hidden="true"></span>
-      <button type="button" class="search-close-btn" data-close="search" aria-label="Close search"><kbd>ESC</kbd></button>
+      <button type="button" class="search-close-btn" data-close="search" aria-label="Close search"><Icon name="x" size={18} stroke={2.2} /></button>
     </form>
     <div class="search-hints" id="searchHints">
-      <div class="search-hint-label"><Icon name="bolt" size={13} /> Trending Searches</div>
+      <div class="search-hint-label">Trending Searches</div>
       <div class="search-hint-pills">
         {trending.map((t) => <button class="search-hint-pill" type="button" data-q={t}>{t}</button>)}
       </div>
+      {popular.length > 0 && (
+        <div class="search-pop">
+          <div class="search-hint-label">Popular Right Now</div>
+          <div class="search-pop-grid">
+            {popular.map((p) => (
+              <a class="search-pop-card" href={`/products/${p.handle}`}>
+                <span class="search-pop-media">
+                  {p.featuredImage?.url && (
+                    <img src={`${p.featuredImage.url}${p.featuredImage.url.includes('?') ? '&' : '?'}width=360`} alt={p.featuredImage.altText ?? p.title} loading="lazy" />
+                  )}
+                </span>
+                <span class="search-pop-name">{p.title}</span>
+                <span class="search-pop-price">{formatMoney(p.priceRange.minVariantPrice)}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
     {/* Live results (real Shopify predictive search) injected here as you type. */}
     <div class="search-results" id="searchResults" hidden></div>
@@ -90,19 +112,24 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
 {/* WISHLIST DRAWER (localStorage only) */}
 <div class="wish-overlay" data-close="wishlist"></div>
 <aside class="wish-drawer" id="wishDrawer" role="dialog" aria-modal="true" aria-label="Wishlist">
-  <div class="wish-head">
-    <h5><Icon name="heart" size={18} /> Wishlist <span class="wish-count-chip" id="wishCountChip">0</span></h5>
+  <div class="wish-drawer__head">
+    <div class="wish-drawer__head-left">
+      <span class="wish-drawer__title">Wishlist</span>
+      <span class="wish-drawer__sub" id="wishCount">0 saved items</span>
+    </div>
     <button class="wish-x" data-close="wishlist" aria-label="Close wishlist"><Icon name="x" size={16} stroke={2.4} /></button>
   </div>
-  <div class="wish-body">
+  <div class="wish-drawer__body">
     <div class="wish-empty" id="wishEmpty">
       <Icon name="heart" size={48} stroke={1.5} />
       <p>Your wishlist is empty. Save items you love and find them here.</p>
     </div>
     <div id="wishList"></div>
   </div>
-  <div class="wish-foot">
-    <a class="btn btn-primary btn-block" href="/wishlist">View full wishlist</a>
+  <div class="wish-foot" id="wishFoot" style="display:none">
+    <button class="btn btn-primary btn-block" id="wishMoveAll" type="button">
+      Move All to Bag <Icon name="arrow-right" size={14} stroke={2.4} />
+    </button>
   </div>
 </aside>
 
@@ -179,13 +206,13 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
 
 <style>
   /* ════════════════════════════════════════════════════════════════
-     OVERLAYS (Maison skin) — search, account, wishlist, popup,
+     OVERLAYS (Marvexa skin) — search, account, wishlist, popup,
      quick-view, back-to-top, toast. Markup/IDs/classes are produced
      by the controller script below; only visuals live here.
   ════════════════════════════════════════════════════════════════ */
 
   /* ── Shared spin keyframe ─────────────────────────────────────── */
-  @keyframes omnix-spin { to { transform: rotate(360deg); } }
+  @keyframes marvexa-spin { to { transform: rotate(360deg); } }
 
   /* ── Search overlay (full-screen blur) ───────────────────────── */
   .search-overlay {
@@ -257,7 +284,7 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
 
   .search-spinner.is-on {
     display: block;
-    animation: omnix-spin .6s linear infinite;
+    animation: marvexa-spin .6s linear infinite;
   }
 
   .search-close-btn {
@@ -324,118 +351,70 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
     border-color: var(--text);
   }
 
-  /* Live results */
-  .search-results {
-    padding-top: 28px;
+  /* Popular right now (default product grid) */
+  .search-pop {
+    margin-top: 32px;
   }
 
-  .sr-group {
-    margin-bottom: 24px;
+  .search-pop-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
   }
 
-  .sr-label {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 1.8px;
-    text-transform: uppercase;
-    color: var(--muted);
+  .search-pop-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .search-pop-media {
+    display: block;
+    aspect-ratio: 1 / 1;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--card);
     margin-bottom: 10px;
   }
 
-  .sr-suggest {
-    display: block;
-    width: 100%;
-    text-align: left;
-    padding: 8px 0;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text);
-    border-bottom: 1px solid var(--border);
-    transition: color .15s ease;
-  }
-
-  .sr-suggest:hover {
-    color: var(--accent);
-  }
-
-  .sr-product {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 0;
-    transition: opacity .15s ease;
-  }
-
-  .sr-product:hover {
-    opacity: .7;
-  }
-
-  .sr-thumb {
-    width: 48px;
-    height: 60px;
-    border-radius: 6px;
-    overflow: hidden;
-    background: var(--card);
-    flex-shrink: 0;
-  }
-
-  .sr-thumb img {
+  .search-pop-media img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     object-position: top;
+    transition: transform .4s ease;
   }
 
-  .sr-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
+  .search-pop-card:hover .search-pop-media img {
+    transform: scale(1.04);
   }
 
-  .sr-name {
+  .search-pop-name {
     font-size: 13px;
     font-weight: 600;
     color: var(--text);
+    line-height: 1.3;
+    margin-bottom: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .sr-price {
-    font-size: 12px;
-    color: var(--muted);
-  }
-
-  .sr-collection {
-    display: inline-block;
-    padding: 6px 12px;
-    margin: 0 8px 8px 0;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 50px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  .sr-collection:hover {
-    background: var(--text);
-    color: #fff;
-  }
-
-  .sr-all {
-    width: 100%;
-    text-align: center;
-    padding: 12px;
-    margin-top: 8px;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: .8px;
-    text-transform: uppercase;
+  .search-pop-card:hover .search-pop-name {
     color: var(--accent);
   }
 
-  .sr-empty {
-    padding: 24px 0;
-    font-size: 14px;
+  .search-pop-price {
+    font-size: 12px;
     color: var(--muted);
+  }
+
+  /* Live results container (template element → scoped is fine).
+     The .sr-* CHILDREN are injected via innerHTML at runtime, so Astro's
+     scope attribute never reaches them — their styles live in the global
+     sheet (src/styles/drawers.css, .search-results .sr-…). */
+  .search-results {
+    padding-top: 28px;
   }
 
   /* ── Side drawers (account, wishlist) ────────────────────────── */
@@ -498,18 +477,31 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
     gap: 9px;
   }
 
-  .wish-count-chip {
-    font-size: 10px;
-    font-weight: 700;
-    color: #fff;
-    background: var(--accent);
-    border-radius: 999px;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 6px;
-    display: inline-flex;
+  .wish-drawer__head {
+    padding: 20px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .wish-drawer__head-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .wish-drawer__title {
+    font-family: var(--fh);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -.3px;
+  }
+
+  .wish-drawer__sub {
+    font-size: 11px;
+    color: var(--muted);
   }
 
   .acct-x,
@@ -522,7 +514,7 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--muted);
+    color: var(--text);
     transition: all .2s ease;
   }
 
@@ -649,10 +641,11 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
   }
 
   /* Wishlist body */
-  .wish-body {
+  .wish-drawer__body {
     flex: 1;
     overflow-y: auto;
-    padding: 8px 0;
+    overflow-x: hidden;
+    padding: 16px 22px;
   }
 
   .wish-empty {
@@ -673,58 +666,94 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
     max-width: 240px;
   }
 
-  .wish-row {
-    display: flex;
-    align-items: center;
+  .wish-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 12px;
-    padding: 12px 22px;
-    border-bottom: 1px solid rgba(216, 213, 206, .45);
   }
 
-  .wish-row-img {
-    width: 56px;
-    height: 70px;
-    border-radius: 6px;
+  .wish-item {
+    position: relative;
+  }
+
+  .wish-item__img-wrap {
+    position: relative;
+    border-radius: 10px;
     overflow: hidden;
     background: var(--card);
-    flex-shrink: 0;
+    margin-bottom: 8px;
   }
 
-  .wish-row-img img {
+  .wish-item__img {
     width: 100%;
-    height: 100%;
+    aspect-ratio: 3/4;
     object-fit: cover;
     object-position: top;
-  }
-
-  .wish-row-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .wish-row-name {
     display: block;
-    font-size: 13px;
+    transition: transform .4s ease;
+  }
+
+  .wish-item:hover .wish-item__img {
+    transform: scale(1.04);
+  }
+
+  .wish-item__del {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    background: var(--white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+    transition: background .2s ease, color .2s ease;
+  }
+
+  .wish-item__del:hover {
+    background: var(--rust);
+    color: #fff;
+  }
+
+  .wish-item__name {
+    display: block;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .wish-row-price {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text);
-    margin-top: 4px;
-  }
-
-  .wish-row-x {
-    font-size: 18px;
+  .wish-item__price {
+    font-size: 11px;
     color: var(--muted);
-    line-height: 1;
-    transition: color .15s ease;
+    margin-bottom: 6px;
   }
 
-  .wish-row-x:hover {
-    color: var(--rust);
+  .wish-item__atc {
+    display: block;
+    width: 100%;
+    padding: 7px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    color: var(--text);
+    transition: background .2s ease, color .2s ease, border-color .2s ease;
+  }
+
+  .wish-item__atc:hover {
+    background: var(--text);
+    color: #fff;
+    border-color: var(--text);
   }
 
   .wish-foot {
@@ -1100,92 +1129,9 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
     color: var(--text);
   }
 
-  .qv-vgroup {
-    margin-bottom: 16px;
-  }
-
-  .qv-vhead {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-  }
-
-  .qv-vlabel {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1.4px;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .qv-vcur {
-    font-size: 12px;
-    color: var(--muted);
-  }
-
-  .qv-vcur b {
-    color: var(--text);
-    font-weight: 600;
-  }
-
-  .qv-opts,
-  .qv-swatches {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .qv-opt {
-    padding: 9px 16px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    transition: all .15s ease;
-  }
-
-  .qv-opt:hover {
-    border-color: var(--text);
-  }
-
-  .qv-opt.is-active {
-    background: var(--text);
-    color: #fff;
-    border-color: var(--text);
-  }
-
-  .qv-opt.is-unavailable {
-    opacity: .4;
-    text-decoration: line-through;
-    cursor: not-allowed;
-  }
-
-  .qv-swatch {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    border: 1.5px solid var(--border);
-    padding: 3px;
-    transition: border-color .15s ease;
-  }
-
-  .qv-swatch span {
-    display: block;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-  }
-
-  .qv-swatch.is-active {
-    border-color: var(--accent);
-  }
-
-  .qv-swatch.is-unavailable {
-    opacity: .4;
-    cursor: not-allowed;
-  }
+  /* NOTE: quick-view variant pickers are injected via innerHTML, so their
+     styles live in the global sheet (src/styles/drawers.css, .qv-modal …),
+     not here — scoped rules never reach runtime-created nodes. */
 
   .qv-buy {
     display: flex;
@@ -1237,13 +1183,37 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
   #qvAdd {
     flex: 1;
     border-radius: 8px;
+    white-space: nowrap;
+  }
+
+  #qvAdd svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
   }
 
   .qv-wishbtn {
     width: 48px;
+    height: 44px;
     flex-shrink: 0;
     padding: 0;
     border-radius: 8px;
+  }
+
+  .qv-wishbtn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  .qv-wishbtn.is-saved {
+    color: var(--rust);
+    border-color: var(--rust);
+    background: color-mix(in srgb, var(--rust) 8%, #fff);
+  }
+
+  .qv-wishbtn.is-saved :global(svg) {
+    fill: var(--rust);
   }
 
   .qv-details {
@@ -1298,38 +1268,9 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
     background: var(--accent);
   }
 
-  /* ── Toast ───────────────────────────────────────────────────── */
-  .omnix-toast {
-    position: fixed;
-    left: 50%;
-    bottom: 28px;
-    transform: translateX(-50%) translateY(12px);
-    z-index: 1400;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 18px;
-    background: var(--dark);
-    color: #fff;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 500;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, .24);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .25s ease, transform .25s ease;
-  }
-
-  .omnix-toast.is-visible {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateX(-50%) translateY(0);
-  }
-
-  .omnix-toast-action {
-    color: var(--accent);
-    font-weight: 700;
-  }
+  /* Toast styles moved to global src/styles/drawers.css — the toast node is
+     created at runtime (document.createElement) so Astro's scoped styles
+     can't reach it. */
 
   /* ── Responsive ──────────────────────────────────────────────── */
   @media (max-width: 720px) {
@@ -1347,13 +1288,17 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
     .wish-drawer {
       width: 100vw;
     }
+
+    .search-pop-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
   }
 </style>
 
 <script>
   import { openCart, closeCart, addItem, $cartOpen } from '../../../stores/cart';
 
-  type WishItem = { handle: string; name: string; price: string; img: string; href: string };
+  type WishItem = { handle: string; name: string; price: string; img: string; href: string; variantId?: string; needsPicker?: boolean };
 
   // Append a CDN width param safely — even when the URL already carries a query
   // (Shopify CDN urls usually have `?v=…`). Without this the full-res original
@@ -1375,11 +1320,11 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
   // ---- Toast (lightweight feedback for wishlist/compare) -------------------
   let toastTimer: number | undefined;
   function toast(msg: string, action?: { href: string; label: string }) {
-    let el = document.getElementById('omnixToast');
+    let el = document.getElementById('marvexaToast');
     if (!el) {
       el = document.createElement('div');
-      el.id = 'omnixToast';
-      el.className = 'omnix-toast';
+      el.id = 'marvexaToast';
+      el.className = 'marvexa-toast';
       document.body.appendChild(el);
     }
     if (action) {
@@ -1388,7 +1333,7 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
       text.textContent = msg;
       const link = document.createElement('a');
       link.href = action.href;
-      link.className = 'omnix-toast-action';
+      link.className = 'marvexa-toast-action';
       link.textContent = action.label;
       el.append(text, link);
     } else {
@@ -1402,7 +1347,7 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
   // Compare count → header badge.
   function updateCompareBadge() {
     let list: string[] = [];
-    try { list = JSON.parse(localStorage.getItem('omnix_compare') || '[]'); } catch {}
+    try { list = JSON.parse(localStorage.getItem('marvexa_compare') || '[]'); } catch {}
     const badge = document.getElementById('compareBadge');
     if (badge) {
       badge.textContent = String(list.length);
@@ -1411,7 +1356,7 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
   }
 
   // ---- Wishlist (localStorage + drawer) ------------------------------------
-  const WISH_KEY = 'omnix_wishlist';
+  const WISH_KEY = 'marvexa_wishlist';
 
   function renderWishlist() {
     const items: WishItem[] = readJSON(WISH_KEY);
@@ -1422,35 +1367,56 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
       b.classList.toggle('is-active', handles.has(b.dataset.handle || '')),
     );
 
-    // Badge + drawer count chip.
+    // Badge + drawer sub-count.
     const count = items.length;
     const badge = document.getElementById('wishBadge');
     if (badge) {
       badge.textContent = String(count);
       badge.style.display = count ? '' : 'none';
     }
-    const chip = document.getElementById('wishCountChip');
-    if (chip) chip.textContent = String(count);
+    const sub = document.getElementById('wishCount');
+    if (sub) sub.textContent = `${count} saved item${count === 1 ? '' : 's'}`;
 
-    // Drawer list + empty state.
+    // Foot ("Move All to Bag") only when something is saved.
+    const foot = document.getElementById('wishFoot');
+    if (foot) foot.style.display = count ? '' : 'none';
+
+    // Drawer grid + empty state.
     const empty = document.getElementById('wishEmpty');
     const list = document.getElementById('wishList');
     if (empty) empty.style.display = count ? 'none' : '';
     if (list) {
-      list.innerHTML = items
-        .map(
-          (i) => `
-        <div class="wish-row" data-wish-row="${esc(i.handle)}">
-          <a class="wish-row-img" href="${esc(i.href)}"><img src="${esc(i.img)}" alt="${esc(i.name)}" loading="lazy"></a>
-          <div class="wish-row-info">
-            <a class="wish-row-name" href="${esc(i.href)}">${esc(i.name)}</a>
-            <div class="wish-row-price">${esc(i.price)}</div>
-          </div>
-          <button class="wish-row-x" data-wish-remove="${esc(i.handle)}" aria-label="Remove">&times;</button>
+      list.innerHTML = count
+        ? `<div class="wish-grid">${items
+            .map(
+              (i) => `
+        <div class="wish-item" data-wish-row="${esc(i.handle)}">
+          <a class="wish-item__img-wrap" href="${esc(i.href)}">
+            <img class="wish-item__img" src="${esc(i.img)}" alt="${esc(i.name)}" loading="lazy">
+          </a>
+          <button class="wish-item__del" data-wish-remove="${esc(i.handle)}" aria-label="Remove from wishlist">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <a class="wish-item__name" href="${esc(i.href)}">${esc(i.name)}</a>
+          <div class="wish-item__price">${esc(i.price)}</div>
+          <button class="wish-item__atc" data-wish-add="${esc(i.handle)}">Add to Bag</button>
         </div>`,
-        )
-        .join('');
+            )
+            .join('')}</div>`
+        : '';
     }
+  }
+
+  // Add a saved item to the bag. Single-variant products add straight to the
+  // cart; products that still need an option choice route to their PDP (never
+  // silently pick a size for the shopper). Returns true when actually added.
+  function wishAddToBag(item: WishItem): boolean {
+    if (item.variantId && !item.needsPicker) {
+      addItem(item.variantId, 1);
+      return true;
+    }
+    window.location.href = item.href;
+    return false;
   }
 
   function toggleWishlist(btn: HTMLElement) {
@@ -1460,7 +1426,15 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
     const i = items.findIndex((x) => x.handle === handle);
     const added = i < 0;
     if (added) {
-      items.push({ handle, name: d.name || '', price: d.price || '', img: d.img || '', href: d.href || '#' });
+      items.push({
+        handle,
+        name: d.name || '',
+        price: d.price || '',
+        img: d.img || '',
+        href: d.href || '#',
+        variantId: d.variantId || '',
+        needsPicker: d.needsPicker === '1',
+      });
     } else {
       items.splice(i, 1);
     }
@@ -1580,7 +1554,7 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
   }
 
   const qvAddHTML = (label: string) =>
-    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> ${label}`;
+    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> ${label}`;
 
   function qvCurrentVariant(): QVData | null {
     if (!qvVariants) return null;
@@ -1730,23 +1704,30 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
       img: d.img || '',
       href: d.href || '#',
     };
+    // Reflect persisted wishlist state on the heart button.
+    const wishBtn = document.getElementById('qvWish');
+    if (wishBtn) {
+      const saved = (readJSON(WISH_KEY) as WishItem[]).some((x) => x.handle === qvItem!.handle);
+      wishBtn.classList.toggle('is-saved', saved);
+      wishBtn.setAttribute('aria-pressed', String(saved));
+    }
     setOpen('qview', true);
   }
 
   document.addEventListener('click', (e) => {
     // Card colour swatch → swap the card image + retarget Quick Add (single-option).
-    // Works on both shop cards (.prod-card) and compare cards (.cmp-col).
+    // Works on shop cards (.prod-card), compare cards (.cmp-col) and wishlist (.wl-card).
     const swatch = (e.target as HTMLElement).closest<HTMLElement>('[data-swatch]');
     if (swatch) {
       e.preventDefault();
       // Sold-out colour → struck + disabled (Dawn-style): no image swap, no
       // Quick Add retarget to a dead variant.
       if (swatch.classList.contains('is-unavailable')) return;
-      const card = swatch.closest('.prod-card, .cmp-col');
+      const card = swatch.closest('.prod-card, .cmp-col, .wl-card');
       card?.querySelectorAll('[data-swatch]').forEach((s) => s.classList.remove('is-active'));
       swatch.classList.add('is-active');
       const url = swatch.dataset.img;
-      const media = card?.querySelector<HTMLImageElement>('.prod-media img, .cmp-img img');
+      const media = card?.querySelector<HTMLImageElement>('.prod-media img, .cmp-img img, .wl-img img');
       if (url && media) {
         media.src = cdnImg(url, 600);
         media.srcset = ''; // stop the responsive set overriding our swap
@@ -1781,7 +1762,7 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
       toggleWishlist(wish);
       return;
     }
-    // Remove a row from inside the wishlist drawer.
+    // Remove a card from inside the wishlist drawer.
     const wishRemove = (e.target as HTMLElement).closest<HTMLElement>('[data-wish-remove]');
     if (wishRemove) {
       e.preventDefault();
@@ -1789,6 +1770,47 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
       const items: WishItem[] = readJSON(WISH_KEY).filter((x: WishItem) => x.handle !== handle);
       localStorage.setItem(WISH_KEY, JSON.stringify(items));
       renderWishlist();
+      return;
+    }
+    // Add a single saved item to the bag.
+    const wishAdd = (e.target as HTMLElement).closest<HTMLElement>('[data-wish-add]');
+    if (wishAdd) {
+      e.preventDefault();
+      const handle = wishAdd.dataset.wishAdd || '';
+      const item = (readJSON(WISH_KEY) as WishItem[]).find((x) => x.handle === handle);
+      if (!item) return;
+      if (wishAddToBag(item)) {
+        setOpen('wishlist', false);
+        window.setTimeout(openCart, 220);
+        toast('Added to bag');
+      }
+      return;
+    }
+    // "Move All to Bag" — add every directly-purchasable item, drop those from
+    // the wishlist, and flag any that still need an option choice.
+    const wishMoveAll = (e.target as HTMLElement).closest<HTMLElement>('#wishMoveAll');
+    if (wishMoveAll) {
+      e.preventDefault();
+      const items = readJSON(WISH_KEY) as WishItem[];
+      const remaining: WishItem[] = [];
+      let added = 0;
+      for (const it of items) {
+        if (it.variantId && !it.needsPicker) {
+          addItem(it.variantId, 1);
+          added++;
+        } else {
+          remaining.push(it);
+        }
+      }
+      localStorage.setItem(WISH_KEY, JSON.stringify(remaining));
+      renderWishlist();
+      if (added) {
+        setOpen('wishlist', false);
+        window.setTimeout(openCart, 220);
+        toast(remaining.length ? `${added} added — ${remaining.length} need options` : 'Moved all to bag');
+      } else {
+        toast('These items need options — open each to choose');
+      }
       return;
     }
     // Quick view → populate + open the modal.
@@ -1803,7 +1825,7 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
     if (cmp) {
       e.preventDefault();
       const handle = cmp.dataset.handle || '';
-      const key = 'omnix_compare';
+      const key = 'marvexa_compare';
       const list: string[] = readJSON(key);
       const i = list.indexOf(handle);
       const added = i < 0;
@@ -2004,11 +2026,11 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
   try {
     // Skip on phones: a full-screen promo on a small viewport is exactly the
     // "intrusive interstitial" Google penalises for mobile search.
-    if (!sessionStorage.getItem('omnix_popup') && window.innerWidth >= 768) {
+    if (!sessionStorage.getItem('marvexa_popup') && window.innerWidth >= 768) {
       setTimeout(() => {
         if (anyOverlayOpen()) return; // try again next session, don't interrupt
         setOpen('popup', true);
-        sessionStorage.setItem('omnix_popup', '1');
+        sessionStorage.setItem('marvexa_popup', '1');
       }, 12000);
     }
   } catch {}
@@ -2062,19 +2084,22 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
   });
 
   // Quick-view → save to wishlist (adds if not already saved).
-  document.getElementById('qvWish')?.addEventListener('click', () => {
+  document.getElementById('qvWish')?.addEventListener('click', function (this: HTMLButtonElement) {
     if (!qvItem) return;
     const items: WishItem[] = readJSON(WISH_KEY);
-    if (!items.some((x) => x.handle === qvItem!.handle)) {
-      items.push(qvItem);
-      localStorage.setItem(WISH_KEY, JSON.stringify(items));
-      renderWishlist();
-    }
-    toast('Saved to wishlist');
+    const i = items.findIndex((x) => x.handle === qvItem!.handle);
+    const added = i < 0;
+    if (added) items.push(qvItem);
+    else items.splice(i, 1);
+    localStorage.setItem(WISH_KEY, JSON.stringify(items));
+    renderWishlist();
+    this.classList.toggle('is-saved', added);
+    this.setAttribute('aria-pressed', String(added));
+    toast(added ? 'Saved to wishlist' : 'Removed from wishlist');
   });
 
   // Reflect persisted compare state on load.
-  const compareList: string[] = readJSON('omnix_compare');
+  const compareList: string[] = readJSON('marvexa_compare');
   document.querySelectorAll<HTMLElement>('[data-compare]').forEach((b) => {
     if (compareList.includes(b.dataset.handle || '')) b.classList.add('is-active');
   });
@@ -2082,6 +2107,9 @@ const popupImg = resolveImage('mp4xo966-headphones-extreme-minimalism.jpg');
 
   // Hydrate wishlist (hearts, badge, drawer) from storage on load.
   renderWishlist();
+
+  // Cart drawer "Save for later" writes to the wishlist then fires this event.
+  window.addEventListener('wishlist:changed', () => renderWishlist());
 
   // Back to top.
   const toTop = document.getElementById('toTop');

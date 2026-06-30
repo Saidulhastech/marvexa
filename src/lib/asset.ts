@@ -4,7 +4,7 @@
 //  so components can feed it to Astro's <Image />.
 //
 //  Content stays decoupled from import paths: collections store
-//  e.g. "hero-banner-watch.png" and components call resolveImage().
+//  e.g. "hero-banner-watch.webp" and components call resolveImage().
 // ============================================================
 import type { ImageMetadata } from 'astro';
 

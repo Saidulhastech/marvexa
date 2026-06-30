@@ -1,29 +1,135 @@
 ---
 // ============================================================
-//  Wishlist (OMNIX) — full-page view of the saved wishlist. The
-//  list is client-side (localStorage 'omnix_wishlist', the same
-//  store the header wishlist drawer uses). Cards are injected by
-//  the <script>; remove syncs back + updates the header badge.
+//  Wishlist (MARVEXA) — full-page view of the saved wishlist. The
+//  list is client-side (localStorage 'marvexa_wishlist', the same
+//  store the header wishlist drawer uses), but the cards are SSR-
+//  enriched: the page fetches the catalogue and embeds a lean
+//  lookup keyed by handle, so each saved handle renders the same
+//  rich card as the shop grid / compare page (eyebrow, swatches,
+//  rating, variant-aware add). Handles missing from the catalogue
+//  (e.g. add-on products) fall back to the stored basics.
+//  Remove syncs back to localStorage + updates the header badge.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
-import Icon from '~/components/ui/omnix/Icon.astro';
+import Icon from '~/components/ui/marvexa/Icon.astro';
+import PageHeader from '~/components/ui/marvexa/PageHeader.astro';
+import Newsletter from '~/components/home/marvexa/Newsletter.astro';
+import { getProducts } from '~/lib/shopify';
+import { formatMoney, percentOff, hasPriceRange } from '~/lib/money';
+import type { ProductCard } from '~/lib/shopify/types';
+
+export const prerender = false;
+
+let products: ProductCard[] = [];
+try {
+  // Small catalogue: one fetch covers any saved wishlist selection.
+  products = (await getProducts({ pageSize: 250, sortKey: 'BEST_SELLING' }, Astro.locals.market)).items;
+} catch (err) {
+  console.error('[wishlist] load failed:', (err as Error).message);
+}
+
+// Lean lookup keyed by handle — only what the cards need. Mirrors the
+// compare page so the two render identical cards.
+const catalogue = Object.fromEntries(
+  products.map((p) => {
+    const off = percentOff(p.priceRange.minVariantPrice, p.compareAtPriceRange?.minVariantPrice);
+
+    // ---- Variant-aware add (mirrors ProductCard) --------------------------
+    const variants = p.variants ?? [];
+    const realOptions = (p.options ?? []).filter(
+      (o) => !(o.name === 'Title' && o.optionValues.every((v) => v.name === 'Default Title')),
+    );
+    const canQuickAdd =
+      p.availableForSale && !!p.firstVariantId && p.firstVariantAvailable !== false;
+    // Picker only when more than one option must be chosen (e.g. Colour + Size).
+    const needsPicker = canQuickAdd && variants.length > 1 && realOptions.length >= 2;
+    const colorOpt = realOptions.find(
+      (o) => /colou?r|finish|shade/i.test(o.name) || o.optionValues.some((v) => v.swatch?.color),
+    );
+    const colorName = colorOpt?.name ?? null;
+    // Inline swatches (mirrors ProductCard): swap the card image on click and,
+    // when colour is the *only* option, retarget Quick Add to that variant.
+    const swatches = (p.swatches ?? []).map((s) => {
+      const variant = colorName
+        ? variants.find((v) =>
+            v.selectedOptions.some((o) => o.name === colorName && o.value === s.name),
+          )
+        : undefined;
+      const available = colorName
+        ? variants.some(
+            (v) =>
+              v.availableForSale &&
+              v.selectedOptions.some((o) => o.name === colorName && o.value === s.name),
+          )
+        : true;
+      return {
+        name: s.name,
+        color: s.color,
+        img: variant?.image?.url ?? null,
+        available,
+        variantId: realOptions.length === 1 && available ? variant?.id ?? null : null,
+      };
+    });
+    // Compact variant + option payloads for the shared Quick View picker.
+    const pickerVariants = needsPicker
+      ? variants.map((v) => ({
+          id: v.id,
+          opts: Object.fromEntries(v.selectedOptions.map((o) => [o.name, o.value])),
+          price: Number(v.price.amount),
+          compareAt: v.compareAtPrice ? Number(v.compareAtPrice.amount) : null,
+          img: v.image?.url ?? null,
+          available: v.availableForSale,
+        }))
+      : null;
+    const pickerOptions = needsPicker
+      ? realOptions.map((o) => ({
+          name: o.name,
+          isColor: o === colorOpt,
+          values: o.optionValues.map((ov) => ({ name: ov.name, color: ov.swatch?.color ?? null })),
+        }))
+      : null;
+
+    return [
+      p.handle,
+      {
+        handle: p.handle,
+        title: p.title,
+        image: p.featuredImage?.url ?? '',
+        href: `/products/${p.handle}`,
+        brand: p.vendor ?? '',
+        type: p.productType ?? '',
+        price:
+          (hasPriceRange(p.priceRange) ? 'From ' : '') +
+          formatMoney(p.priceRange.minVariantPrice),
+        was: off > 0 ? formatMoney(p.compareAtPriceRange!.minVariantPrice) : '',
+        off,
+        rating: p.rating ?? 0,
+        available: p.availableForSale,
+        variantId: canQuickAdd && !needsPicker ? p.firstVariantId! : '',
+        currency: p.priceRange.minVariantPrice.currencyCode,
+        pick: needsPicker,
+        pickVariants: pickerVariants ? JSON.stringify(pickerVariants) : '',
+        pickOptions: pickerOptions ? JSON.stringify(pickerOptions) : '',
+        swatches,
+      },
+    ];
+  }),
+);
 ---
 
 <Layout title="Wishlist" description="Your saved products — kept in one place." noindex>
-  <section class="sec">
-    <div class="container">
-      <nav class="crumb" aria-label="Breadcrumb">
-        <a href="/">Home</a><span>/</span><span class="cur">Wishlist</span>
-      </nav>
+  <PageHeader
+    breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Wishlist' }]}
+    eyebrow="Saved"
+    title="Your wishlist"
+    subtitle="Products you've saved for later."
+    subId="wlSub"
+  >
+    <button slot="action" class="btn btn-ghost" id="wlClear" type="button" style="display:none;">Clear all</button>
+  </PageHeader>
 
-      <header class="wl-head">
-        <div>
-          <div class="wl-eyebrow">Saved</div>
-          <h1 class="h1">Your wishlist</h1>
-          <p class="wl-sub" id="wlSub">Products you've saved for later.</p>
-        </div>
-        <button class="btn btn-ghost" id="wlClear" type="button" style="display:none;">Clear all</button>
-      </header>
+  <section class="sec sec--bar">
+    <div class="container">
 
       {/* Empty state */}
       <div class="wl-empty" id="wlEmpty" style="display:none;">
@@ -33,15 +139,32 @@ import Icon from '~/components/ui/omnix/Icon.astro';
         <a class="btn btn-primary" href="/products">Browse products</a>
       </div>
 
-      {/* Grid (rendered by script) */}
+      {/* Grid (rendered by script) — reuses the shop/compare card design */}
       <div class="wl-grid" id="wlGrid" style="display:none;"></div>
     </div>
   </section>
+
+  {/* Newsletter CTA (overlaps the footer) — bg synced to the section above */}
+  <Newsletter surface="var(--bg)" />
+
+  <script type="application/json" id="wlCatalogue" is:inline set:html={JSON.stringify(catalogue)}></script>
 </Layout>
 
 <script>
+  type Swatch = { name: string; color: string; img: string | null; available: boolean; variantId: string | null };
+  type Row = {
+    handle: string; title: string; image: string; href: string; brand: string; type: string;
+    price: string; was: string; off: number; rating: number; available: boolean;
+    variantId: string; currency: string;
+    pick: boolean; pickVariants: string; pickOptions: string; swatches: Swatch[];
+  };
+  // Stored wishlist shape (written by the heart buttons) — lean by design.
   type WishItem = { handle: string; name: string; price: string; img: string; href: string };
-  const KEY = 'omnix_wishlist';
+
+  const KEY = 'marvexa_wishlist';
+  const cat: Record<string, Row> = JSON.parse(
+    document.getElementById('wlCatalogue')?.textContent || '{}',
+  );
 
   const $ = (id: string) => document.getElementById(id);
   const read = (): WishItem[] => {
@@ -64,17 +187,98 @@ import Icon from '~/components/ui/omnix/Icon.astro';
     if (chip) chip.textContent = String(n);
   }
 
-  function card(i: WishItem) {
+  // Star rating row — mirrors ProductCard (.prod-rating / star-ic).
+  const STAR =
+    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6">' +
+    '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+  function ratingRow(rating: number) {
+    if (!rating) return '';
+    const full = Math.round(rating);
+    let s = '';
+    for (let i = 0; i < 5; i++) s += `<span class="star-ic${i < full ? ' is-on' : ''}">${STAR}</span>`;
+    return `<div class="prod-rating"><span class="prod-stars" aria-label="Rated ${rating} out of 5">${s}</span></div>`;
+  }
+
+  // Map a stored wishlist entry to a render row — prefer the SSR catalogue
+  // (rich data), fall back to the stored basics for handles it doesn't cover.
+  function toRow(i: WishItem): Row {
+    const c = cat[i.handle];
+    if (c) return c;
+    return {
+      handle: i.handle, title: i.name, image: i.img || '', href: i.href || `/products/${i.handle}`,
+      brand: '', type: '', price: i.price || '', was: '', off: 0, rating: 0, available: true,
+      variantId: '', currency: '', pick: false, pickVariants: '', pickOptions: '', swatches: [],
+    };
+  }
+
+  function card(p: Row) {
+    // Eyebrow mirrors ProductCard: product type, else vendor.
+    const eyebrow = p.type || p.brand;
+
+    const priceRow = `<div class="wl-price">${p.price}` +
+      (p.was ? ` <span class="wl-was">${p.was}</span>` : '') +
+      (p.off ? ` <span class="wl-off">-${p.off}%</span>` : '') +
+      `</div>`;
+
+    // Inline colour swatches — identical markup/classes to ProductCard so the
+    // shared Overlays handler (image swap + Quick Add retarget) drives them.
+    const swatchRow = p.swatches.length
+      ? `<div class="prod-swatches">` +
+        p.swatches
+          .slice(0, 4)
+          .map(
+            (s) =>
+              `<button type="button" class="swatch${s.available ? '' : ' is-unavailable'}"` +
+              ` style="background:${esc(s.color)}"` +
+              ` title="${esc(s.available ? s.name : `${s.name} — sold out`)}"` +
+              ` aria-label="${esc(s.available ? s.name : `${s.name}, sold out`)}"` +
+              ` aria-disabled="${s.available ? 'false' : 'true'}" data-swatch` +
+              ` data-name="${esc(s.name)}" data-img="${esc(s.img ?? '')}"` +
+              ` data-variant-id="${esc(s.variantId ?? '')}"></button>`,
+          )
+          .join('') +
+        (p.swatches.length > 4 ? `<span class="swatch-more">+${p.swatches.length - 4}</span>` : '') +
+        `</div>`
+      : '';
+
+    let foot: string;
+    if (p.pick) {
+      // Multi-option → "Select Options" opens the shared Quick View picker
+      // (handled by the global delegation in Overlays).
+      foot =
+        `<button class="btn btn-primary btn-block" type="button"` +
+        ` data-add data-pick` +
+        ` data-handle="${esc(p.handle)}"` +
+        ` data-name="${esc(p.title)}"` +
+        ` data-img="${esc(p.image)}"` +
+        ` data-brand="${esc(p.brand)}"` +
+        ` data-href="${esc(p.href)}"` +
+        ` data-currency="${esc(p.currency)}"` +
+        ` data-variants="${esc(p.pickVariants)}"` +
+        ` data-options="${esc(p.pickOptions)}">Select Options</button>`;
+    } else if (p.variantId) {
+      foot =
+        `<button class="btn btn-primary btn-block" type="button"` +
+        ` data-add data-variant-id="${esc(p.variantId)}">Add to Cart</button>`;
+    } else {
+      foot = `<a class="btn btn-primary btn-block" href="${esc(p.href)}">${p.available ? 'View product' : 'Sold out'}</a>`;
+    }
+
     return `
-      <article class="wl-card" data-handle="${esc(i.handle)}">
-        <button class="wl-rm" type="button" data-remove="${esc(i.handle)}" aria-label="Remove from wishlist">
+      <article class="wl-card" data-handle="${esc(p.handle)}">
+        <button class="wl-rm" type="button" data-remove="${esc(p.handle)}" aria-label="Remove from wishlist">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
-        <a class="wl-img" href="${esc(i.href)}">${i.img ? `<img src="${esc(i.img)}" alt="${esc(i.name)}" loading="lazy">` : ''}</a>
+        <a class="wl-img" href="${esc(p.href)}">${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.title)}" loading="lazy">` : ''}</a>
         <div class="wl-body">
-          <a class="wl-name" href="${esc(i.href)}">${esc(i.name)}</a>
-          <div class="wl-price">${esc(i.price)}</div>
-          <a class="btn btn-primary btn-block btn-sm wl-view" href="${esc(i.href)}">View product</a>
+          <span class="wl-brand">${esc(eyebrow)}</span>
+          <a class="wl-name" href="${esc(p.href)}">${esc(p.title)}</a>
+          <div class="wl-foot-row">
+            ${priceRow}
+            ${swatchRow}
+          </div>
+          ${ratingRow(p.rating)}
+          <div class="wl-cta">${foot}</div>
         </div>
       </article>`;
   }
@@ -100,9 +304,12 @@ import Icon from '~/components/ui/omnix/Icon.astro';
     grid.style.display = '';
     clear.style.display = '';
     sub.textContent = `${items.length} saved item${items.length === 1 ? '' : 's'}.`;
-    grid.innerHTML = items.map(card).join('');
+    grid.innerHTML = items.map(toRow).map(card).join('');
   }
 
+  // Remove from wishlist (event delegation). Add-to-cart + the "Select Options"
+  // variant picker are handled globally by Overlays via the shared data-add /
+  // data-pick convention — same as the shop grids.
   $('wlGrid')?.addEventListener('click', (e) => {
     const rm = (e.target as HTMLElement).closest<HTMLElement>('[data-remove]');
     if (!rm) return;
@@ -164,9 +371,10 @@ import Icon from '~/components/ui/omnix/Icon.astro';
 </style>
 
 <style is:global>
-  /* JS-injected cards → must be global (scoped CSS keys off a build-time attr). */
+  /* JS-injected cards → must be global (scoped CSS keys off a build-time attr).
+     Mirrors the shop grid / compare card: clean, borderless skin. */
   .wl-grid {
-    display: grid; gap: 22px;
+    display: grid; gap: 28px 22px;
     grid-template-columns: repeat(4, 1fr);
   }
   @media (max-width: 1024px) { .wl-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -175,22 +383,89 @@ import Icon from '~/components/ui/omnix/Icon.astro';
 
   .wl-card {
     position: relative; display: flex; flex-direction: column;
-    border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
-    background: var(--white); transition: box-shadow .2s, transform .2s;
   }
-  .wl-card:hover { box-shadow: 0 12px 30px rgba(0,0,0,.08); transform: translateY(-2px); }
+
   .wl-rm {
-    position: absolute; top: 10px; right: 10px; z-index: 2;
-    width: 30px; height: 30px; display: grid; place-items: center;
-    border: 1px solid var(--border); border-radius: 9px; background: var(--white);
+    position: absolute; top: 12px; right: 12px; z-index: 2;
+    width: 28px; height: 28px; display: grid; place-items: center;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--white);
     color: var(--muted); cursor: pointer; transition: all .15s;
   }
   .wl-rm:hover { border-color: #ef4444; color: #ef4444; }
-  .wl-img { display: block; aspect-ratio: 1/1; background: var(--bg2); }
-  .wl-img img { width: 100%; height: 100%; object-fit: cover; }
-  .wl-body { padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-  .wl-name { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-weight: 600; font-size: 0.96rem; line-height: 1.3; color: var(--text); }
+
+  /* Image — same radius/background as ProductCard's .prod-media. */
+  .wl-img {
+    display: grid; place-items: center;
+    aspect-ratio: 3 / 4;
+    border-radius: 3px; overflow: hidden;
+    background: var(--card);
+  }
+  .wl-img img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  /* Placeholder when a saved item has no image (e.g. add-on products). */
+  .wl-img:empty::after {
+    content: 'No image';
+    font-family: var(--fb);
+    font-size: 0.72rem; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted); opacity: .6;
+  }
+
+  .wl-body { display: flex; flex-direction: column; flex: 1; }
+
+  /* Brand eyebrow — mirrors .prod-brand. */
+  .wl-brand {
+    display: block; margin-top: 14px; min-height: 12px;
+    font-size: 10px; font-weight: 600; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--muted); opacity: .8;
+  }
+
+  /* Title — mirrors .prod-title. */
+  .wl-name {
+    display: block;
+    font-family: var(--fh);
+    font-weight: 600; font-size: 15px; line-height: 1.25;
+    letter-spacing: -.3px; color: var(--text);
+    margin: 6px 0 10px;
+  }
   .wl-name:hover { color: var(--accent); }
-  .wl-price { font-weight: 700; color: var(--text); }
-  .wl-view { margin-top: auto; justify-content: center; }
+
+  /* Price + swatch row — mirrors .prod-foot. */
+  .wl-foot-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .wl-price { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -.1px; white-space: nowrap; }
+  .wl-was { color: var(--muted); text-decoration: line-through; font-size: 11px; font-weight: 400; margin-left: 4px; }
+  .wl-off { color: #16a34a; font-weight: 700; font-size: 11px; margin-left: 6px; }
+
+  /* Swatches sit beside the price (right-aligned), exactly like ProductCard.
+     Base .swatch visuals are scoped inside ProductCard.astro and never reach
+     these JS-injected nodes, so mirror them here. */
+  #wlGrid .prod-swatches { display: flex; gap: 4px; align-items: center; justify-content: flex-end; margin: 0; }
+  #wlGrid .swatch {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 1.5px solid rgba(0, 0, 0, .1); position: relative;
+    transition: transform .15s ease; cursor: pointer; padding: 0;
+  }
+  #wlGrid .swatch:hover { transform: scale(1.22); }
+  #wlGrid .swatch.is-active::after {
+    content: ''; position: absolute; inset: -3px; border-radius: 50%;
+    border: 1.5px solid var(--text);
+  }
+  #wlGrid .swatch.is-unavailable { opacity: .4; }
+  #wlGrid .swatch.is-unavailable::before {
+    content: ''; position: absolute; inset: 0; margin: auto;
+    width: 140%; height: 1.5px; background: var(--muted);
+    transform: rotate(-45deg); transform-origin: center;
+  }
+  #wlGrid .swatch-more { font-size: 10px; font-weight: 600; color: var(--muted); }
+
+  /* Star rating row — mirrors .prod-rating / .star-ic. */
+  #wlGrid .prod-rating { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  #wlGrid .prod-stars { display: inline-flex; align-items: center; gap: 1px; }
+  #wlGrid .star-ic { display: inline-flex; color: var(--border); }
+  #wlGrid .star-ic svg { width: 12px; height: 12px; }
+  #wlGrid .star-ic.is-on { color: var(--accent); }
+  #wlGrid .star-ic.is-on svg { fill: var(--accent); }
+
+  /* Push the action button to the bottom so it aligns across a row. */
+  .wl-cta { margin-top: auto; padding-top: 14px; }
 </style>

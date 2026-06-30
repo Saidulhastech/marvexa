@@ -1,6 +1,6 @@
 {
-  "name": "maison",
-  "description": "Maison — a modern fashion headless Shopify storefront built with Astro 6 (SSR), nanostores, and plain CSS.",
+  "name": "marvexa",
+  "description": "Marvexa — modern fashion headless Shopify storefront",
   "version": "1.0.0",
   "license": "MIT",
   "type": "module",
@@ -27,11 +27,15 @@
     "release:major": "npm version major -m \"chore: release %s\" && git push && git push --tags"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^13.7.0",
-    "@astrojs/mdx": "^6.0.3",
+    "@astrojs/cloudflare": "^14.0.1",
+    "@astrojs/mdx": "^7.0.0",
     "@astrojs/sitemap": "^3.7.3",
-    "astro": "^6.4.7",
-    "nanostores": "^0.11",
-    "wrangler": "^4.104.0"
+    "astro": "^7.0.3",
+    "nanostores": "^1.4.0",
+    "wrangler": "^4.105.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "typescript": "^6.0.3"
   }
 }

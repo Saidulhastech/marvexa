@@ -1,12 +1,12 @@
 ---
 // ============================================================
-//  Collection PLP (OMNIX) — products in a collection with sort +
-//  cursor pagination, on the OMNIX chrome (new header/footer/cart
+//  Collection PLP (MARVEXA) — products in a collection with sort +
+//  cursor pagination, on the MARVEXA chrome (new header/footer/cart
 //  drawer). Reuses the shared `.prod-grid` ProductGrid.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
-import ProductGrid from '~/components/product/omnix/ProductGrid.astro';
-import Icon from '~/components/ui/omnix/Icon.astro';
+import ProductGrid from '~/components/product/marvexa/ProductGrid.astro';
+import Icon from '~/components/ui/marvexa/Icon.astro';
 import { getCollection, COLLECTION_SORT_OPTIONS, resolveSort } from '~/lib/shopify';
 import { applyMarketCache } from '~/lib/market';
 import { paginationUrls } from '~/lib/pagination';
@@ -99,20 +99,60 @@ const collectionJsonLd = collection
       description={collection.seo?.description ?? collection.description}
       jsonLd={collectionJsonLd}
     >
-      <section class="coll-sec">
-        <div class="wrap">
-          <nav class="crumb" aria-label="Breadcrumb">
-            <a href="/">Home</a><span>/</span>
-            <a href="/collections">Collections</a><span>/</span>
-            <span class="cur">{collection.title}</span>
-          </nav>
+      <main class="coll-page">
 
-          <header class="coll-head">
-            <div class="coll-eyebrow">Collection</div>
-            <h1 class="coll-title">{collection.title}</h1>
-            {collection.description && <p class="coll-desc">{collection.description}</p>}
-          </header>
+        {/* ── BREADCRUMB BAND (same as /collections index) ── */}
+        <div class="coll-hd-block">
+          <div class="coll-hd-inner">
+            <div class="chd-toprow">
+              <nav class="chd-bc" aria-label="Breadcrumb">
+                <a href="/">Home</a>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <a href="/collections">Collections</a>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <span class="chd-bc-cur">{collection.title}</span>
+              </nav>
+              <div class="chd-perks">
+                <span class="chd-perk">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round"><path
+                      d="M5 8h14M5 8a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"
+                    ></path></svg>
+                  Free Shipping over $99
+                </span>
+                <span class="chd-perk-div"></span>
+                <span class="chd-perk">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg>
+                  Free Returns
+                </span>
+                <span class="chd-perk-div"></span>
+                <span class="chd-perk chd-perk--live"><span class="chd-live-dot"></span> SS26 — Live Now</span>
+              </div>
+            </div>
 
+            {/* Hero row — same structure as the /collections index */}
+            <div class="chd-hero">
+              <div class="chd-hero-left">
+                <div class="chd-eyebrow">Collection</div>
+                <h1 class="chd-title">{collection.title}</h1>
+              </div>
+              {collection.productCount != null && collection.productCount > 0 && (
+                <div class="chd-stats">
+                  <div class="chd-stat">
+                    <div class="chd-stat-num">{collection.productCount}{collection.productCountPlus ? '+' : ''}</div>
+                    <div class="chd-stat-lbl">Product{collection.productCount === 1 ? '' : 's'}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── BODY ── */}
+        <div class="coll-wrap">
           <div class="coll-toolbar">
             <span class="coll-count">{countLabel}</span>
             <form class="coll-sortwrap" method="get" id="collSortForm">
@@ -134,20 +174,20 @@ const collectionJsonLd = collection
                 {(prevUrl || nextUrl) && (
                   <nav class="coll-pager" aria-label="Pagination">
                     {prevUrl ? (
-                      <a class="btn btn-ghost" href={prevUrl}>
+                      <a class="btn-ghost" href={prevUrl}>
                         <Icon name="arrow-left" size={15} stroke={2.2} /> Previous
                       </a>
                     ) : (
-                      <span class="btn btn-ghost is-disabled" aria-disabled="true">
+                      <span class="btn-ghost is-disabled" aria-disabled="true">
                         <Icon name="arrow-left" size={15} stroke={2.2} /> Previous
                       </span>
                     )}
                     {nextUrl ? (
-                      <a class="btn btn-ghost" href={nextUrl}>
+                      <a class="btn-ghost" href={nextUrl}>
                         Next <Icon name="arrow-right" size={15} stroke={2.2} />
                       </a>
                     ) : (
-                      <span class="btn btn-ghost is-disabled" aria-disabled="true">
+                      <span class="btn-ghost is-disabled" aria-disabled="true">
                         Next <Icon name="arrow-right" size={15} stroke={2.2} />
                       </span>
                     )}
@@ -158,17 +198,17 @@ const collectionJsonLd = collection
               <div class="coll-empty">
                 <b>Nothing in this collection yet</b>
                 <p>This collection is empty right now. Check back soon.</p>
-                <a class="btn btn-primary" href="/products">Browse all products</a>
+                <a class="coll-btn" href="/products">Browse all products</a>
               </div>
             )
           }
         </div>
-      </section>
+      </main>
     </Layout>
   ) : (
     <Layout title={loadFailed ? 'Something went wrong' : 'Collection not found'} description="This collection isn’t available." noindex>
-      <section class="coll-sec">
-        <div class="wrap">
+      <main class="coll-page">
+        <div class="coll-wrap coll-wrap--error">
           <div class="coll-empty coll-error">
             <span class="coll-eyebrow">{loadFailed ? 'Error 503' : 'Error 404'}</span>
             <b>{loadFailed ? 'Something went wrong' : 'Collection not found'}</b>
@@ -177,37 +217,141 @@ const collectionJsonLd = collection
                 ? "We couldn't load this collection right now. Please try again shortly."
                 : "We couldn't find that collection."}
             </p>
-            <a class="btn btn-primary" href="/collections">All collections</a>
+            <a class="coll-btn" href="/collections">All collections</a>
           </div>
         </div>
-      </section>
+      </main>
     </Layout>
   )
 }
 
 <style>
-  /* Collection PLP — Maison skin. Clears the fixed header. */
-  .coll-sec { background: var(--bg); padding: 106px 0 80px; }
+  /* Collection PLP — Marvexa skin. Clears the fixed header. */
+  .coll-page { background: var(--bg); min-height: 100vh; padding-top: 110px; }
 
-  .crumb {
+  /* ═══════════ BREADCRUMB BAND — identical to /collections index ═══════════ */
+  .coll-hd-block {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+  }
+  .coll-hd-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 44px;
+  }
+  .chd-toprow {
     display: flex;
     align-items: center;
-    gap: 7px;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .chd-bc {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--fb);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* ═══════════════════════════ BODY ═══════════════════════════ */
+  .coll-wrap { max-width: 1280px; margin: 0 auto; padding: 36px 44px 100px; }
+  .coll-wrap--error { padding-top: 60px; }
+  .chd-bc a { color: var(--muted); text-decoration: none; transition: color .18s; }
+  .chd-bc a:hover { color: var(--text); }
+  .chd-bc svg { opacity: .4; flex-shrink: 0; }
+  .chd-bc-cur { color: var(--text); font-weight: 600; letter-spacing: .1px; }
+
+  .chd-perks { display: flex; align-items: center; gap: 10px; }
+  .chd-perk {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-family: var(--fb);
     font-size: 11px;
     font-weight: 500;
     color: var(--muted);
-    padding: 18px 0;
-    margin-bottom: 18px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
+    white-space: nowrap;
   }
-  .crumb a { color: var(--muted); text-decoration: none; transition: color var(--ease); }
-  .crumb a:hover { color: var(--text); }
-  .crumb span { opacity: .4; }
-  .crumb .cur { color: var(--text); font-weight: 600; opacity: 1; }
+  .chd-perk svg { color: var(--accent); flex-shrink: 0; }
+  .chd-perk-div { width: 1px; height: 12px; background: var(--border); }
+  .chd-perk--live { color: var(--accent); font-weight: 600; }
+  .chd-live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); animation: chd-pulse 2s infinite; flex-shrink: 0;
+  }
+  @keyframes chd-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .5; transform: scale(1.3); }
+  }
 
-  .coll-head { margin-bottom: 28px; }
+  /* Hero row — same structure/styles as the /collections index */
+  .chd-hero {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
+    padding: 28px 0 32px;
+  }
+  .chd-hero-left { flex: 1; }
+  .chd-eyebrow {
+    font-family: var(--fb);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .chd-title {
+    font-family: var(--fh);
+    font-size: 48px;
+    font-weight: 700;
+    line-height: .95;
+    letter-spacing: -2px;
+    color: var(--text);
+    margin: 0 0 12px;
+  }
+  .chd-sub {
+    font-family: var(--fb);
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.6;
+    max-width: 540px;
+  }
+  .chd-stats {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .chd-stat { padding: 16px 28px; text-align: center; }
+  .chd-stat-num {
+    font-family: var(--fh);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    color: var(--text);
+    line-height: 1;
+  }
+  .chd-stat-lbl {
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: .4px;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+  .chd-stat-div { width: 1px; background: var(--border); align-self: stretch; }
+
+  /* Eyebrow reused by the error/404 state */
   .coll-eyebrow {
     font-family: var(--fb);
     font-size: 10px;
@@ -216,23 +360,6 @@ const collectionJsonLd = collection
     text-transform: uppercase;
     color: var(--accent);
     margin-bottom: 12px;
-  }
-  .coll-title {
-    font-family: var(--fh);
-    font-size: clamp(28px, 4vw, 44px);
-    font-weight: 700;
-    letter-spacing: -1.2px;
-    line-height: 1.05;
-    color: var(--text);
-    margin: 0;
-  }
-  .coll-desc {
-    margin: 14px 0 0;
-    max-width: 44rem;
-    font-family: var(--fb);
-    font-size: 15px;
-    color: var(--muted);
-    line-height: 1.7;
   }
 
   .coll-toolbar {
@@ -310,9 +437,37 @@ const collectionJsonLd = collection
     padding: 80px 20px;
   }
   .coll-empty b { font-family: var(--fh); font-size: 22px; font-weight: 700; letter-spacing: -.5px; color: var(--text); }
-  .coll-empty p { font-family: var(--fb); color: var(--muted); max-width: 30rem; margin: 0; }
-  .coll-empty .btn { margin-top: 16px; }
+  .coll-empty p { font-family: var(--fb); color: var(--muted); max-width: 30rem; margin: 0; line-height: 1.6; }
   .coll-error .coll-eyebrow { margin-bottom: 0; }
 
-  @media (max-width: 760px) { .coll-sec { padding-top: 88px; } }
+  .coll-btn {
+    margin-top: 16px;
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--bg);
+    background: var(--text);
+    border: 1.5px solid var(--text);
+    border-radius: 6px;
+    padding: 13px 26px;
+    text-decoration: none;
+    transition: background .2s, border-color .2s;
+  }
+  .coll-btn:hover { background: var(--accent); border-color: var(--accent); }
+
+  /* ═══════════════════════════ RESPONSIVE ═══════════════════════════ */
+  @media (max-width: 860px) {
+    .coll-hd-inner, .coll-wrap { padding-left: 24px; padding-right: 24px; }
+    .chd-toprow { flex-wrap: wrap; }
+    .chd-hero { flex-direction: column; align-items: flex-start; gap: 24px; }
+    .chd-title { font-size: 38px; }
+  }
+  @media (max-width: 600px) {
+    .chd-perks { display: none; }
+    .chd-stats { width: 100%; justify-content: space-between; }
+  }
 </style>

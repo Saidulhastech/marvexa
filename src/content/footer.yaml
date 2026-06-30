@@ -1,14 +1,14 @@
-# Footer (Maison). Columns + brand blurb + legal + payment chips.
+# Footer (Marvexa). Columns + brand blurb + legal + payment chips.
 - id: main
   blurb: "Modern fashion for everyday life. Crafted with intention, built to last."
   columns:
     - title: "Shop"
       links:
-        - { label: "New Arrivals", href: "/products?sort=newest" }
-        - { label: "Women", href: "/collections/women" }
-        - { label: "Men", href: "/collections/men" }
-        - { label: "Bags & Accessories", href: "/collections/accessories" }
-        - { label: "Sale", href: "/collections/sale" }
+        - { label: "New Arrivals", href: "/collections/new-arrivals" }
+        - { label: "Women", href: "/collections/women-s-fashion" }
+        - { label: "Men", href: "/collections/mens-fashion" }
+        - { label: "Kid's Fashion", href: "/collections/kid-s-fashion" }
+        - { label: "Sale", href: "/collections/top-sale-s" }
         - { label: "Lookbook", href: "/products" }
     - title: "Customer Care"
       links:
@@ -17,20 +17,21 @@
         - { label: "Track My Order", href: "/account" }
         - { label: "FAQ", href: "/pages/faq" }
         - { label: "Contact Us", href: "/contact" }
-        - { label: "Gift Cards", href: "#" }
+        - { label: "Gift Cards", href: "/products" }
     - title: "About"
       links:
         - { label: "Our Story", href: "/about" }
         - { label: "Sustainability", href: "/pages/sustainability" }
         - { label: "Craftsmanship", href: "/pages/craftsmanship" }
         - { label: "Journal", href: "/blog" }
-        - { label: "Press", href: "#" }
-        - { label: "Careers", href: "#" }
+        - { label: "Press", href: "/about" }
+        - { label: "Careers", href: "/about" }
     - title: "Contact"
       links:
-        - { label: "hello@maison.com", href: "mailto:hello@maison.com" }
+        - { label: "hello@marvexa.com", href: "mailto:hello@marvexa.com" }
         - { label: "+44 20 7946 0958", href: "tel:+442079460958" }
-  # App-store badges — unused in the Maison footer.
+      note: "Mon – Fri · 9AM – 6PM GMT"
+  # App-store badges — unused in the Marvexa footer.
   app: []
-  legal: "© 2026 MAISON. All rights reserved."
+  legal: "© 2026 MARVEXA. All rights reserved."
   payments: ["Visa", "Mastercard", "Amex", "PayPal", "Klarna"]

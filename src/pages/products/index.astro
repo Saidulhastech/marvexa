@@ -1,6 +1,6 @@
 ---
 // ============================================================
-//  Shop — the all-products listing. Maison's static "Shop" layout
+//  Shop — the all-products listing. Marvexa's static "Shop" layout
 //  (header block + filter sidebar + toolbar + grid + pagination)
 //  ported onto real Shopify products. Cards carry data-* facets so
 //  the sidebar filters, sort and view controls work entirely
@@ -10,7 +10,8 @@ import Layout from '~/layouts/Layout.astro';
 import { getProducts, PRODUCT_SORT_OPTIONS, resolveSort } from '~/lib/shopify';
 import { applyMarketCache } from '~/lib/market';
 import type { ProductCard as TProductCard } from '~/lib/shopify/types';
-import ProductCard from '~/components/product/omnix/ProductCard.astro';
+import ProductCard from '~/components/product/marvexa/ProductCard.astro';
+import Newsletter from '~/components/home/marvexa/Newsletter.astro';
 
 export const prerender = false;
 
@@ -18,14 +19,22 @@ const url = Astro.url;
 const sortValue = url.searchParams.get('sort') ?? PRODUCT_SORT_OPTIONS[0].value;
 const sort = resolveSort(PRODUCT_SORT_OPTIONS, sortValue);
 
+// ?sale=1 → show ONLY genuinely discounted products (compareAtPrice > price).
+// Driven by real Shopify data: empty today if nothing's on sale, and it starts
+// listing items automatically the moment a discount/compare-at price is set.
+const saleOnly = url.searchParams.get('sale') === '1';
+const onSale = (p: TProductCard) =>
+  Number(p.compareAtPriceRange?.minVariantPrice?.amount || 0) >
+  Number(p.priceRange.minVariantPrice.amount || 0);
+
 let products: TProductCard[] = [];
 let loadError = false;
 try {
   const page = await getProducts(
-    { pageSize: 48, sortKey: sort.sortKey, reverse: sort.reverse },
+    { pageSize: saleOnly ? 250 : 48, sortKey: sort.sortKey, reverse: sort.reverse },
     Astro.locals.market,
   );
-  products = page.items;
+  products = saleOnly ? page.items.filter(onSale) : page.items;
 } catch (err) {
   console.error('[shop] load failed:', (err as Error).message);
   loadError = true;
@@ -115,7 +124,7 @@ const occasions = OCCASIONS.filter((o) => occSet.has(o));
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 ---
 
-<Layout title="Shop" description="Browse the full Maison collection — refined wardrobe essentials.">
+<Layout title={saleOnly ? 'Sale' : 'Shop'} description={saleOnly ? 'Marvexa sale — current markdowns on refined wardrobe essentials.' : 'Browse the full Marvexa collection — refined wardrobe essentials.'}>
   <main class="shop-page">
 
     <div class="shop-hd-block">
@@ -129,12 +138,12 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
               stroke-linecap="round">
               <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
-            <a href="/">Collections</a>
+            <a href="/collections">Collections</a>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round">
               <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
-            <span class="shd-bc-cur">All Products</span>
+            <span class="shd-bc-cur">{saleOnly ? 'Sale' : 'All Products'}</span>
           </nav>
           <div class="shd-perks">
             <span class="shd-perk">
@@ -144,7 +153,7 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
                   d="M5 8h14M5 8a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"
                 ></path>
               </svg>
-              Free Shipping over $120
+              Free Shipping over $99
             </span>
             <span class="shd-perk-div"></span>
             <span class="shd-perk">
@@ -166,25 +175,33 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
         <!-- Main hero row -->
         <div class="shd-hero">
           <div class="shd-hero-left">
-            <div class="shd-eyebrow">SS26 Collection</div>
-            <h1 class="shd-title">Shop Collection</h1>
-            <p class="shd-sub">Refined wardrobe essentials, crafted for everyday confidence.</p>
+            <div class="shd-eyebrow">{saleOnly ? 'Markdowns' : 'SS26 Collection'}</div>
+            <h1 class="shd-title">{saleOnly ? 'Sale' : 'Shop Collection'}</h1>
+            <p class="shd-sub">{saleOnly ? 'Current markdowns — genuine reductions on refined wardrobe essentials.' : 'Refined wardrobe essentials, crafted for everyday confidence.'}</p>
           </div>
           <div class="shd-hero-stats">
             <div class="shd-stat">
               <div class="shd-stat-num" id="prod-count-hd">{total}</div>
               <div class="shd-stat-lbl">Products</div>
             </div>
-            <div class="shd-stat-div"></div>
-            <div class="shd-stat">
-              <div class="shd-stat-num">{categories.length}</div>
-              <div class="shd-stat-lbl">Categories</div>
-            </div>
-            <div class="shd-stat-div"></div>
-            <div class="shd-stat">
-              <div class="shd-stat-num">{newCount}</div>
-              <div class="shd-stat-lbl">New Arrivals</div>
-            </div>
+            {categories.length > 0 && (
+              <>
+                <div class="shd-stat-div"></div>
+                <div class="shd-stat">
+                  <div class="shd-stat-num">{categories.length}</div>
+                  <div class="shd-stat-lbl">Categories</div>
+                </div>
+              </>
+            )}
+            {newCount > 0 && (
+              <>
+                <div class="shd-stat-div"></div>
+                <div class="shd-stat">
+                  <div class="shd-stat-num">{newCount}</div>
+                  <div class="shd-stat-lbl">New Arrivals</div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -315,7 +332,7 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
                   min={priceFloor}
                   max={priceCeil}
                   value={priceFloor}
-                  step="5"
+                  step="1"
                   data-price-slider
                 />
                 <input
@@ -325,7 +342,7 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
                   min={priceFloor}
                   max={priceCeil}
                   value={priceCeil}
-                  step="5"
+                  step="1"
                   data-price-slider
                 />
               </div>
@@ -483,6 +500,8 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
       </div><!-- /shop-body -->
     </div><!-- /shop-wrap -->
   </main>
+
+  <Newsletter surface="var(--bg)" />
 </Layout>
 
 <style>
@@ -842,8 +861,12 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
     top: 106px;
     max-height: calc(100vh - 120px);
     overflow-y: auto;
+    /* overflow-y:auto forces overflow-x to auto too (CSS spec), so this box
+       clips on every side — the small horizontal padding keeps the price
+       slider thumbs from being cropped at the edges. */
+    overflow-x: hidden;
     scrollbar-width: none;
-    padding: 28px 0 20px;
+    padding: 28px 3px 20px;
   }
 
   .sidebar::-webkit-scrollbar {
@@ -1043,7 +1066,7 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 16px;
+    margin-bottom: 30px;
   }
 
   .sb-price-input-wrap {
@@ -1101,13 +1124,14 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
     font-weight: 500;
   }
 
-  /* Dual-range slider track */
+  /* Dual-range slider track. Side margins (>= thumb radius) give the thumbs
+     room so they aren't clipped by the sidebar's scroll box at the extremes. */
   .sb-slider-track {
     position: relative;
     height: 3px;
     background: var(--border);
     border-radius: 2px;
-    margin: 0 8px 24px;
+    margin: 12px 12px 30px;
   }
 
   .sb-slider-fill {
@@ -1118,11 +1142,14 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
     pointer-events: none;
   }
 
-  /* Both range inputs overlap the track */
+  /* Both range inputs overlap the track. Overhang by one thumb radius (12px)
+     each side so the thumb CENTRES reach the track ends (no dead space at the
+     extremes). The track's side margins + sidebar padding leave room for the
+     overhang, so the thumbs still don't clip. */
   .sb-slider {
     position: absolute;
-    width: calc(100% + 16px);
-    left: -8px;
+    width: calc(100% + 24px);
+    left: -12px;
     top: 50%;
     transform: translateY(-50%);
     -webkit-appearance: none;
@@ -1542,6 +1569,20 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
     writeUrl();
   }
 
+  // Throttled filter for continuous inputs (price slider drag). Running the
+  // full doFilter() — card pass + chip rebuild + history.replaceState — on
+  // every `input` event blocks the main thread and makes the thumb stutter.
+  // Coalesce the heavy card pass to one run per animation frame; the URL is
+  // written separately on drag end (`change`), not on every pixel.
+  let filterRaf = 0;
+  function scheduleFilter(): void {
+    if (filterRaf) return;
+    filterRaf = window.requestAnimationFrame(() => {
+      filterRaf = 0;
+      doFilterRaw();
+    });
+  }
+
   // ── Category ────────────────────────────────────────────────────────────────
   function setCategory(btn: HTMLElement): void {
     document.querySelectorAll<HTMLElement>('.sb-cat').forEach((b) => b.classList.remove('active'));
@@ -1552,11 +1593,15 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   }
 
   // ── Price ───────────────────────────────────────────────────────────────────
+  // The sliders overhang the track by one thumb radius each side (see CSS), so
+  // the thumb centres map straight onto 0–100% of the track — a plain percent
+  // fill lines up exactly with the thumbs.
   function updateSliderFill(a: number, b: number): void {
     const fill = document.getElementById('slider-fill');
     if (!fill) return;
-    const pct1 = ((a - FLOOR) / (CEIL - FLOOR)) * 100;
-    const pct2 = ((b - FLOOR) / (CEIL - FLOOR)) * 100;
+    const span = (CEIL - FLOOR) || 1;
+    const pct1 = ((a - FLOOR) / span) * 100;
+    const pct2 = ((b - FLOOR) / span) * 100;
     fill.style.left = pct1 + '%';
     fill.style.width = (pct2 - pct1) + '%';
   }
@@ -1575,7 +1620,7 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
     if (minBox) minBox.value = String(a);
     if (maxBox) maxBox.value = String(b);
     updateSliderFill(a, b);
-    doFilter();
+    scheduleFilter();
   }
 
   function onPriceBox(el: HTMLInputElement, which: 'min' | 'max'): void {
@@ -1590,7 +1635,7 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
       if (mx) mx.value = String(val);
     }
     updateSliderFill(F.prMin, F.prMax);
-    doFilter();
+    scheduleFilter();
   }
 
   function resetPriceUI(): void {
@@ -1837,12 +1882,15 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
     });
   });
 
-  // Price
+  // Price — `input` updates the grid live (rAF-throttled, smooth thumb drag);
+  // `change` (fires once when the drag/edit ends) persists state to the URL.
   document.querySelectorAll<HTMLInputElement>('[data-price-slider]').forEach((el) => {
     el.addEventListener('input', onPriceSlider);
+    el.addEventListener('change', writeUrl);
   });
   document.querySelectorAll<HTMLInputElement>('[data-price-box]').forEach((el) => {
     el.addEventListener('input', () => onPriceBox(el, el.dataset.priceBox === 'max' ? 'max' : 'min'));
+    el.addEventListener('change', writeUrl);
   });
 
   // Rating
@@ -1869,7 +1917,7 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   // ── URL state sync ───────────────────────────────────────────────────────────
   // Filter state lives in the address bar so it's shareable, bookmarkable, and
   // survives a reload / the sort control — ported from the ominix shop
-  // controller and adapted to Maison's F-state + .sb-* design hooks.
+  // controller and adapted to Marvexa's F-state + .sb-* design hooks.
   // replaceState (not push) keeps history clean while tweaking facets; any
   // non-filter params (e.g. ?sort=) are preserved untouched.
   const FILTER_PARAMS = ['cat', 'special', 'color', 'size', 'mat', 'occ', 'avail', 'rate', 'min', 'max'];

@@ -1,14 +1,16 @@
 ---
 // ============================================================
-//  Compare (OMNIX) — side-by-side product comparison, reusing the
+//  Compare (MARVEXA) — side-by-side product comparison, reusing the
 //  home "Compare top models" card design (.compare-grid / .cmp-col,
-//  styled globally in omnix.css). The compare list is client-side
-//  (localStorage 'omnix_compare', toggled by the data-compare
+//  styled globally in marvexa.css). The compare list is client-side
+//  (localStorage 'marvexa_compare', toggled by the data-compare
 //  buttons in Overlays). The page SSR-fetches the catalogue, embeds
 //  a lean lookup, and the <script> renders a card per saved handle.
 //  Add-to-cart reuses the shared nanostore; remove/clear sync back.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
+import PageHeader from '~/components/ui/marvexa/PageHeader.astro';
+import Newsletter from '~/components/home/marvexa/Newsletter.astro';
 import { getProducts } from '~/lib/shopify';
 import { formatMoney, percentOff, hasPriceRange } from '~/lib/money';
 import type { ProductCard } from '~/lib/shopify/types';
@@ -119,20 +121,18 @@ const catalogue = Object.fromEntries(
 ---
 
 <Layout title="Compare" description="Compare products side by side — price, specs, rating and availability.">
-  <section class="sec">
-    <div class="container">
-      <nav class="crumb" aria-label="Breadcrumb">
-        <a href="/">Home</a><span>/</span><span class="cur">Compare</span>
-      </nav>
+  <PageHeader
+    breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Compare' }]}
+    eyebrow="Compare"
+    title="Compare products"
+    subtitle="Add products to compare from any product card."
+    subId="cmp2Sub"
+  >
+    <button slot="action" class="btn btn-ghost" id="cmp2Clear" type="button" style="display:none;">Clear all</button>
+  </PageHeader>
 
-      <header class="cmp2-head">
-        <div>
-          <div class="cmp2-eyebrow">Compare</div>
-          <h1 class="h1">Compare products</h1>
-          <p class="cmp2-sub" id="cmp2Sub">Add products to compare from any product card.</p>
-        </div>
-        <button class="btn btn-ghost" id="cmp2Clear" type="button" style="display:none;">Clear all</button>
-      </header>
+  <section class="sec sec--bar">
+    <div class="container">
 
       {/* Empty / error state */}
       <div class="cmp2-empty" id="cmp2Empty" style="display:none;">
@@ -153,6 +153,9 @@ const catalogue = Object.fromEntries(
     </div>
   </section>
 
+  {/* Newsletter CTA (overlaps the footer) — bg synced to the section above */}
+  <Newsletter surface="var(--bg)" />
+
   <script type="application/json" id="cmp2Catalogue" is:inline set:html={JSON.stringify(catalogue)}></script>
   <div hidden id="cmp2Flags" data-load-error={loadError ? '1' : '0'}></div>
 </Layout>
@@ -166,7 +169,7 @@ const catalogue = Object.fromEntries(
     pick: boolean; pickVariants: string; pickOptions: string; swatches: Swatch[];
   };
 
-  const KEY = 'omnix_compare';
+  const KEY = 'marvexa_compare';
   const cat: Record<string, Row> = JSON.parse(
     document.getElementById('cmp2Catalogue')?.textContent || '{}',
   );
@@ -196,14 +199,29 @@ const catalogue = Object.fromEntries(
     return `<li><span>${label}</span><b>${value}</b></li>`;
   }
 
+  // Star rating row — mirrors ProductCard (.prod-rating / star-ic), so the
+  // compare card reads identically to the shop grid cards.
+  const STAR =
+    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6">' +
+    '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+  function ratingRow(rating: number) {
+    if (!rating) return '';
+    const full = Math.round(rating);
+    let s = '';
+    for (let i = 0; i < 5; i++) s += `<span class="star-ic${i < full ? ' is-on' : ''}">${STAR}</span>`;
+    return `<div class="prod-rating"><span class="prod-stars" aria-label="Rated ${rating} out of 5">${s}</span></div>`;
+  }
+
   function card(p: Row) {
+    // Compare-only facts (Brand → eyebrow, Rating → stars, Category usually
+    // empty), so the spec table carries just what the shop card doesn't show.
     const specs = [
-      p.brand && specRow('Brand', esc(p.brand)),
-      p.type && specRow('Category', esc(p.type)),
-      specRow('Rating', p.rating ? `${p.rating.toFixed(1)}★` : '—'),
       specRow('Availability', p.available ? 'In stock' : 'Sold out'),
       p.tags.length && specRow('Features', p.tags.map(esc).join(', ')),
     ].filter(Boolean).join('');
+
+    // Eyebrow mirrors ProductCard: product type, else vendor.
+    const eyebrow = p.type || p.brand;
 
     const priceRow = `<div class="cmp-price">${p.price}` +
       (p.was ? ` <span class="cmp-was">${p.was}</span>` : '') +
@@ -260,9 +278,13 @@ const catalogue = Object.fromEntries(
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
         <a class="cmp-img" href="/products/${esc(p.handle)}">${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.title)}">` : ''}</a>
+        <span class="cmp-brand">${esc(eyebrow)}</span>
         <a class="cmp-name" href="/products/${esc(p.handle)}">${esc(p.title)}</a>
-        ${priceRow}
-        ${swatchRow}
+        <div class="cmp-foot-row">
+          ${priceRow}
+          ${swatchRow}
+        </div>
+        ${ratingRow(p.rating)}
         <ul class="cmp-spec">${specs}</ul>
         <div class="cmp-foot">${foot}</div>
       </div>`;
@@ -295,7 +317,7 @@ const catalogue = Object.fromEntries(
     clear.style.display = '';
     sub.textContent = `${items.length} product${items.length === 1 ? '' : 's'} side by side.`;
 
-    // 3 cards per row (omnix .compare-grid → 3 desktop / 2 tablet / 1 mobile);
+    // 3 cards per row (marvexa .compare-grid → 3 desktop / 2 tablet / 1 mobile);
     // a 4th product wraps to the next row.
     $('cmpGrid')!.innerHTML = items.map(card).join('');
   }
@@ -368,10 +390,8 @@ const catalogue = Object.fromEntries(
 <style is:global>
   /* These target the JS-injected cards, so they must be global (scoped
      CSS keys off a build-time attribute the injected nodes lack).
-     Builds on the home compare design (.cmp-col) in omnix.css. */
+     Builds on the home compare design (.cmp-col) in marvexa.css. */
   .cmp-col { position: relative; }
-  /* Horizontal divider between wrapped rows (omnix only borders columns). */
-  #cmpGrid .cmp-col { border-bottom: 1px solid var(--border); }
   .cmp-name { color: var(--text); }
   .cmp-name:hover { color: var(--accent); }
   .cmp-rm {
@@ -381,10 +401,120 @@ const catalogue = Object.fromEntries(
     color: var(--muted); cursor: pointer; transition: all .15s;
   }
   .cmp-rm:hover { border-color: #ef4444; color: #ef4444; }
-  .cmp-was { color: var(--muted); text-decoration: line-through; font-size: 0.85rem; font-weight: 500; margin-left: 6px; }
-  .cmp-off { color: #16a34a; font-weight: 700; font-size: 0.82rem; margin-left: 6px; }
-  .cmp-foot { margin-top: auto; }
-  /* Reuse ProductCard's swatch styling, but left-align on its own compare row
-     (ProductCard right-aligns because the swatches sit beside the price). */
-  #cmpGrid .prod-swatches { justify-content: flex-start; margin: 8px 0 2px; }
+  .cmp-was { color: var(--muted); text-decoration: line-through; font-size: 11px; font-weight: 400; margin-left: 4px; }
+  .cmp-off { color: #16a34a; font-weight: 700; font-size: 11px; margin-left: 6px; }
+  /* Swatches sit beside the price (right-aligned), exactly like ProductCard.
+     Base .swatch visuals are scoped inside ProductCard.astro and never reach
+     these JS-injected nodes, so mirror them here. */
+  #cmpGrid .prod-swatches { display: flex; gap: 4px; align-items: center; justify-content: flex-end; margin: 0; }
+  #cmpGrid .swatch {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 1.5px solid rgba(0, 0, 0, .1); position: relative;
+    transition: transform .15s ease; cursor: pointer; padding: 0;
+  }
+  #cmpGrid .swatch:hover { transform: scale(1.22); }
+  #cmpGrid .swatch.is-active::after {
+    content: ''; position: absolute; inset: -3px; border-radius: 50%;
+    border: 1.5px solid var(--text);
+  }
+  #cmpGrid .swatch.is-unavailable { opacity: .4; }
+  #cmpGrid .swatch.is-unavailable::before {
+    content: ''; position: absolute; inset: 0; margin: auto;
+    width: 140%; height: 1.5px; background: var(--muted);
+    transform: rotate(-45deg); transform-origin: center;
+  }
+  #cmpGrid .swatch-more { font-size: 10px; font-weight: 600; color: var(--muted); }
+
+  /* Compare grid + card visuals — mirror ProductCard's clean, borderless skin
+     (the original marvexa boxed design read inconsistent with the shop grids). */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px 20px;
+  }
+  @media (max-width: 900px) { .compare-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .compare-grid { grid-template-columns: 1fr; } }
+
+  #cmpGrid.compare-grid .cmp-col {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  /* Image — same radius/background as ProductCard's .prod-media. */
+  .cmp-img {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 3 / 4;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--card);
+  }
+  .cmp-img img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .cmp-img:empty::after {
+    content: 'No image';
+    font-family: var(--fb);
+    font-size: 0.72rem; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted); opacity: .6;
+  }
+
+  /* Brand eyebrow — mirrors .prod-brand. */
+  .cmp-brand {
+    display: block;
+    margin-top: 14px;
+    min-height: 12px;
+    font-size: 10px; font-weight: 600; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--muted); opacity: .8;
+  }
+
+  /* Title — mirrors .prod-title. */
+  .cmp-name {
+    display: block;
+    font-family: var(--fh);
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.25;
+    letter-spacing: -.3px;
+    margin: 6px 0 10px;
+  }
+
+  /* Price + swatch row — mirrors .prod-foot. */
+  .cmp-foot-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .cmp-price { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -.1px; white-space: nowrap; }
+
+  /* Star rating row — mirrors .prod-rating / .star-ic. */
+  #cmpGrid .prod-rating { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  #cmpGrid .prod-stars { display: inline-flex; align-items: center; gap: 1px; }
+  #cmpGrid .star-ic { display: inline-flex; color: var(--border); }
+  #cmpGrid .star-ic svg { width: 12px; height: 12px; }
+  #cmpGrid .star-ic.is-on { color: var(--accent); }
+  #cmpGrid .star-ic.is-on svg { fill: var(--accent); }
+
+  .cmp-spec {
+    list-style: none;
+    margin: 14px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .cmp-spec li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 7px 0;
+    font-size: 0.82rem;
+    border-top: 1px solid var(--border);
+  }
+  .cmp-spec li span { color: var(--muted); flex-shrink: 0; }
+  .cmp-spec li b { color: var(--text); font-weight: 600; text-align: right; }
+
+  /* Push the action button to the bottom so it aligns across a row. */
+  .cmp-foot { margin-top: auto; padding-top: 14px; }
 </style>

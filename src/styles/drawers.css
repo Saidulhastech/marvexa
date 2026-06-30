@@ -1,0 +1,541 @@
+/* ============================================================
+   DRAWERS — global styles for JS-injected drawer content.
+
+   Astro scoped <style> does NOT apply to nodes created at runtime
+   via innerHTML (cart lines, upsell cards, coupon chips, wishlist
+   cards). Those live here, in a global sheet loaded site-wide from
+   Layout.astro. Every rule is ancestor-scoped under .cart-drawer /
+   .wish-drawer so the generic class names (.cart-item, .ci-*) never
+   collide with the cart PAGE styles in cart.css.
+   ============================================================ */
+
+/* ── Cart drawer line items ──────────────────────────────────── */
+.cart-drawer .cart-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 22px;
+  border-bottom: 1px solid rgba(216, 213, 206, .45);
+  transition: background .15s ease, opacity .15s ease;
+}
+
+.cart-drawer .cart-item:hover {
+  background: rgba(240, 238, 233, .3);
+}
+
+.cart-drawer .cart-item.is-busy {
+  opacity: .5;
+  pointer-events: none;
+}
+
+.cart-drawer .cart-item.is-soldout .ci-name {
+  color: var(--muted);
+}
+
+.cart-drawer .ci-img {
+  width: 76px;
+  height: 96px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--card);
+  flex-shrink: 0;
+}
+
+.cart-drawer .ci-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.cart-drawer .ci-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.cart-drawer .ci-name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.cart-drawer .ci-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.cart-drawer .ci-soldout {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rust);
+  margin: 2px 0;
+}
+
+.cart-drawer .ci-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cart-drawer .ci-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  gap: 8px;
+}
+
+.cart-drawer .ci-qty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cart-drawer .ci-qty button {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  background: none;
+  color: var(--text);
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.cart-drawer .ci-qty button:hover:not(:disabled) {
+  background: var(--bg2);
+  border-color: var(--muted);
+}
+
+.cart-drawer .ci-qty button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.cart-drawer .ci-qty span {
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 18px;
+  text-align: center;
+}
+
+.cart-drawer .ci-btns {
+  display: flex;
+  align-items: center;
+  margin-top: 5px;
+}
+
+.cart-drawer .ci-remove,
+.cart-drawer .ci-save {
+  font-size: 10px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--fb);
+  transition: color .15s ease;
+}
+
+.cart-drawer .ci-remove:hover {
+  color: var(--rust);
+}
+
+.cart-drawer .ci-save {
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+  margin-left: 8px;
+}
+
+.cart-drawer .ci-save:hover {
+  color: var(--accent);
+}
+
+/* ── Cart drawer coupon chips ────────────────────────────────── */
+.cart-drawer .coupon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.cart-drawer .coupon-chip button {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.cart-drawer .coupon-chip button:hover {
+  color: var(--rust);
+}
+
+/* ── Wishlist drawer cards ───────────────────────────────────── */
+.wish-drawer .wish-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.wish-drawer .wish-item {
+  position: relative;
+  min-width: 0;
+}
+
+.wish-drawer .wish-item__img-wrap {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--card);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.wish-drawer .wish-item__img {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  object-position: top;
+  display: block;
+  transition: transform .4s ease;
+}
+
+.wish-drawer .wish-item:hover .wish-item__img {
+  transform: scale(1.04);
+}
+
+.wish-drawer .wish-item__del {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  background: var(--white);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+  transition: background .2s ease, color .2s ease;
+}
+
+.wish-drawer .wish-item__del:hover {
+  background: var(--rust);
+  color: #fff;
+}
+
+.wish-drawer .wish-item__name {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wish-drawer .wish-item__price {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.wish-drawer .wish-item__atc {
+  display: block;
+  width: 100%;
+  padding: 7px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--text);
+  transition: background .2s ease, color .2s ease, border-color .2s ease;
+}
+
+.wish-drawer .wish-item__atc:hover {
+  background: var(--text);
+  color: #fff;
+  border-color: var(--text);
+}
+
+/* ── Quick-view variant pickers (JS-injected → must be global) ─────── */
+.qv-modal .qv-vgroup {
+  margin-bottom: 18px;
+}
+
+.qv-modal .qv-vhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.qv-modal .qv-vlabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.qv-modal .qv-vcur {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.qv-modal .qv-vcur b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.qv-modal .qv-opts,
+.qv-modal .qv-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Size / generic option chips — pill buttons, dark when selected */
+.qv-modal .qv-opt {
+  min-width: 46px;
+  padding: 0 16px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg2);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-family: var(--fb);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, border-color .18s ease, transform .12s ease;
+}
+
+.qv-modal .qv-opt:hover:not(.is-active):not(.is-unavailable) {
+  border-color: var(--text);
+  background: var(--white);
+}
+
+.qv-modal .qv-opt.is-active {
+  background: var(--text);
+  color: #fff;
+  border-color: var(--text);
+}
+
+.qv-modal .qv-opt.is-active:active {
+  transform: scale(.96);
+}
+
+.qv-modal .qv-opt.is-unavailable {
+  opacity: .4;
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+/* Colour swatches — round, ring on the active pick */
+.qv-modal .qv-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  padding: 3px;
+  cursor: pointer;
+  background: none;
+  transition: box-shadow .18s ease, border-color .18s ease, transform .12s ease;
+}
+
+.qv-modal .qv-swatch span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
+}
+
+.qv-modal .qv-swatch:hover:not(.is-active):not(.is-unavailable) {
+  border-color: var(--muted);
+}
+
+.qv-modal .qv-swatch.is-active {
+  border-color: var(--white);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.qv-modal .qv-swatch.is-active:active {
+  transform: scale(.94);
+}
+
+.qv-modal .qv-swatch.is-unavailable {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+/* ── Predictive search results (JS-injected → must be global) ──────
+   #searchResults is a template node (scoped CSS reaches it) but its
+   children are built via innerHTML in Overlays.astro, so the scope attr
+   never lands on them. Ancestor-scoped under .search-results so the
+   short .sr-* names can't collide elsewhere. */
+.search-results .sr-group {
+  margin-bottom: 24px;
+}
+
+.search-results .sr-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.search-results .sr-suggest {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  transition: color .15s ease;
+}
+
+.search-results .sr-suggest:hover {
+  color: var(--accent);
+}
+
+.search-results .sr-product {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  transition: opacity .15s ease;
+}
+
+.search-results .sr-product:hover {
+  opacity: .7;
+}
+
+.search-results .sr-thumb {
+  width: 48px;
+  height: 60px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--card);
+  flex-shrink: 0;
+}
+
+.search-results .sr-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.search-results .sr-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.search-results .sr-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.search-results .sr-price {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.search-results .sr-collection {
+  display: inline-block;
+  padding: 6px 12px;
+  margin: 0 8px 8px 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.search-results .sr-collection:hover {
+  background: var(--text);
+  color: #fff;
+}
+
+.search-results .sr-all {
+  width: 100%;
+  text-align: center;
+  padding: 12px;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.search-results .sr-empty {
+  padding: 24px 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* ── Toast ───────────────────────────────────────────────────────────
+   Created at runtime via document.createElement (#marvexaToast), so it never
+   carries Astro's scope attribute — its styles MUST live in this global
+   sheet, not in Overlays.astro's scoped <style>. */
+.marvexa-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%) translateY(12px);
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  background: var(--dark);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .24);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+}
+
+.marvexa-toast.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.marvexa-toast-action {
+  color: var(--accent);
+  font-weight: 700;
+}

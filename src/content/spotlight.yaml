@@ -1,4 +1,4 @@
-# Product spotlight carousel — dark feature band (OMNIX). Static demo.
+# Product spotlight carousel — dark feature band (MARVEXA). Static demo.
 - id: s1
   order: 1
   eyebrow: "Product Spotlight"
@@ -20,7 +20,7 @@
 - id: s2
   order: 2
   eyebrow: "Product Spotlight"
-  badge: "Omnix LensX 50"
+  badge: "Marvexa LensX 50"
   title: "Every frame,<br>a perfect capture."
   body: "A 50MP mirrorless sensor with 4K 120fps video and in-body stabilization. The camera creators reach for when the moment only happens once."
   image: "spot-camera.jpg"
@@ -38,7 +38,7 @@
 - id: s3
   order: 3
   eyebrow: "Product Spotlight"
-  badge: "Omnix Watch Ultra"
+  badge: "Marvexa Watch Ultra"
   title: "Your day,<br>measured precisely."
   body: "Titanium build, multi-band GPS, and a 9-day battery. Health and training metrics accurate enough for athletes, refined enough for everyday."
   image: "spot-watch.jpg"

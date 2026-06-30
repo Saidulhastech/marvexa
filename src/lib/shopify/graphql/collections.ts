@@ -96,6 +96,21 @@ export const COLLECTIONS_WITH_COUNTS_QUERY = /* GraphQL */ `
   }
 `;
 
+/**
+ * Product count for ONE collection (id-only, so it's cheap). Storefront has no
+ * count field; we fetch up to `countTo` ids and count them, flagging overflow.
+ */
+export const COLLECTION_COUNT_QUERY = /* GraphQL */ `
+  query CollectionCount($handle: String!, $countTo: Int = 250) {
+    collection(handle: $handle) {
+      products(first: $countTo) {
+        nodes { id }
+        pageInfo { hasNextPage }
+      }
+    }
+  }
+`;
+
 /** All collections — for nav / collection index. */
 export const COLLECTIONS_QUERY = /* GraphQL */ `
   ${IMAGE_FRAGMENT}

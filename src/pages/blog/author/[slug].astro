@@ -1,12 +1,15 @@
 ---
 // ============================================================
-//  Author page (OMNIX) — author banner + bio + every post they've
-//  written. SSR: looks the author up by slug, 404 if missing.
+//  Author page (MARVEXA "Modern") — author header + bio + every post
+//  they've written, styled to match the Journal index / detail pages
+//  (`.cart-hd-*` header + `.bl-*` card grid). SSR: looks the author
+//  up by slug, 404 if missing. Site chrome + newsletter from Layout.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
-import PostCard from '~/components/blog/PostCard.astro';
-import Icon from '~/components/ui/omnix/Icon.astro';
+import '~/styles/blog.css';
+import Newsletter from '~/components/home/marvexa/Newsletter.astro';
 import { getEntry, getCollection } from 'astro:content';
+import { resolveImage } from '~/lib/asset';
 
 const { slug } = Astro.params;
 const author = slug ? await getEntry('authors', slug) : undefined;
@@ -14,6 +17,19 @@ const author = slug ? await getEntry('authors', slug) : undefined;
 if (!author) {
   Astro.response.status = 404;
 }
+
+// Coloured category pill — shared with the Journal index.
+const CAT_STYLE: Record<string, string> = {
+  'Style Guide': 'background:rgba(122,143,58,.12);color:var(--accent);',
+  'Wardrobe Tips': 'background:rgba(100,130,180,.12);color:#5A7AB4;',
+  'Craft & Care': 'background:rgba(160,100,60,.12);color:#A0643C;',
+  'Behind MARVEXA': 'background:rgba(80,80,80,.1);color:var(--muted);',
+};
+const catStyle = (c?: string) => (c && CAT_STYLE[c]) || CAT_STYLE['Behind MARVEXA'];
+const fmt = (d: Date) =>
+  d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const initials = (name: string) =>
+  name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
 let posts: Awaited<ReturnType<typeof getCollection<'blog'>>> = [];
 if (author) {
@@ -28,146 +44,163 @@ const topics = [...new Set(posts.flatMap((p) => p.data.tags))].slice(0, 6);
 
 {
   author ? (
-    <Layout title={`${author.data.name} — Journal`} description={author.data.bio}>
-      {/* ---- Banner hero ---- */}
-      <header class="au-banner">
-        <div class="container au-banner-inner">
-          <a class="au-back" href="/blog">← The journal</a>
-          <div class="au-id">
-            {author.data.avatar && <img class="au-avatar" src={author.data.avatar} alt={author.data.name} />}
-            <div class="au-id-text">
-              <div class="au-eyebrow">Author</div>
-              <h1 class="au-name">{author.data.name}</h1>
-              {author.data.role && <div class="au-role">{author.data.role}</div>}
+    <Layout title={`${author.data.name} — MARVEXA Journal`} description={author.data.bio}>
+      <main id="mainContent" class="blog-pg">
+
+        {/* ── HEADER ── */}
+        <div class="cart-hd-block">
+          <div class="cart-hd-inner">
+            <div class="cart-hd-toprow">
+              <nav class="cart-bc"><a href="/">Home</a><svg width="12" height="12" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg><a href="/blog">Journal</a><svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg><span class="cart-bc-cur">{author.data.name}</span></nav>
+              <div class="cart-hd-perks">
+                {author.data.twitter && (
+                  <a class="cart-hd-perk" href={`https://twitter.com/${author.data.twitter.replace('@', '')}`}
+                    target="_blank" rel="noopener" style="text-decoration:none;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <path
+                        d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z" />
+                    </svg> {author.data.twitter}</a>
+                )}
+              </div>
+            </div>
+            <div class="cart-hd-hero">
+              <div class="cart-hd-hero-left">
+                <div class="au-id-row">
+                  {author.data.avatar ? (
+                    <img class="au-avatar" src={author.data.avatar} alt={author.data.name} />
+                  ) : (
+                    <div class="au-avatar au-avatar--fallback">{initials(author.data.name)}</div>
+                  )}
+                  <div>
+                    <div class="cart-hd-eyebrow">Author</div>
+                    <h1 class="cart-hd-title">{author.data.name}</h1>
+                    {author.data.role && <p class="cart-hd-sub">{author.data.role}</p>}
+                  </div>
+                </div>
+                {author.data.bio && <p class="au-bio">{author.data.bio}</p>}
+                {topics.length > 0 && (
+                  <div class="au-topics">
+                    {topics.map((t) => <span class="bl-cat" style="background:var(--bg2);color:var(--muted);">{t}</span>)}
+                  </div>
+                )}
+              </div>
+              <div class="cart-hd-stats">
+                <div class="cart-hd-stat">
+                  <div class="cart-hd-stat-num">{posts.length}</div>
+                  <div class="cart-hd-stat-lbl">Article{posts.length === 1 ? '' : 's'}</div>
+                </div>
+                <div class="cart-hd-stat-div"></div>
+                <div class="cart-hd-stat">
+                  <div class="cart-hd-stat-num">{topics.length}</div>
+                  <div class="cart-hd-stat-lbl">Topic{topics.length === 1 ? '' : 's'}</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </header>
 
-      <section class="sec au-main">
-        <div class="container au-grid">
-          {/* Sidebar */}
-          <aside class="au-side">
-            {author.data.bio && <p class="au-bio">{author.data.bio}</p>}
-
-            <div class="au-stats">
-              <div class="au-stat"><b>{posts.length}</b><span>Post{posts.length === 1 ? '' : 's'}</span></div>
-              {topics.length > 0 && <div class="au-stat"><b>{topics.length}</b><span>Topics</span></div>}
+        {/* ── POSTS GRID ── */}
+        <section class="bl-grid-section">
+          <div class="bl-grid-inner">
+            <div class="bl-grid-header">
+              <h2 class="bl-grid-title">Latest stories</h2>
+              <span class="bl-grid-count">{posts.length} article{posts.length === 1 ? '' : 's'}</span>
             </div>
-
-            {topics.length > 0 && (
-              <div class="au-topics">
-                <div class="au-topics-h">Writes about</div>
-                <div class="au-topics-list">
-                  {topics.map((t) => <span class="blog-tag">{t}</span>)}
-                </div>
-              </div>
-            )}
-
-            {author.data.twitter && (
-              <a class="au-social" href={`https://twitter.com/${author.data.twitter.replace('@', '')}`} target="_blank" rel="noopener">
-                <Icon name="instagram" size={15} /> {author.data.twitter}
-              </a>
-            )}
-          </aside>
-
-          {/* Posts */}
-          <div class="au-posts">
             {
               posts.length > 0 ? (
-                <>
-                  <div class="au-posts-head">
-                    <h2>Latest stories</h2>
-                    <span>{posts.length} post{posts.length === 1 ? '' : 's'}</span>
-                  </div>
-                  <div class="blog-grid au-blog-grid">
-                    {posts.map((p) => <PostCard post={p} />)}
-                  </div>
-                </>
+                <div class="bl-grid">
+                  {
+                    posts.map((p) => (
+                      <article class="bl-card">
+                        <a href={`/blog/${p.id}`} class="bl-card-img-wrap">
+                          <img src={resolveImage(p.data.image).src} alt={p.data.title} loading="lazy" class="bl-card-img" />
+                          <div class="bl-card-img-overlay"></div>
+                        </a>
+                        <div class="bl-card-body">
+                          <div class="bl-card-meta-top"><span class="bl-cat" style={catStyle(p.data.category)}>{p.data.category}</span></div>
+                          <h3 class="bl-card-title"><a href={`/blog/${p.id}`}>{p.data.title}</a></h3>
+                          <p class="bl-card-excerpt">{p.data.excerpt}</p>
+                          <div class="bl-card-meta-bot">
+                            {p.data.readingTime && (
+                              <span class="bl-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                  <circle cx="12" cy="12" r="10" />
+                                  <polyline points="12 6 12 12 16 14" />
+                                </svg> {p.data.readingTime}</span>
+                            )}
+                            <span class="bl-meta-sep"></span>
+                            <span class="bl-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                <line x1="16" y1="2" x2="16" y2="6" />
+                                <line x1="8" y1="2" x2="8" y2="6" />
+                                <line x1="3" y1="10" x2="21" y2="10" />
+                              </svg> {fmt(p.data.date)}</span>
+                          </div>
+                        </div>
+                      </article>
+                    ))
+                  }
+                </div>
               ) : (
-                <p class="au-empty">No posts from this author yet.</p>
+                <p class="au-empty">No articles from this author yet.</p>
               )
             }
           </div>
-        </div>
-      </section>
+        </section>
+
+      </main>
+
+      {/* ── Newsletter CTA (last — overlaps the footer) ── */}
+      <Newsletter surface="var(--bg)" padTop="0" />
     </Layout>
   ) : (
     <Layout title="Author not found" description="We couldn’t find that author." noindex>
-      <section class="sec">
-        <div class="container au-nf">
-          <p class="au-eyebrow au-eyebrow-nf">Error 404</p>
-          <h1 class="h1">Author not found</h1>
-          <p>We couldn't find that author.</p>
-          <a class="btn btn-primary" href="/blog">Back to the journal</a>
+      <main id="mainContent" class="blog-pg">
+        <div class="cart-hd-block">
+          <div class="cart-hd-inner">
+            <div class="cart-hd-hero">
+              <div class="cart-hd-hero-left">
+                <div class="cart-hd-eyebrow">Error 404</div>
+                <h1 class="cart-hd-title">Author not found</h1>
+                <p class="cart-hd-sub">We couldn't find that author. <a href="/blog" style="color:var(--accent);text-decoration:underline;">Back to the Journal</a></p>
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
+      </main>
     </Layout>
   )
 }
 
 <style>
-  /* Banner — solid colored block; identity sits fully inside it. */
-  .au-banner {
-    background: linear-gradient(135deg, var(--text), #1b2436);
-    color: #fff; padding: 30px 0 34px;
-  }
-  .au-back { display: inline-block; font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,.78); margin-bottom: 36px; }
-  .au-back:hover { color: #fff; }
-  .au-id { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  /* Author identity — avatar + name row inside the shared header. */
+  .au-id-row { display: flex; align-items: center; gap: 18px; }
   .au-avatar {
-    width: 116px; height: 116px; border-radius: 50%; object-fit: cover;
-    border: 4px solid rgba(255,255,255,.9); box-shadow: 0 12px 30px rgba(0,0,0,.35);
+    width: 72px; height: 72px; border-radius: 50%; object-fit: cover;
+    border: 2px solid var(--border); flex-shrink: 0;
   }
-  .au-eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-dk); margin-bottom: 8px; }
-  .au-name {
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-    font-size: clamp(1.9rem, 4.5vw, 2.8rem); font-weight: 700;
-    letter-spacing: -0.02em; line-height: 1.04; margin: 0; color: #fff;
+  .au-avatar--fallback {
+    display: flex; align-items: center; justify-content: center;
+    background: var(--card); object-fit: initial;
+    font-family: var(--fh); font-size: 24px; font-weight: 700; color: var(--text);
   }
-  .au-role { color: rgba(255,255,255,.72); font-weight: 500; margin-top: 7px; }
-
-  /* Body grid */
-  .au-main { padding-top: 44px; }
-  .au-grid { display: grid; grid-template-columns: 1fr; gap: 40px; }
-  @media (min-width: 980px) {
-    .au-grid { grid-template-columns: 280px minmax(0, 1fr); gap: 56px; align-items: start; }
-    .au-side { position: sticky; top: 96px; }
+  .au-bio {
+    margin: 20px 0 0; max-width: 560px;
+    font-family: var(--fb); font-size: 14px; line-height: 1.7; color: var(--muted);
   }
+  .au-topics { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .au-empty { color: var(--muted); padding: 32px 0; font-family: var(--fb); }
 
-  .au-bio { color: var(--muted, #374151); line-height: 1.75; margin: 0 0 22px; }
-
-  .au-stats { display: flex; gap: 14px; margin-bottom: 24px; }
-  .au-stat {
-    flex: 1; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px;
-    background: var(--white); display: flex; flex-direction: column;
+  @media (max-width: 600px) {
+    .au-id-row { gap: 14px; }
+    .au-avatar { width: 56px; height: 56px; }
   }
-  .au-stat b { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--text); line-height: 1; }
-  .au-stat span { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
-
-  .au-topics { margin-bottom: 22px; }
-  .au-topics-h { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
-  .au-topics-list { display: flex; flex-wrap: wrap; gap: 8px; }
-
-  .au-social {
-    display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px;
-    border: 1px solid var(--border); border-radius: 999px; background: var(--white);
-    color: var(--text); font-weight: 600; font-size: 0.88rem;
-  }
-  .au-social:hover { border-color: var(--accent); color: var(--accent); }
-
-  .au-posts-head {
-    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-    margin-bottom: 24px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
-  }
-  .au-posts-head h2 { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 1.5rem; font-weight: 700; margin: 0; }
-  .au-posts-head span { font-size: 0.8rem; color: var(--muted); }
-  .au-blog-grid { grid-template-columns: repeat(2, 1fr); }
-  @media (max-width: 620px) { .au-blog-grid { grid-template-columns: 1fr; } }
-  .au-empty { color: var(--muted); padding: 32px 0; }
-
-  .au-nf { text-align: center; padding: 80px 20px; }
-  .au-nf .h1 { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: clamp(2rem,6vw,3rem); font-weight: 700; margin: 0; }
-  .au-nf p { color: var(--muted); margin: 12px 0 22px; }
-  .au-eyebrow-nf { margin-bottom: 12px; }
 </style>

@@ -1,6 +1,6 @@
 /* ============================================================
-   Contact (MAISON) — fashion reskin
-   Tokens from omnix.css: --bg --bg2 --card --dark --white --text
+   Contact (MARVEXA) — fashion reskin
+   Tokens from marvexa.css: --bg --bg2 --card --dark --white --text
    --muted --border --accent --accent-dk --rust --fh --fb
    --container --gutter --ease --ease-md
    ============================================================ */
@@ -1208,47 +1208,6 @@
   font-size: 13px;
   color: var(--muted);
   line-height: 1.7;
-}
-
-/* ── Live chat float ── */
-#liveChatBtn {
-  position: fixed;
-  bottom: 28px;
-  right: 28px;
-  z-index: 9000;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--text);
-  color: var(--white);
-  border: none;
-  border-radius: 50px;
-  padding: 12px 20px;
-  font-family: var(--fb);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, .18);
-  transition: transform var(--ease-md), box-shadow var(--ease-md);
-}
-
-#liveChatBtn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 32px rgba(0, 0, 0, .22);
-}
-
-.chat-badge {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-  flex-shrink: 0;
-  animation: pulse-dot 2s infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(122, 143, 58, .25); }
-  50% { box-shadow: 0 0 0 4px rgba(122, 143, 58, .12); }
 }
 
 /* ── Toast ── */

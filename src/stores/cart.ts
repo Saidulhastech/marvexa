@@ -133,38 +133,6 @@ export async function addItem(
 }
 
 /**
- * Add several variants at once — one cart line per chosen bundle component
- * (build-your-own bundle). Opens the drawer on success. The bundle discount
- * is a Shopify automatic discount applied server-side, shown in the drawer.
- */
-export async function addBundle(
-  lines: { merchandiseId: string; quantity?: number }[],
-  options: { open?: boolean } = {},
-): Promise<MutationResponse> {
-  const { open = true } = options;
-  const clean = lines
-    .filter((l) => l.merchandiseId?.startsWith('gid://shopify/ProductVariant/'))
-    .map((l) => ({ merchandiseId: l.merchandiseId, quantity: l.quantity ?? 1 }));
-  if (clean.length === 0) {
-    $cartError.set('This bundle has nothing available to add.');
-    return { cart: null };
-  }
-  pushBusy();
-  $cartError.set(null);
-  try {
-    const seq = ++mutationSeq;
-    const data = applyResult(await post('/api/cart/add-bundle', { lines: clean }), seq);
-    if (open && data.cart) openCart();
-    return data;
-  } catch {
-    $cartError.set('Could not add the bundle. Please try again.');
-    return { cart: null };
-  } finally {
-    popBusy();
-  }
-}
-
-/**
  * Buy now: checks out a single item via a SEPARATE one-off cart, so the
  * shopper's persistent cart isn't polluted if they abandon checkout.
  */

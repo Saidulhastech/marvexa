@@ -5,6 +5,7 @@ import { shopifyFetch } from '../client';
 import type { Market } from '~/lib/market';
 import {
   COLLECTION_BY_HANDLE_QUERY,
+  COLLECTION_COUNT_QUERY,
   COLLECTIONS_QUERY,
   COLLECTIONS_WITH_COUNTS_QUERY,
 } from '../graphql/collections';
@@ -46,6 +47,24 @@ export async function getCollection(
     products,
     filters: data.collection.products?.filters ?? [],
   };
+}
+
+/**
+ * Capped product count for a single collection (cheap, id-only). Returns null
+ * when the collection doesn't exist. `plus` is true when the real total exceeds
+ * `countTo` (render as "250+").
+ */
+export async function getCollectionCount(
+  handle: string,
+  countTo = 250,
+): Promise<{ count: number; plus: boolean } | null> {
+  const data = await shopifyFetch<{ collection: any | null }>(COLLECTION_COUNT_QUERY, {
+    handle,
+    countTo,
+  });
+  if (!data.collection) return null;
+  const nodes = data.collection.products?.nodes ?? [];
+  return { count: nodes.length, plus: data.collection.products?.pageInfo?.hasNextPage ?? false };
 }
 
 /** Every collection — for the nav and collection index. */

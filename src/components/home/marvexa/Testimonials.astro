@@ -1,4 +1,76 @@
 ---
+// ============================================================
+//  Testimonials (⑪ Verified Reviews) — Marvexa carousel.
+//  All slides (text + portrait) and thumbnails are rendered
+//  server-side so Astro's scoped styles apply; the client script
+//  only crossfades between them (active class), drives the
+//  thumbs / arrows / counter, autoplay, swipe and keyboard.
+// ============================================================
+interface Review {
+  portrait: string;
+  thumb: string;
+  name: string;
+  loc: string;
+  product: string;
+  date: string;
+  quote: string;
+}
+
+const reviews: Review[] = [
+  {
+    portrait: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&q=88',
+    thumb: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&q=80',
+    name: 'Sophie M.',
+    loc: 'London, UK',
+    product: 'Linen Blazer',
+    date: 'March 2025',
+    quote:
+      'The linen blazer has become my absolute go-to piece. Effortlessly polished, incredibly comfortable — I reach for it every single week without thinking twice.',
+  },
+  {
+    portrait: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=88',
+    thumb: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&q=80',
+    name: 'James R.',
+    loc: 'New York, US',
+    product: 'Wool Blend Coat',
+    date: 'January 2025',
+    quote:
+      'Finally a brand that truly gets quality. The wool coat is exceptional — warm, structured, and honestly gets better with every single wear. Worth every penny.',
+  },
+  {
+    portrait: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=600&q=88',
+    thumb: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&q=80',
+    name: 'Amara K.',
+    loc: 'Paris, France',
+    product: 'Silk Slip Dress',
+    date: 'February 2025',
+    quote:
+      "I've never received so many compliments on my wardrobe. Everything fits like it was made for me. I genuinely will not shop anywhere else from now on.",
+  },
+  {
+    portrait: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=600&q=88',
+    thumb: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&q=80',
+    name: 'David K.',
+    loc: 'Toronto, Canada',
+    product: 'Cashmere Turtleneck',
+    date: 'December 2024',
+    quote:
+      'The cashmere sweater is genuinely the softest thing I own. The quality is remarkable — it still looks brand new after a full year of regular wear.',
+  },
+  {
+    portrait: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=88',
+    thumb: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&q=80',
+    name: 'Emma L.',
+    loc: 'Stockholm, Sweden',
+    product: 'Cotton Poplin Shirt',
+    date: 'April 2025',
+    quote:
+      'Perfect sizing, lightning-fast delivery, and quality that genuinely exceeded expectations. The shirt is immaculate — crisp, structured, effortlessly elegant.',
+  },
+];
+
+const total = reviews.length;
+const pad = (n: number) => String(n).padStart(2, '0');
 ---
 
 <section class="testimonials" aria-labelledby="tm-h">
@@ -14,32 +86,80 @@
 
       <div class="tm-inner">
 
-        <!-- Text panel -->
-        <div class="tm-text" id="tmText">
-          <!-- populated by JS -->
+        <!-- Text panel — all slides stacked, active one crossfaded in -->
+        <div class="tm-text-stack" id="tmTextStack">
+          {reviews.map((r, i) => (
+            <div class={`tm-text${i === 0 ? ' is-active' : ''}`} data-idx={i} aria-hidden={i === 0 ? undefined : 'true'}>
+              <div class="tm-product">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <path d="M16 10a4 4 0 0 1-8 0" />
+                </svg>
+                {r.product}
+              </div>
+              <div class="tm-stars">
+                {Array.from({ length: 5 }).map(() => (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="#C8A75E" aria-hidden="true">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                ))}
+              </div>
+              <blockquote class="tm-quote">"{r.quote}"</blockquote>
+              <div class="tm-author">
+                <div class="tm-author__name">{r.name}</div>
+                <div class="tm-author__meta">
+                  <span class="tm-author__loc">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    {r.loc}
+                  </span>
+                  <span class="tm-author__verified">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    Verified · {r.date}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
 
-        <!-- Portrait panel -->
+        <!-- Portrait panel — all stacked, active one crossfaded in -->
         <div class="tm-portrait-wrap">
-          <img class="tm-portrait-img" id="tmPortrait" src="" alt="" loading="lazy" />
+          {reviews.map((r, i) => (
+            <img class={`tm-portrait-img${i === 0 ? ' is-active' : ''}`} data-idx={i} src={r.portrait} alt={r.name} loading="lazy" />
+          ))}
         </div>
 
       </div>
 
       <!-- Navigation bar -->
       <div class="tm-nav">
-        <span class="tm-nav__counter" id="tmCounter"><span>01</span> / 05</span>
-        <div class="tm-thumbs" id="tmThumbs"></div>
+        <span class="tm-nav__counter" id="tmCounter"><span>01</span> / {pad(total)}</span>
+        <div class="tm-thumbs" id="tmThumbs">
+          {reviews.map((r, i) => (
+            <div class={`tm-thumb${i === 0 ? ' tm-thumb--active' : ''}`} data-idx={i} role="button" tabindex="0" aria-label={`Review by ${r.name}`}>
+              <img src={r.thumb} alt={r.name} loading="lazy" />
+            </div>
+          ))}
+        </div>
         <div class="tm-nav__arrows">
+          <button class="tm-arr" id="tmPause" aria-label="Pause automatic rotation" aria-pressed="false">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="9" y1="5" x2="9" y2="19" /><line x1="15" y1="5" x2="15" y2="19" />
+            </svg>
+          </button>
           <button class="tm-arr" id="tmPrev" aria-label="Previous review">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
           <button class="tm-arr" id="tmNext" aria-label="Next review">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </button>
@@ -141,17 +261,26 @@
     z-index: 1;
   }
 
-  /* ── Text panel ── */
+  /* ── Text panel — slides stacked in one grid cell, crossfaded ── */
+  .tm-text-stack {
+    display: grid;
+  }
+
   .tm-text {
+    grid-area: 1 / 1;
     display: flex;
     flex-direction: column;
     gap: 0;
-    transition: opacity 0.35s ease, transform 0.35s ease;
-  }
-
-  .tm-text.tm-text--exit {
     opacity: 0;
     transform: translateY(14px);
+    pointer-events: none;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .tm-text.is-active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
   }
 
   .tm-product {
@@ -231,7 +360,7 @@
     color: var(--accent);
   }
 
-  /* ── Portrait panel ── */
+  /* ── Portrait panel — stacked imgs, crossfaded ── */
   .tm-portrait-wrap {
     position: relative;
     width: 360px;
@@ -242,15 +371,18 @@
   }
 
   .tm-portrait-img {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
-    transition: opacity 0.4s ease;
+    opacity: 0;
+    transition: opacity 0.45s ease;
   }
 
-  .tm-portrait-img.tm-img--exit {
-    opacity: 0;
+  .tm-portrait-img.is-active {
+    opacity: 1;
   }
 
   /* subtle inner border on portrait */
@@ -261,6 +393,7 @@
     border-radius: 14px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     pointer-events: none;
+    z-index: 1;
   }
 
   /* ── Navigation bar ── */
@@ -282,7 +415,7 @@
   }
 
   .tm-nav__counter span {
-    color: rgba(255, 255, 255, 0.7);
+    color: #fff;
   }
 
   .tm-thumbs {
@@ -351,214 +484,140 @@
   .tm-arr:active {
     transform: scale(0.95);
   }
+
+  /* ── Responsive ── */
+  @media (max-width: 860px) {
+    .tm-body {
+      padding: 48px 28px 40px;
+    }
+
+    .tm-inner {
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+
+    .tm-portrait-wrap {
+      width: 100%;
+      height: 360px;
+      order: -1;
+    }
+
+    .tm-nav {
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+    }
+  }
 </style>
 
 <script>
   // ─── TESTIMONIAL CAROUSEL ────────────────────────────────────────────────
   (function () {
-    var reviews = [
-      {
-        portrait: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&q=88',
-        thumb: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&q=80',
-        name: 'Sophie M.',
-        loc: 'London, UK',
-        product: 'Linen Blazer',
-        date: 'March 2025',
-        quote: 'The linen blazer has become my absolute go-to piece. Effortlessly polished, incredibly comfortable — I reach for it every single week without thinking twice.'
-      },
-      {
-        portrait: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=88',
-        thumb: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&q=80',
-        name: 'James R.',
-        loc: 'New York, US',
-        product: 'Wool Blend Coat',
-        date: 'January 2025',
-        quote: 'Finally a brand that truly gets quality. The wool coat is exceptional — warm, structured, and honestly gets better with every single wear. Worth every penny.'
-      },
-      {
-        portrait: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=600&q=88',
-        thumb: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&q=80',
-        name: 'Amara K.',
-        loc: 'Paris, France',
-        product: 'Silk Slip Dress',
-        date: 'February 2025',
-        quote: "I've never received so many compliments on my wardrobe. Everything fits like it was made for me. I genuinely will not shop anywhere else from now on."
-      },
-      {
-        portrait: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=600&q=88',
-        thumb: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&q=80',
-        name: 'David K.',
-        loc: 'Toronto, Canada',
-        product: 'Cashmere Turtleneck',
-        date: 'December 2024',
-        quote: 'The cashmere sweater is genuinely the softest thing I own. The quality is remarkable — it still looks brand new after a full year of regular wear.'
-      },
-      {
-        portrait: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=88',
-        thumb: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&q=80',
-        name: 'Emma L.',
-        loc: 'Stockholm, Sweden',
-        product: 'Cotton Poplin Shirt',
-        date: 'April 2025',
-        quote: 'Perfect sizing, lightning-fast delivery, and quality that genuinely exceeded expectations. The shirt is immaculate — crisp, structured, effortlessly elegant.'
-      }
-    ];
+    const section = document.querySelector('.testimonials');
+    if (!section) return;
 
-    var activeIdx = 0;
-    var animating = false;
-    var total = reviews.length;
-    var touchStartX = null;
-    var autoTimer = null;
+    const texts = Array.from(section.querySelectorAll<HTMLElement>('.tm-text'));
+    const portraits = Array.from(section.querySelectorAll<HTMLElement>('.tm-portrait-img'));
+    const thumbs = Array.from(section.querySelectorAll<HTMLElement>('.tm-thumb'));
+    const counter = document.getElementById('tmCounter');
+    const total = texts.length;
+    if (!total) return;
 
-    function starsSVG() {
-      var s = '<svg width="13" height="13" viewBox="0 0 24 24" fill="#C8A75E" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
-      return s + s + s + s + s;
-    }
+    let active = 0;
+    let autoTimer: ReturnType<typeof setInterval> | null = null;
+    let touchStartX: number | null = null;
+    // Honour the user's reduced-motion preference and an explicit pause toggle —
+    // when either is set, auto-rotation never starts (WCAG 2.2.2).
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let paused = reduceMotion;
 
-    function buildText(r) {
-      return (
-        '<div class="tm-product">' +
-        '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>' +
-        r.product +
-        '</div>' +
-        '<div class="tm-stars">' + starsSVG() + '</div>' +
-        '<blockquote class="tm-quote">"' + r.quote + '"</blockquote>' +
-        '<div class="tm-author">' +
-        '<div class="tm-author__name">' + r.name + '</div>' +
-        '<div class="tm-author__meta">' +
-        '<span class="tm-author__loc">' +
-        '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
-        r.loc +
-        '</span>' +
-        '<span class="tm-author__verified">' +
-        '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>' +
-        'Verified · ' + r.date +
-        '</span>' +
-        '</div>' +
-        '</div>'
-      );
-    }
+    const pad = (n: number) => String(n).padStart(2, '0');
 
-    function updateCounter() {
-      var el = document.getElementById('tmCounter');
-      if (!el) return;
-      var n = String(activeIdx + 1);
-      if (n.length < 2) n = '0' + n;
-      var tot = String(total);
-      if (tot.length < 2) tot = '0' + tot;
-      el.innerHTML = '<span>' + n + '</span> / ' + tot;
-    }
-
-    function updateThumbs() {
-      document.querySelectorAll('#tmThumbs .tm-thumb').forEach(function (t, i) {
-        t.classList.toggle('tm-thumb--active', i === activeIdx);
+    function setActive(idx: number) {
+      if (idx === active) return;
+      active = (idx + total) % total;
+      texts.forEach((el, i) => {
+        const on = i === active;
+        el.classList.toggle('is-active', on);
+        if (on) el.removeAttribute('aria-hidden');
+        else el.setAttribute('aria-hidden', 'true');
       });
+      portraits.forEach((el, i) => el.classList.toggle('is-active', i === active));
+      thumbs.forEach((el, i) => el.classList.toggle('tm-thumb--active', i === active));
+      // Update only the existing <span> text — rebuilding via innerHTML would
+      // drop Astro's scoped style on the new node and lose the active color.
+      const curEl = counter?.querySelector('span');
+      if (curEl) curEl.textContent = pad(active + 1);
     }
 
-    function transitionTo(idx) {
-      if (animating || idx === activeIdx) return;
-      animating = true;
-
-      var textEl = document.getElementById('tmText');
-      var portraitEl = document.getElementById('tmPortrait');
-      if (!textEl || !portraitEl) return;
-
-      /* fade out */
-      textEl.classList.add('tm-text--exit');
-      portraitEl.classList.add('tm-img--exit');
-
-      setTimeout(function () {
-        activeIdx = idx;
-        var r = reviews[activeIdx];
-
-        /* swap content */
-        textEl.innerHTML = buildText(r);
-        portraitEl.src = r.portrait;
-        portraitEl.alt = r.name;
-
-        updateCounter();
-        updateThumbs();
-
-        /* fade in */
-        textEl.classList.remove('tm-text--exit');
-        portraitEl.classList.remove('tm-img--exit');
-
-        setTimeout(function () { animating = false; }, 380);
-      }, 280);
-    }
-
-    function navigate(dir) {
-      transitionTo(dir === 'next'
-        ? (activeIdx + 1) % total
-        : (activeIdx - 1 + total) % total
-      );
+    function navigate(dir: number) {
+      setActive(active + dir);
     }
 
     function startAuto() {
-      clearInterval(autoTimer);
-      autoTimer = setInterval(function () {
-        if (!document.hidden) navigate('next');
+      stopAuto();
+      if (paused) return;
+      autoTimer = setInterval(() => {
+        if (!document.hidden) navigate(1);
       }, 5800);
     }
 
-    function init() {
-      var textEl = document.getElementById('tmText');
-      var portraitEl = document.getElementById('tmPortrait');
-      var thumbsEl = document.getElementById('tmThumbs');
-      if (!textEl || !portraitEl || !thumbsEl) return;
+    /* pause / play toggle */
+    const pauseBtn = document.getElementById('tmPause');
+    function renderPause() {
+      if (!pauseBtn) return;
+      pauseBtn.setAttribute('aria-pressed', String(paused));
+      pauseBtn.setAttribute('aria-label', paused ? 'Play automatic rotation' : 'Pause automatic rotation');
+      pauseBtn.innerHTML = paused
+        ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="6 4 20 12 6 20 6 4" /></svg>'
+        : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="9" y1="5" x2="9" y2="19" /><line x1="15" y1="5" x2="15" y2="19" /></svg>';
+    }
+    pauseBtn?.addEventListener('click', () => {
+      paused = !paused;
+      renderPause();
+      if (paused) stopAuto(); else startAuto();
+    });
+    renderPause();
 
-      /* initial render */
-      var r0 = reviews[0];
-      textEl.innerHTML = buildText(r0);
-      portraitEl.src = r0.portrait;
-      portraitEl.alt = r0.name;
-      updateCounter();
-
-      /* thumbnails */
-      reviews.forEach(function (r, i) {
-        var div = document.createElement('div');
-        div.className = 'tm-thumb' + (i === 0 ? ' tm-thumb--active' : '');
-        div.setAttribute('role', 'button');
-        div.setAttribute('tabindex', '0');
-        div.setAttribute('aria-label', 'Review by ' + r.name);
-        div.innerHTML = '<img src="' + r.thumb + '" alt="' + r.name + '" loading="lazy" />';
-        div.addEventListener('click', function () { clearInterval(autoTimer); transitionTo(i); startAuto(); });
-        div.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { clearInterval(autoTimer); transitionTo(i); startAuto(); } });
-        thumbsEl.appendChild(div);
-      });
-
-      /* arrows */
-      var prevBtn = document.getElementById('tmPrev');
-      var nextBtn = document.getElementById('tmNext');
-      if (prevBtn) prevBtn.addEventListener('click', function () { clearInterval(autoTimer); navigate('prev'); startAuto(); });
-      if (nextBtn) nextBtn.addEventListener('click', function () { clearInterval(autoTimer); navigate('next'); startAuto(); });
-
-      /* touch swipe */
-      var body = document.querySelector('.tm-body');
-      if (body) {
-        body.addEventListener('touchstart', function (e) { touchStartX = e.touches[0].clientX; }, { passive: true });
-        body.addEventListener('touchend', function (e) {
-          if (touchStartX === null) return;
-          var dx = e.changedTouches[0].clientX - touchStartX;
-          if (Math.abs(dx) > 50) { clearInterval(autoTimer); navigate(dx < 0 ? 'next' : 'prev'); startAuto(); }
-          touchStartX = null;
-        }, { passive: true });
-        body.addEventListener('mouseenter', function () { clearInterval(autoTimer); });
-        body.addEventListener('mouseleave', startAuto);
-      }
-
-      /* keyboard */
-      document.addEventListener('keydown', function (e) {
-        var active = document.activeElement;
-        var inSection = document.querySelector('.testimonials');
-        if (!inSection || !inSection.contains(active)) return;
-        if (e.key === 'ArrowLeft') { clearInterval(autoTimer); navigate('prev'); startAuto(); }
-        if (e.key === 'ArrowRight') { clearInterval(autoTimer); navigate('next'); startAuto(); }
-      });
-
-      startAuto();
+    function stopAuto() {
+      if (autoTimer) clearInterval(autoTimer);
+      autoTimer = null;
     }
 
-    document.addEventListener('DOMContentLoaded', init);
+    /* thumbnails */
+    thumbs.forEach((thumb, i) => {
+      const jump = () => { stopAuto(); setActive(i); startAuto(); };
+      thumb.addEventListener('click', jump);
+      thumb.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jump(); }
+      });
+    });
+
+    /* arrows */
+    document.getElementById('tmPrev')?.addEventListener('click', () => { stopAuto(); navigate(-1); startAuto(); });
+    document.getElementById('tmNext')?.addEventListener('click', () => { stopAuto(); navigate(1); startAuto(); });
+
+    /* touch swipe + pause on hover */
+    const body = section.querySelector('.tm-body');
+    if (body) {
+      body.addEventListener('touchstart', (e) => { touchStartX = (e as TouchEvent).touches[0].clientX; }, { passive: true });
+      body.addEventListener('touchend', (e) => {
+        if (touchStartX === null) return;
+        const dx = (e as TouchEvent).changedTouches[0].clientX - touchStartX;
+        if (Math.abs(dx) > 50) { stopAuto(); navigate(dx < 0 ? 1 : -1); startAuto(); }
+        touchStartX = null;
+      }, { passive: true });
+      body.addEventListener('mouseenter', stopAuto);
+      body.addEventListener('mouseleave', startAuto);
+    }
+
+    /* keyboard — only when focus is inside the section */
+    document.addEventListener('keydown', (e) => {
+      if (!section.contains(document.activeElement)) return;
+      if (e.key === 'ArrowLeft') { stopAuto(); navigate(-1); startAuto(); }
+      if (e.key === 'ArrowRight') { stopAuto(); navigate(1); startAuto(); }
+    });
+
+    startAuto();
   }());
 </script>

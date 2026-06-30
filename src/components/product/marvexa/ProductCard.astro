@@ -1,6 +1,6 @@
 ---
 // ============================================================
-//  ProductCard (OMNIX skin, Shopify data). Reused by every product
+//  ProductCard (MARVEXA skin, Shopify data). Reused by every product
 //  grid (best-sellers, recommendations). Quick Add adds the first
 //  variant (Option B) or links to the PDP; Quick View opens the
 //  shared modal. Wishlist + Compare are localStorage. "New" badge
@@ -9,7 +9,7 @@
 import { Image } from 'astro:assets';
 import type { ProductCard as TProductCard } from '~/lib/shopify/types';
 import { formatMoney, percentOff, hasPriceRange } from '~/lib/money';
-import Icon from '~/components/ui/omnix/Icon.astro';
+import Icon from '~/components/ui/marvexa/Icon.astro';
 
 interface Props {
   product: TProductCard;
@@ -95,6 +95,13 @@ const optionData = needsPicker
     )
   : '';
 const currency = price.currencyCode;
+
+// Real review data (metafields) — rating row only renders when present.
+const rating = product.rating ?? null;
+const ratingCount = product.ratingCount ?? null;
+const starsFull = rating != null ? Math.round(rating) : 0;
+// Eyebrow: prefer product type (e.g. "Men"), fall back to vendor.
+const eyebrow = product.productType?.trim() || product.vendor?.trim() || '';
 ---
 
 <article class="prod-card" data-tabs={tabs} {...attrs}>
@@ -112,7 +119,14 @@ const currency = price.currencyCode;
             loading={eager ? 'eager' : 'lazy'}
           />
         ) : (
-          <div class="prod-media-empty" />
+          <div class="prod-media-empty" role="img" aria-label={product.title}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <path d="m21 15-5-5L5 21" />
+            </svg>
+            <span>Marvexa</span>
+          </div>
         )
       }
     </a>
@@ -121,21 +135,45 @@ const currency = price.currencyCode;
       {!soldOut && product.isNew && <span class="badge badge-new">New</span>}
       {!soldOut && off > 0 && <span class="badge badge-sale">-{off}%</span>}
     </div>
-    <button
-      class="prod-wish"
-      aria-label="Add to wishlist"
-      data-wish
-      data-handle={product.handle}
-      data-name={product.title}
-      data-price={formatMoney(price)}
-      data-img={img?.url ?? ''}
-      data-href={href}
-    >
-      <Icon name="heart" size={16} />
-    </button>
-    <button class="prod-compare" aria-label="Add to compare" data-compare data-handle={product.handle}>
-      <Icon name="compare" size={15} />
-    </button>
+    <div class="prod-icons">
+      <button
+        class="prod-icon-btn prod-wish"
+        aria-label="Add to wishlist"
+        data-wish
+        data-handle={product.handle}
+        data-name={product.title}
+        data-price={formatMoney(price)}
+        data-img={img?.url ?? ''}
+        data-href={href}
+        data-variant-id={canQuickAdd ? product.firstVariantId : ''}
+        data-needs-picker={needsPicker ? '1' : ''}
+      >
+        <Icon name="heart" size={15} />
+      </button>
+      <button class="prod-icon-btn prod-compare" aria-label="Add to compare" data-compare data-handle={product.handle}>
+        <Icon name="compare" size={14} />
+      </button>
+      <button
+        class="prod-icon-btn prod-qview"
+        aria-label="Quick view"
+        data-qview
+        data-handle={product.handle}
+        data-name={product.title}
+        data-price={formatMoney(price)}
+        data-was={compareAt && off > 0 ? formatMoney(compareAt) : ''}
+        data-save={off > 0 ? `Save ${off}%` : ''}
+        data-desc={product.description ?? ''}
+        data-img={img?.url ?? ''}
+        data-brand={product.vendor ?? ''}
+        data-href={href}
+        data-currency={currency}
+        data-variant-id={canQuickAdd ? product.firstVariantId : ''}
+        data-variants={pickerData}
+        data-options={optionData}
+      >
+        <Icon name="eye" size={14} />
+      </button>
+    </div>
     <div class="prod-actions">
       {
         canQuickAdd ? (
@@ -153,44 +191,24 @@ const currency = price.currencyCode;
               data-variants={pickerData}
               data-options={optionData}
             >
-              <Icon name="plus" size={13} stroke={2.4} /> Select Options
+              Select Options
             </button>
           ) : (
             <button class="prod-quick" data-add data-variant-id={product.firstVariantId}>
-              <Icon name="plus" size={13} stroke={2.4} /> Quick Add
+              Add to Bag
             </button>
           )
         ) : (
           <a class="prod-quick" href={href}>
-            <Icon name="plus" size={13} stroke={2.4} /> {soldOut ? 'View' : 'Quick Add'}
+            {soldOut ? 'View Product' : 'Add to Bag'}
           </a>
         )
       }
-      <button
-        class="prod-qview"
-        aria-label="Quick view"
-        data-qview
-        data-handle={product.handle}
-        data-name={product.title}
-        data-price={formatMoney(price)}
-        data-was={compareAt && off > 0 ? formatMoney(compareAt) : ''}
-        data-save={off > 0 ? `Save ${off}%` : ''}
-        data-desc={product.description ?? ''}
-        data-img={img?.url ?? ''}
-        data-brand={product.vendor ?? ''}
-        data-href={href}
-        data-currency={currency}
-        data-variant-id={canQuickAdd ? product.firstVariantId : ''}
-        data-variants={pickerData}
-        data-options={optionData}
-      >
-        <Icon name="eye" size={15} />
-      </button>
     </div>
   </div>
   <div class="prod-body">
     <div class="prod-meta">
-      {product.vendor && <span class="prod-brand">{product.vendor}</span>}
+      {eyebrow && <span class="prod-brand">{eyebrow}</span>}
     </div>
     <h3 class="prod-title"><a href={href}>{product.title}</a></h3>
     <div class="prod-foot">
@@ -220,11 +238,25 @@ const currency = price.currencyCode;
         )
       }
     </div>
+    {
+      rating != null && (
+        <div class="prod-rating">
+          <span class="prod-stars" aria-label={`Rated ${rating} out of 5`}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <span class:list={['star-ic', { 'is-on': i < starsFull }]}>
+                <Icon name="star" size={12} />
+              </span>
+            ))}
+          </span>
+          {ratingCount != null && <span class="prod-rcount">({ratingCount})</span>}
+        </div>
+      )
+    }
   </div>
 </article>
 
 <style>
-  /* ProductCard — Maison skin. Markup + data-* wiring unchanged; only
+  /* ProductCard — Marvexa skin. Markup + data-* wiring unchanged; only
      visuals. Hover reveals the compare icon and the slide-up action bar. */
   .prod-card {
     position: relative;
@@ -257,6 +289,19 @@ const currency = price.currencyCode;
     width: 100%;
     aspect-ratio: 3/4;
     background: var(--card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: color-mix(in srgb, var(--ink, #111) 28%, transparent);
+  }
+
+  .prod-media-empty span {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
   }
 
   /* Badges — top-left glass chips */
@@ -283,9 +328,8 @@ const currency = price.currencyCode;
   }
 
   .badge-new {
-    background: rgba(122, 143, 58, .82);
+    background: var(--accent);
     color: #fff;
-    border: 1px solid rgba(255, 255, 255, .22);
   }
 
   .badge-sale {
@@ -300,90 +344,76 @@ const currency = price.currencyCode;
     border: 1px solid rgba(255, 255, 255, .14);
   }
 
-  /* Wishlist — top-right glass circle, always visible */
-  .prod-wish {
+  /* Icon stack — top-right round buttons (wishlist / compare / quick view) */
+  .prod-icons {
     position: absolute;
     top: 12px;
     right: 12px;
     z-index: 4;
-    width: 34px;
-    height: 34px;
-    background: rgba(255, 255, 255, .88);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .prod-icon-btn {
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, .92);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, .55);
+    border: 1px solid rgba(255, 255, 255, .6);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--text);
     box-shadow: 0 2px 10px rgba(0, 0, 0, .1);
-    transition: background .2s ease, transform .2s ease;
+    transition: opacity .25s ease, transform .28s cubic-bezier(.25, .46, .45, .94), background .18s ease, color .18s ease;
   }
 
-  .prod-wish:hover {
+  .prod-icon-btn:hover {
     background: #fff;
-    transform: scale(1.08);
+    color: var(--accent);
   }
 
-  .prod-wish.is-active {
-    color: var(--rust);
-  }
-
-  .prod-wish.is-active svg {
-    fill: var(--rust);
-  }
-
-  /* Compare — stacked below wishlist, slides in on hover */
-  .prod-compare {
-    position: absolute;
-    top: 54px;
-    right: 12px;
-    z-index: 4;
-    width: 34px;
-    height: 34px;
-    background: rgba(255, 255, 255, .88);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, .55);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, .1);
+  /* Wishlist sits always-visible; compare + quick view reveal on hover. */
+  .prod-compare,
+  .prod-qview {
     opacity: 0;
     transform: translateX(10px);
-    transition: opacity .25s ease, transform .28s cubic-bezier(.25, .46, .45, .94), background .18s ease;
   }
 
-  .prod-card:hover .prod-compare {
+  .prod-card:hover .prod-compare,
+  .prod-card:hover .prod-qview {
     opacity: 1;
     transform: translateX(0);
   }
 
-  .prod-compare:hover {
-    background: #fff;
-    transform: scale(1.09);
+  .prod-wish.is-active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .prod-wish.is-active svg {
+    fill: #fff;
   }
 
   .prod-compare.is-active {
     background: var(--accent);
     color: #fff;
+    border-color: var(--accent);
   }
 
-  /* Action bar — slides up from the bottom on hover */
+  /* Add-to-bag bar — full-width olive, slides up from the bottom on hover */
   .prod-actions {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    display: flex;
-    gap: 6px;
-    padding: 10px;
     opacity: 0;
-    transform: translateY(8px);
-    transition: opacity .24s ease, transform .26s cubic-bezier(.25, .46, .45, .94);
+    transform: translateY(100%);
+    transition: opacity .24s ease, transform .3s cubic-bezier(.25, .46, .45, .94);
     z-index: 3;
   }
 
@@ -393,40 +423,22 @@ const currency = price.currencyCode;
   }
 
   .prod-quick {
-    flex: 1;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 11px 8px;
+    width: 100%;
+    padding: 15px 8px;
     background: var(--dark);
     color: #fff;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 1.2px;
+    letter-spacing: 1.4px;
     text-transform: uppercase;
-    border-radius: 4px;
     transition: background .18s ease;
   }
 
   .prod-quick:hover {
     background: var(--accent);
-  }
-
-  .prod-qview {
-    width: 40px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #fff;
-    color: var(--text);
-    border-radius: 4px;
-    transition: background .18s ease, color .18s ease;
-  }
-
-  .prod-qview:hover {
-    background: var(--card);
   }
 
   /* Info */
@@ -532,6 +544,44 @@ const currency = price.currencyCode;
   .swatch-more {
     font-size: 10px;
     font-weight: 600;
+    color: var(--muted);
+  }
+
+  /* Rating row */
+  .prod-rating {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .prod-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+  }
+
+  .star-ic {
+    display: inline-flex;
+    color: var(--border);
+  }
+
+  .star-ic svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .star-ic.is-on {
+    color: var(--accent);
+  }
+
+  .star-ic.is-on svg {
+    fill: var(--accent);
+  }
+
+  .prod-rcount {
+    font-size: 11px;
+    font-weight: 500;
     color: var(--muted);
   }
 </style>

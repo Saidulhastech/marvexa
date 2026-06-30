@@ -1,27 +1,30 @@
 ---
 // ============================================================
-//  Home (Maison) — server-rendered landing. Shopify data is fetched
+//  Home (Marvexa) — server-rendered landing. Shopify data is fetched
 //  here and passed to the dynamic sections; the rest are static
 //  presentational sections. The Shopify data layer (getProducts) is
 //  used as-is — never modified.
 // ============================================================
+import { getCollection } from 'astro:content';
 import Layout from '~/layouts/Layout.astro';
-import { getProducts, getAllCollections } from '~/lib/shopify';
+import { getProducts, getProduct, getAllCollections, getCollectionCount } from '~/lib/shopify';
 import { applyMarketCache } from '~/lib/market';
-import type { ProductCard, Collection } from '~/lib/shopify/types';
+import type { ProductCard, Collection, Product } from '~/lib/shopify/types';
 
-import Hero from '~/components/home/maison/Hero.astro';
-import Categories from '~/components/home/maison/Categories.astro';
-import NewArrivals from '~/components/home/maison/NewArrivals.astro';
-import Lookbook from '~/components/home/maison/Lookbook.astro';
-import BestSellers from '~/components/home/maison/BestSellers.astro';
-import StyleFeed from '~/components/home/maison/StyleFeed.astro';
-import Campaign from '~/components/home/maison/Campaign.astro';
-import Testimonials from '~/components/home/maison/Testimonials.astro';
-import Journal from '~/components/home/maison/Journal.astro';
-import Newsletter from '~/components/home/maison/Newsletter.astro';
+import Hero from '~/components/home/marvexa/Hero.astro';
+import Marquee from '~/components/home/marvexa/Marquee.astro';
+import Categories from '~/components/home/marvexa/Categories.astro';
+import NewArrivals from '~/components/home/marvexa/NewArrivals.astro';
+import Lookbook from '~/components/home/marvexa/Lookbook.astro';
+import BestSellers from '~/components/home/marvexa/BestSellers.astro';
+import StyleFeed from '~/components/home/marvexa/StyleFeed.astro';
+import Campaign from '~/components/home/marvexa/Campaign.astro';
+import Testimonials from '~/components/home/marvexa/Testimonials.astro';
+import Journal from '~/components/home/marvexa/Journal.astro';
+import Newsletter from '~/components/home/marvexa/Newsletter.astro';
 
 let products: ProductCard[] = [];
+let newestProducts: ProductCard[] = [];
 let collections: Collection[] = [];
 let loadError = false;
 
@@ -29,11 +32,13 @@ const market = Astro.locals.market;
 try {
   // Fetch products + real collections together so the category grid reflects
   // the actual storefront (no hardcoded category cards / fake counts).
-  const [page, cols] = await Promise.all([
+  const [page, newest, cols] = await Promise.all([
     getProducts({ pageSize: 12, sortKey: 'BEST_SELLING' }, market),
+    getProducts({ pageSize: 12, sortKey: 'CREATED_AT', reverse: true }, market),
     getAllCollections(),
   ]);
   products = page.items;
+  newestProducts = newest.items;
   collections = cols;
 } catch (err) {
   console.error('[home] Shopify load failed:', (err as Error).message);
@@ -47,11 +52,74 @@ if (!loadError) {
   applyMarketCache(Astro.response.headers, market);
 }
 
-const newArrivals = products.slice(0, 8);
+// Best Sellers = genuine BEST_SELLING top 3. New Arrivals = newest products,
+// minus any that are also in the best-sellers row so nothing shows twice.
 const bestSellers = products.slice(0, 3);
+const bestSellerIds = new Set(bestSellers.map((p) => p.id));
+const newArrivals = newestProducts.filter((p) => !bestSellerIds.has(p.id)).slice(0, 8);
+
+// Aggregate review data for the Best-Sellers proof strip (real, not hardcoded).
+const ratedProducts = products.filter((p) => p.rating != null);
+const ratingAvg = ratedProducts.length
+  ? ratedProducts.reduce((sum, p) => sum + (p.rating ?? 0), 0) / ratedProducts.length
+  : null;
+const reviewTotal = products.reduce((sum, p) => sum + (p.ratingCount ?? 0), 0) || null;
+
+// ── Shop the Look — resolve each look's hotspots to real Shopify products ──
+// Pinned slots (handle set) fetch by handle; blank slots fall back to best-
+// sellers filled in order with no repeats. Editorial coords/labels/photo come
+// from the lookbook YAML; product name/price/image/variants are live Shopify.
+type LookProduct = ProductCard | Product;
+interface ResolvedLookItem { top: string; left: string; cardLeft: boolean; product: LookProduct | null }
+interface ResolvedLook { id: string; label: string; image: string; items: ResolvedLookItem[] }
+let looks: ResolvedLook[] = [];
+try {
+  const entries = (await getCollection('lookbook')).sort((a, b) => a.data.order - b.data.order);
+  const flat = entries.flatMap((e) => e.data.items);
+  // Fetch every pinned handle concurrently (null for blank slots).
+  const fetched = await Promise.all(
+    flat.map((it) => (it.handle ? getProduct(it.handle, market).catch(() => null) : Promise.resolve(null))),
+  );
+  // Best-seller pool for blank slots — never reuse a product pinned by handle.
+  const pinnedHandles = new Set(flat.map((it) => it.handle).filter(Boolean) as string[]);
+  const pool = products.filter((p) => !pinnedHandles.has(p.handle));
+  let k = 0; // walks `fetched` in flatten order
+  let ptr = 0; // walks the fallback pool
+  looks = entries.map((e) => ({
+    id: e.id,
+    label: e.data.label,
+    image: e.data.image,
+    items: e.data.items.map((it) => {
+      const product = fetched[k++] ?? pool[ptr++] ?? null;
+      return { top: it.top, left: it.left, cardLeft: it.cardLeft, product };
+    }),
+  }));
+} catch (err) {
+  console.error('[home] Lookbook load failed:', (err as Error).message);
+}
+
+// Real "New Arrivals" collection (if the store has one) drives the footer's
+// total count + "View All" link; otherwise fall back to the full shop.
+const naCollection = collections.find(
+  (c) => /new[\s-]?arrival/i.test(c.handle) || /new\s*arrival/i.test(c.title),
+);
+const naHref = naCollection ? `/collections/${naCollection.handle}` : '/products';
+let naTotal: number | undefined;
+let naTotalPlus = false;
+if (naCollection) {
+  try {
+    const c = await getCollectionCount(naCollection.handle);
+    if (c) {
+      naTotal = c.count;
+      naTotalPlus = c.plus;
+    }
+  } catch {
+    /* footer still shows "Showing N new styles" without a total */
+  }
+}
 ---
 
-<Layout>
+<Layout transparentHeader>
   {
     loadError ? (
       <div class="wrap" style="padding: 160px 0 100px; text-align: center;">
@@ -63,10 +131,11 @@ const bestSellers = products.slice(0, 3);
     ) : (
       <>
         <Hero />
+        <Marquee />
         <Categories collections={collections} />
-        <NewArrivals products={newArrivals} />
-        <Lookbook />
-        <BestSellers products={bestSellers} />
+        <NewArrivals products={newArrivals} total={naTotal} totalPlus={naTotalPlus} viewAllHref={naHref} />
+        <Lookbook looks={looks} />
+        <BestSellers products={bestSellers} ratingAvg={ratingAvg} reviewTotal={reviewTotal} />
         <StyleFeed />
         <Campaign />
         <Testimonials />

@@ -1,16 +1,17 @@
 ---
 // ============================================================
-//  Blog detail (OMNIX) — a single journal post. Editorial layout:
-//  reading-progress bar, hero, sticky table of contents (from the
-//  MDX headings), author byline, share row, end CTA, and related
-//  posts. SSR: looks the post up by slug, 404 if missing.
+//  Blog detail (MARVEXA "Modern") — a single journal article in the
+//  `.bd-pg` editorial layout: meta bar, title, hero, article body +
+//  sticky TOC sidebar, tags, author card, and related posts. Driven
+//  by the `blog` content collection; SSR looks the post up by slug
+//  and 404s if missing. Site chrome + newsletter come from Layout.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
-import PostCard from '~/components/blog/PostCard.astro';
-import { Image } from 'astro:assets';
+import '~/styles/blog-detail.css';
+import Newsletter from '~/components/home/marvexa/Newsletter.astro';
 import { getEntry, getCollection, render } from 'astro:content';
 import { resolveImage } from '~/lib/asset';
-import { BRAND } from '~/config/omnix';
+import { BRAND } from '~/config/marvexa';
 
 const { slug } = Astro.params;
 const post = slug ? await getEntry('blog', slug) : undefined;
@@ -21,6 +22,10 @@ if (!post) {
 
 const fmt = (d: Date) =>
   d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+const fmtShort = (d: Date) =>
+  d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+const initials = (name: string) =>
+  name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
 let Content: Awaited<ReturnType<typeof render>>['Content'] | undefined;
 let headings: Awaited<ReturnType<typeof render>>['headings'] = [];
@@ -30,19 +35,20 @@ let author: Awaited<ReturnType<typeof getEntry<'authors', string>>> | undefined;
 if (post) {
   const rendered = await render(post);
   Content = rendered.Content;
-  headings = rendered.headings.filter((h) => h.depth === 2 || h.depth === 3);
+  headings = rendered.headings.filter((h) => h.depth === 2);
   author = post.data.author ? await getEntry('authors', post.data.author) : undefined;
   related = (await getCollection('blog'))
     .filter((p) => p.id !== post.id)
-    .sort((a, b) => a.data.order - b.data.order)
+    .sort((a, b) => b.data.date.getTime() - a.data.date.getTime())
     .slice(0, 3);
 }
 
-const canonical = new URL(Astro.url.pathname, Astro.url.origin).href;
-const shareText = post ? encodeURIComponent(post.data.title) : '';
-const shareUrl = encodeURIComponent(canonical);
+const authorName = author?.data.name ?? 'MARVEXA';
+const authorRole = author?.data.role ?? '';
+const authorBio = author?.data.bio ?? '';
+const authorAvatar = author?.data.avatar;
 
-// ---- Article JSON-LD + OG image for rich results ----
+const canonical = post ? new URL(Astro.url.pathname, Astro.url.origin).href : undefined;
 const heroImg = post ? resolveImage(post.data.image) : null;
 const ogImage = heroImg ? new URL(heroImg.src, Astro.site ?? Astro.url.origin).href : undefined;
 const articleJsonLd = post
@@ -62,175 +68,235 @@ const articleJsonLd = post
 
 {
   post && Content ? (
-    <Layout title={post.data.title} description={post.data.excerpt} type="article" image={ogImage} jsonLd={articleJsonLd}>
-      {/* Reading progress */}
-      <div class="post-progress"><span id="readBar"></span></div>
+    <Layout
+      title={`${post.data.title} — MARVEXA Journal`}
+      description={post.data.excerpt}
+      type="article"
+      image={ogImage}
+      jsonLd={articleJsonLd}
+    >
+      <main id="mainContent" class="bd-pg">
 
-      <article class="post">
-        {/* ---- Editorial header ---- */}
-        <header class="post-hdr">
-          <div class="container post-hdr-wrap">
-            <a class="post-back" href="/blog">← The journal</a>
-
-            {post.data.tags.length > 0 && (
-              <div class="post-tags">
-                {post.data.tags.map((t) => <span class="blog-tag">{t}</span>)}
-              </div>
-            )}
-
-            <h1 class="post-title">{post.data.title}</h1>
-            <p class="post-excerpt">{post.data.excerpt}</p>
-
-            <div class="post-meta">
-              {author ? (
-                <a class="post-author" href={`/blog/author/${post.data.author}`}>
-                  {author.data.avatar && <img src={author.data.avatar} alt={author.data.name} />}
-                  <span>
-                    <b>{author.data.name}</b>
-                    <em>
-                      {fmt(post.data.date)}
-                      {post.data.readingTime && <> · {post.data.readingTime}</>}
-                    </em>
-                  </span>
-                </a>
-              ) : (
-                <span class="post-date">
-                  {fmt(post.data.date)}
-                  {post.data.readingTime && <> · {post.data.readingTime}</>}
-                </span>
+        {/* META BAR ───────────────────────── */}
+        <div class="bd-meta-bar">
+          <div class="bd-meta-left">
+            <nav style="font-family:var(--fb);font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
+              <a href="/" style="color:var(--muted);text-decoration:none;transition:color .18s;"
+                onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Home</a>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+              <a href="/blog" style="color:var(--muted);text-decoration:none;transition:color .18s;"
+                onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Journal</a>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+              <span style="color:var(--text);font-weight:600;">{post.data.category ?? 'Article'}</span>
+            </nav>
+            <span class="bd-cat">{post.data.category ?? 'Journal'}{post.data.featured ? " · Editor's Pick" : ''}</span>
+            <div class="bd-meta-items">
+              {post.data.readingTime && (
+                <span class="bd-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg> {post.data.readingTime}</span>
               )}
-
-              <div class="post-share" aria-label="Share">
-                <button class="post-share-btn" id="copyLink" type="button" aria-label="Copy link">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                </button>
-                <a class="post-share-btn" href={`https://twitter.com/intent/tweet?url=${shareUrl}&text=${shareText}`} target="_blank" rel="noopener" aria-label="Share on X">
-                  <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M18.9 2H22l-7.5 8.6L23 22h-6.9l-5.4-7-6.2 7H1.4l8-9.2L1 2h7l4.9 6.5L18.9 2Zm-2.4 18h1.9L7.6 4H5.6l10.9 16Z"/></svg>
-                </a>
-                <a class="post-share-btn" href={`https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}`} target="_blank" rel="noopener" aria-label="Share on LinkedIn">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6.94 5a2 2 0 1 1-4-.002 2 2 0 0 1 4 .002ZM7 8.48H3V21h4V8.48Zm6.32 0H9.34V21h3.94v-6.57c0-3.66 4.77-4 4.77 0V21H22v-7.93c0-6.17-7.06-5.94-8.72-2.91l.04-1.68Z"/></svg>
-                </a>
-              </div>
+              <span class="bd-meta-sep"></span>
+              <span class="bd-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg> {fmt(post.data.date)}</span>
             </div>
-          </div>
-        </header>
-
-        {/* ---- Hero ---- */}
-        <div class="container">
-          <div class="post-hero">
-            <Image src={resolveImage(post.data.image)} alt={post.data.title} width={1280} height={680} />
           </div>
         </div>
 
-        {/* ---- Body + TOC ---- */}
-        <div class="container post-layout">
-          <div class="rte post-body">
+        {/* TITLE ──────────────────────────── */}
+        <div class="bd-title-wrap">
+          <h1 class="bd-title">{post.data.title}</h1>
+          <p class="bd-intro">{post.data.excerpt}</p>
+        </div>
+
+        {/* HERO IMAGE ─────────────────────── */}
+        <div class="bd-wrap">
+          <div class="bd-hero-img">
+            <img src={resolveImage(post.data.image).src} alt={post.data.title} loading="eager" />
+          </div>
+        </div>
+
+        {/* ARTICLE LAYOUT ─────────────────── */}
+        <div class="bd-layout">
+
+          {/* BODY */}
+          <article class="bd-body">
             <Content />
 
-            {author && (
-              <aside class="post-authorcard">
-                {author.data.avatar && <img src={author.data.avatar} alt={author.data.name} />}
-                <div>
-                  <div class="pa-by">Written by</div>
-                  <a class="pa-name" href={`/blog/author/${post.data.author}`}>{author.data.name}</a>
-                  {author.data.role && <div class="pa-role">{author.data.role}</div>}
-                  {author.data.bio && <p class="pa-bio">{author.data.bio}</p>}
-                  <a class="pa-link" href={`/blog/author/${post.data.author}`}>More from {author.data.name} →</a>
-                </div>
-              </aside>
+            {post.data.tags.length > 0 && (
+              <div class="bd-tags">
+                {post.data.tags.map((t) => <a href="/blog" class="bd-tag">{t}</a>)}
+              </div>
             )}
-          </div>
 
-          {headings.length > 0 && (
-            <aside class="post-toc" aria-label="On this page">
-              <div class="post-toc-inner">
-                <div class="post-toc-h">On this page</div>
-                <nav>
-                  {headings.map((h) => (
-                    <a href={`#${h.slug}`} class:list={['post-toc-link', { sub: h.depth === 3 }]} data-toc={h.slug}>
-                      {h.text}
+            {author && (
+              <div class="bd-author-card">
+                <div class="bd-author-card-av">{authorAvatar ? <img src={authorAvatar} alt={authorName} /> : initials(authorName)}</div>
+                <div>
+                  <div class="bd-author-card-lbl">Written by</div>
+                  <div class="bd-author-card-name">
+                    {post.data.author ? <a href={`/blog/author/${post.data.author}`}>{authorName}</a> : authorName}
+                  </div>
+                  {authorRole && <div class="bd-author-card-role">{authorRole}, MARVEXA</div>}
+                  {authorBio && <p class="bd-author-card-bio">{authorBio}</p>}
+                </div>
+              </div>
+            )}
+          </article>
+
+          {/* SIDEBAR */}
+          <aside class="bd-sidebar">
+            {headings.length > 0 && (
+              <div class="bd-toc-card">
+                <div class="bd-toc-title">In this article</div>
+                <div class="bd-toc-list">
+                  {headings.map((h, i) => (
+                    <a href={`#${h.slug}`} class="bd-toc-item">
+                      <span class="bd-toc-n">{String(i + 1).padStart(2, '0')}</span>
+                      <span class="bd-toc-t">{h.text}</span>
                     </a>
                   ))}
-                </nav>
+                </div>
               </div>
-            </aside>
-          )}
-        </div>
-
-        {/* ---- End CTA ---- */}
-        <div class="container">
-          <section class="post-cta">
-            <div>
-              <h3>Enjoyed the read?</h3>
-              <p>Get our buying guides and gear stories — no spam, just the good stuff.</p>
+            )}
+            <div class="bd-sidebar-share">
+              <div class="bd-sidebar-share-title">Share this article</div>
+              <div class="bd-sidebar-btns">
+                <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(canonical ?? '')}&text=${encodeURIComponent(post.data.title)}`}
+                  target="_blank" rel="noopener" class="bd-sb-btn"><svg width="14" height="14" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                      d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z" />
+                  </svg> Twitter</a>
+                <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(canonical ?? '')}`}
+                  target="_blank" rel="noopener" class="bd-sb-btn"><svg width="14" height="14" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+                  </svg> Facebook</a>
+                <button type="button" id="bdCopyLink" class="bd-sb-btn"><svg width="14" height="14" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg> Copy</button>
+              </div>
             </div>
-            <form class="post-cta-form" id="postCtaForm" novalidate>
-              <input type="email" placeholder="your@email.com" required aria-label="Email" />
-              <button class="btn btn-primary" type="submit">Subscribe</button>
-            </form>
-          </section>
+          </aside>
         </div>
 
-        {/* ---- Related ---- */}
+        {/* RELATED POSTS ───────────────────── */}
         {related.length > 0 && (
-          <div class="container">
-            <h2 class="post-related-h">More from the journal</h2>
-            <div class="blog-grid">
-              {related.map((p) => <PostCard post={p} />)}
+          <section class="bd-related">
+            <div class="bd-related-inner">
+              <div class="bd-related-head">
+                <h2 class="bd-related-title">Continue Reading</h2>
+                <a href="/blog"
+                  style="display:inline-flex;align-items:center;gap:7px;font-family:var(--fb);font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#fff;text-decoration:none;background:var(--text);border:1.5px solid var(--text);border-radius:4px;padding:11px 20px;white-space:nowrap;transition:background .2s,border-color .2s;"
+                  onmouseover="this.style.background='var(--accent)';this.style.borderColor='var(--accent)'"
+                  onmouseout="this.style.background='var(--text)';this.style.borderColor='var(--text)'">View all <svg
+                    width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="13 6 19 12 13 18" />
+                  </svg></a>
+              </div>
+              <div class="bd-related-grid">
+                {
+                  related.map((p) => (
+                    <a href={`/blog/${p.id}`} class="bd-rel-card">
+                      <div class="bd-rel-img"><img src={resolveImage(p.data.image).src} alt={p.data.title} loading="lazy" /></div>
+                      <div class="bd-rel-body">
+                        <span class="bd-rel-cat">{p.data.category}</span>
+                        <div class="bd-rel-title">{p.data.title}</div>
+                        <div class="bd-rel-meta">
+                          {p.data.readingTime && (
+                            <span class="bd-rel-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                              </svg> {p.data.readingTime}</span>
+                          )}
+                          <span class="bd-meta-sep" style="width:3px;height:3px;border-radius:50%;background:var(--border);"></span>
+                          <span class="bd-rel-meta-item">{fmtShort(p.data.date)}</span>
+                        </div>
+                      </div>
+                    </a>
+                  ))
+                }
+              </div>
             </div>
-          </div>
+          </section>
         )}
-      </article>
+
+      </main>
+
+      {/* ── Newsletter CTA (last — overlaps the footer) ── */}
+      <Newsletter surface="var(--bg)" padTop="0" />
 
       <script>
-        // Reading progress bar.
-        const bar = document.getElementById('readBar');
-        const article = document.querySelector('.post-body');
-        function onScroll() {
-          if (!bar || !article) return;
-          const rect = (article as HTMLElement).getBoundingClientRect();
-          const total = (article as HTMLElement).offsetHeight - window.innerHeight;
-          const scrolled = Math.min(Math.max(-rect.top, 0), Math.max(total, 1));
-          bar.style.width = `${(scrolled / Math.max(total, 1)) * 100}%`;
+        // TOC smooth-scroll (offset for the fixed header) + scroll-spy, plus copy-link.
+        const main = document.getElementById('mainContent');
+        if (main) {
+          const tocItems = Array.from(main.querySelectorAll<HTMLAnchorElement>('.bd-toc-item'));
+          const headings = tocItems
+            .map((a) => {
+              const id = (a.getAttribute('href') || '').slice(1);
+              return id ? document.getElementById(id) : null;
+            })
+            .filter((el): el is HTMLElement => !!el);
+
+          const HEADER_OFFSET = 120;
+
+          tocItems.forEach((a) => {
+            a.addEventListener('click', (e) => {
+              const id = (a.getAttribute('href') || '').slice(1);
+              const target = id ? document.getElementById(id) : null;
+              if (!target) return;
+              e.preventDefault();
+              const top = target.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET;
+              window.scrollTo({ top, behavior: 'smooth' });
+              history.replaceState(null, '', '#' + id);
+            });
+          });
+
+          const setActive = () => {
+            const pos = window.scrollY + HEADER_OFFSET + 8;
+            let current = headings[0]?.id;
+            for (const h of headings) {
+              if (h.offsetTop <= pos) current = h.id;
+            }
+            tocItems.forEach((a) => {
+              a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+            });
+          };
+
+          if (headings.length) {
+            setActive();
+            window.addEventListener('scroll', setActive, { passive: true });
+          }
+
+          const copyBtn = document.getElementById('bdCopyLink');
+          copyBtn?.addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(window.location.href);
+              const original = copyBtn.innerHTML;
+              copyBtn.textContent = 'Copied!';
+              setTimeout(() => { copyBtn.innerHTML = original; }, 1500);
+            } catch {}
+          });
         }
-        window.addEventListener('scroll', onScroll, { passive: true });
-        window.addEventListener('resize', onScroll);
-        onScroll();
-
-        // Copy link.
-        document.getElementById('copyLink')?.addEventListener('click', async (e) => {
-          const btn = e.currentTarget as HTMLElement;
-          try {
-            await navigator.clipboard.writeText(window.location.href);
-            btn.classList.add('is-copied');
-            setTimeout(() => btn.classList.remove('is-copied'), 1500);
-          } catch {}
-        });
-
-        // TOC scroll-spy.
-        const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-toc]'));
-        const ids = links.map((l) => l.dataset.toc!).filter(Boolean);
-        const targets = ids.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
-        if (targets.length) {
-          const spy = new IntersectionObserver(
-            (entries) => {
-              entries.forEach((en) => {
-                if (en.isIntersecting) {
-                  links.forEach((l) => l.classList.toggle('is-active', l.dataset.toc === en.target.id));
-                }
-              });
-            },
-            { rootMargin: '-80px 0px -70% 0px' },
-          );
-          targets.forEach((t) => spy.observe(t));
-        }
-
-        // CTA (UI only).
-        document.getElementById('postCtaForm')?.addEventListener('submit', (e) => {
-          e.preventDefault();
-          const f = e.currentTarget as HTMLFormElement;
-          f.innerHTML = '<p class="post-cta-done">Thanks — you’re on the list. ✓</p>';
-        });
       </script>
     </Layout>
   ) : (
@@ -240,153 +306,9 @@ const articleJsonLd = post
           <p class="nf2-eyebrow">Error 404</p>
           <h1 class="h1">Post not found</h1>
           <p>We couldn't find that journal entry.</p>
-          <a class="btn btn-primary" href="/blog">All posts</a>
+          <a class="btn btn-primary" href="/blog">All articles</a>
         </div>
       </section>
     </Layout>
   )
 }
-
-<style>
-  /* Reading progress */
-  .post-progress { position: sticky; top: 0; z-index: 30; height: 3px; background: transparent; }
-  .post-progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
-
-  .post { padding-bottom: 72px; }
-
-  /* Shared centered content band so header / hero / body / cta align. */
-  .post-hdr-wrap,
-  .post-hero,
-  .post-layout,
-  .post-cta,
-  .post-related-h,
-  .post .blog-grid { max-width: 1120px; margin-inline: auto; }
-
-  /* Header */
-  .post-hdr { padding: 40px 0 28px; }
-  .post-hdr-wrap .post-title,
-  .post-hdr-wrap .post-excerpt { max-width: 760px; }
-  .post-back { display: inline-block; font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-bottom: 22px; }
-  .post-back:hover { color: var(--accent); }
-  .post-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
-  .post-title {
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-    font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700;
-    letter-spacing: -0.025em; line-height: 1.07; margin: 0;
-  }
-  .post-excerpt { margin: 18px 0 0; font-size: 1.16rem; color: var(--muted, #374151); line-height: 1.6; }
-
-  .post-meta {
-    display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap; gap: 16px; margin: 26px 0 0;
-    padding: 18px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-  }
-  .post-author { display: flex; align-items: center; gap: 12px; }
-  .post-author img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; }
-  .post-author span { display: flex; flex-direction: column; line-height: 1.35; }
-  .post-author b { color: var(--text); font-weight: 600; }
-  .post-author em { font-style: normal; font-size: 0.82rem; color: var(--muted); }
-  .post-author:hover b { color: var(--accent); }
-  .post-date { font-size: 0.85rem; color: var(--muted); }
-
-  .post-share { display: flex; align-items: center; gap: 8px; }
-  .post-share-btn {
-    width: 38px; height: 38px; display: grid; place-items: center;
-    border: 1px solid var(--border); border-radius: 10px; background: var(--white);
-    color: var(--text); cursor: pointer; transition: all .15s; position: relative;
-  }
-  .post-share-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .post-share-btn.is-copied::after {
-    content: "Copied!"; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
-    background: var(--text); color: #fff; font-size: 11px; font-weight: 600;
-    padding: 4px 8px; border-radius: 6px; white-space: nowrap;
-  }
-
-  /* Hero */
-  .post-hero { margin: 30px auto 8px; border-radius: 20px; overflow: hidden; background: var(--bg2); }
-  .post-hero img { width: 100%; height: auto; display: block; }
-
-  /* Body + TOC layout */
-  .post-layout { display: grid; grid-template-columns: 1fr; gap: 56px; margin-top: 40px; }
-  .post-body { min-width: 0; }
-  @media (min-width: 1040px) {
-    .post-layout { grid-template-columns: minmax(0, 1fr) 240px; align-items: start; }
-  }
-
-  /* Lead paragraph — editorial emphasis on the opening line. */
-  .post-body > p:first-of-type { font-size: 1.22rem; line-height: 1.6; color: var(--text); }
-
-  .post-toc { display: none; }
-  @media (min-width: 1040px) {
-    .post-toc { display: block; }
-    .post-toc-inner { position: sticky; top: 96px; }
-  }
-  .post-toc-h { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
-  .post-toc nav { display: flex; flex-direction: column; gap: 2px; border-left: 2px solid var(--border); }
-  .post-toc-link {
-    padding: 6px 0 6px 14px; margin-left: -2px; border-left: 2px solid transparent;
-    font-size: 0.88rem; color: var(--muted); line-height: 1.4; transition: color .15s, border-color .15s;
-  }
-  .post-toc-link.sub { padding-left: 26px; font-size: 0.83rem; }
-  .post-toc-link:hover { color: var(--text); }
-  .post-toc-link.is-active { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
-
-  /* Author card */
-  .post-authorcard {
-    display: flex; gap: 18px; margin-top: 48px; padding: 26px;
-    border: 1px solid var(--border); border-radius: 18px; background: var(--bg2);
-  }
-  .post-authorcard img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-  .pa-by { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-  .pa-name { display: inline-block; margin-top: 4px; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-weight: 700; font-size: 1.15rem; color: var(--text); }
-  .pa-name:hover { color: var(--accent); }
-  .pa-role { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
-  .pa-bio { margin: 12px 0 0; color: var(--muted, #374151); line-height: 1.6; }
-  .pa-link { display: inline-block; margin-top: 12px; color: var(--accent); font-weight: 600; font-size: 0.9rem; }
-
-  /* End CTA */
-  .post-cta {
-    display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
-    margin: 60px auto 0; padding: 32px 36px; border-radius: 20px;
-    background: linear-gradient(135deg, var(--text), #1b2436); color: #fff;
-  }
-  .post-cta h3 { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 1.5rem; margin: 0; }
-  .post-cta p { margin: 8px 0 0; color: rgba(255,255,255,.7); }
-  .post-cta-form { display: flex; gap: 10px; flex: 1; min-width: 260px; max-width: 420px; }
-  .post-cta-form input {
-    flex: 1; padding: 13px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2);
-    background: rgba(255,255,255,.08); color: #fff; font-size: 0.92rem;
-  }
-  .post-cta-form input::placeholder { color: rgba(255,255,255,.5); }
-  .post-cta-done { margin: 0; font-weight: 600; }
-
-  .post-related-h {
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 1.6rem; font-weight: 700;
-    margin: 68px auto 24px;
-  }
-
-  .nf2 { text-align: center; padding: 80px 20px; }
-  .nf2-eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
-  .nf2 .h1 { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: clamp(2rem,6vw,3rem); font-weight: 700; margin: 0; }
-  .nf2 p { color: var(--muted); margin: 12px 0 22px; }
-
-  /* Rich text (MDX body) */
-  .rte { color: var(--muted, #374151); line-height: 1.8; font-size: 1.07rem; }
-  .rte > * + * { margin-top: 1.2rem; }
-  .rte h2, .rte h3 {
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--text);
-    letter-spacing: -0.01em; line-height: 1.25; scroll-margin-top: 90px;
-  }
-  .rte h2 { font-size: 1.6rem; margin-top: 2.6rem; }
-  .rte h3 { font-size: 1.28rem; margin-top: 2rem; }
-  .rte a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
-  .rte strong { color: var(--text); font-weight: 600; }
-  .rte ul, .rte ol { padding-left: 1.3rem; }
-  .rte ul { list-style: disc; }
-  .rte ol { list-style: decimal; }
-  .rte li + li { margin-top: 0.45rem; }
-  .rte blockquote {
-    border-left: 3px solid var(--accent); padding: 4px 0 4px 18px; margin-left: 0;
-    font-style: italic; color: var(--text); font-size: 1.15rem;
-  }
-</style>

@@ -1,13 +1,13 @@
-# Rotating top announcement bar (Maison). Static chrome copy.
+# Rotating top announcement bar (Marvexa). Static chrome copy.
 - id: free-ship
   icon: truck
-  text: 'Free shipping on all orders over <strong>$150</strong> — use code <a href="#">FREESHIP</a>'
+  text: 'Free shipping on all orders over <strong>$99</strong>'
 - id: new-collection
   icon: spark
   text: 'SS 2026 Collection is live — <a href="/products?sort=newest">Shop New Arrivals</a>'
 - id: returns
   icon: refresh
-  text: 'Easy <strong>30-day returns</strong> · Free prepaid return label included'
+  text: '<span class="np">Easy <strong>30-day returns</strong> ·</span> <span class="np">Free prepaid return label included</span>'
 - id: sustainable
   icon: shield
-  text: 'Sustainably crafted in Europe · <strong>100% organic materials</strong>'
+  text: '<span class="np">Sustainably crafted in Europe ·</span> <span class="np"><strong>100% organic materials</strong></span>'

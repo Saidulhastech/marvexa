@@ -1,76 +1,39 @@
 ---
 // ============================================================
-//  Cart drawer (OMNIX skin, real Shopify cart). Markup matches the
+//  Cart drawer (MARVEXA skin, real Shopify cart). Markup matches the
 //  template; the script binds it to the framework-agnostic nanostore
 //  (stores/cart.ts) — render lines, totals, badges, and checkout.
 //  "You may also like" is real Shopify best-sellers; each + Add uses
 //  the product's first variant. Coupon is design-only (no discount
 //  wiring yet).
 // ============================================================
-import { Image } from 'astro:assets';
-import Icon from '~/components/ui/omnix/Icon.astro';
-import { getProducts } from '~/lib/shopify';
-import { formatMoney } from '~/lib/money';
-import type { ProductCard } from '~/lib/shopify/types';
+import Icon from '~/components/ui/marvexa/Icon.astro';
+import { BRAND } from '~/config/marvexa';
 
-let upsell: ProductCard[] = [];
-try {
-  // "You May Also Like" — show three best-sellers.
-  upsell = (await getProducts({ pageSize: 3, sortKey: 'BEST_SELLING' }, Astro.locals.market)).items;
-} catch {
-  /* drawer still works without upsell */
-}
-
-// Quick-add intent per upsell product — mirrors ProductCard so a multi-option
-// product (e.g. Colour + Size) opens the shared Quick View picker instead of
-// silently adding its first variant. Single-option products add directly.
-function quickAdd(p: ProductCard) {
-  const canAdd = !!p.firstVariantId && p.firstVariantAvailable !== false;
-  const variants = p.variants ?? [];
-  const realOptions = (p.options ?? []).filter(
-    (o) => !(o.name === 'Title' && o.optionValues.every((v) => v.name === 'Default Title')),
-  );
-  const needsPicker = canAdd && variants.length > 1 && realOptions.length >= 2;
-  const colorOpt = realOptions.find(
-    (o) => /colou?r|finish|shade/i.test(o.name) || o.optionValues.some((v) => v.swatch?.color),
-  );
-  const pickerData = needsPicker
-    ? JSON.stringify(
-        variants.map((v) => ({
-          id: v.id,
-          opts: Object.fromEntries(v.selectedOptions.map((o) => [o.name, o.value])),
-          price: Number(v.price.amount),
-          compareAt: v.compareAtPrice ? Number(v.compareAtPrice.amount) : null,
-          img: v.image?.url ?? null,
-          available: v.availableForSale,
-        })),
-      )
-    : '';
-  const optionData = needsPicker
-    ? JSON.stringify(
-        realOptions.map((o) => ({
-          name: o.name,
-          isColor: o === colorOpt,
-          values: o.optionValues.map((ov) => ({ name: ov.name, color: ov.swatch?.color ?? null })),
-        })),
-      )
-    : '';
-  return { canAdd, needsPicker, pickerData, optionData };
-}
+// Free-shipping meter threshold (display only — see BRAND.freeShippingThreshold).
+// 0/null hides the bar entirely.
+const FREE_SHIP = BRAND.freeShippingThreshold ?? 0;
 ---
 
 <div class="cart-overlay" data-close="cart"></div>
-<aside class="cart-drawer" id="cartDrawer" role="dialog" aria-modal="true" aria-label="Shopping cart">
+<aside class="cart-drawer" id="cartDrawer" role="dialog" aria-modal="true" aria-label="Shopping cart" data-free-ship={FREE_SHIP}>
   <div class="cart-header">
-    <h5>
-      <Icon name="cart" size={18} />
-      Your Cart
-      <span class="cart-count-chip" id="cartChip">0</span>
-    </h5>
+    <div class="cart-head-left">
+      <span class="cart-title">Shopping Bag</span>
+      <span class="cart-subcount" id="cartChip"></span>
+    </div>
     <button class="cart-x" data-close="cart" aria-label="Close cart">
       <Icon name="x" size={16} stroke={2.4} />
     </button>
   </div>
+
+  {/* Free-shipping progress meter — dynamic from the live cart subtotal. */}
+  {FREE_SHIP > 0 && (
+    <div class="cart-ship-bar" id="cartShipBar" style="display:none;">
+      <div class="cart-ship-bar__msg" id="shipMsg"></div>
+      <div class="cart-ship-bar__track"><div class="cart-ship-bar__fill" id="shipFill" style="width:0%"></div></div>
+    </div>
+  )}
 
   <div class="cart-error" id="cartError" role="alert" style="display:none;"></div>
 
@@ -78,72 +41,17 @@ function quickAdd(p: ProductCard) {
     <div class="cart-empty" id="cartEmpty">
       <div class="empty-ic"><Icon name="cart" size={32} stroke={1.5} /></div>
       <h6>Your cart is empty</h6>
-      <p>Add something from the store — deals, bundles, or new arrivals.</p>
+      <p>Add something from the store — deals, new arrivals, or staff picks.</p>
       <a class="btn btn-primary btn-sm" href="/products">Start shopping</a>
     </div>
     {/* Cart lines injected by the script below. */}
     <div id="cartLines"></div>
-
-    {/* "You May Also Like" — scrolls with the cart lines, shown only when the cart has items. */}
-    {
-      upsell.length > 0 && (
-        <div class="cart-upsell" id="cartUpsell" style="display:none;">
-          <div class="cart-upsell-head">You May Also Like</div>
-          <div class="cart-upsell-scroll">
-            {upsell.map((p) => {
-              const href = `/products/${p.handle}`;
-              const qa = quickAdd(p);
-              const imgUrl = p.featuredImage?.url ?? '';
-              return (
-                <div class="cart-upsell-card">
-                  <a class="cu-img" href={href}>
-                    {p.featuredImage && (
-                      <Image src={p.featuredImage.url} alt={p.featuredImage.altText ?? p.title} width={120} height={120} />
-                    )}
-                  </a>
-                  <div class="cu-info">
-                    <a class="cu-name" href={href}>{p.title}</a>
-                    <div class="cu-price">{formatMoney(p.priceRange.minVariantPrice)}</div>
-                    {!qa.canAdd ? (
-                      <a class="cu-add" href={href}>View</a>
-                    ) : qa.needsPicker ? (
-                      // Multi-option → open the shared Quick View modal (variant pickers).
-                      <button
-                        class="cu-add"
-                        data-add
-                        data-pick
-                        data-handle={p.handle}
-                        data-name={p.title}
-                        data-img={imgUrl}
-                        data-brand={p.vendor ?? ''}
-                        data-href={href}
-                        data-price={formatMoney(p.priceRange.minVariantPrice)}
-                        data-currency={p.priceRange.minVariantPrice.currencyCode}
-                        data-variants={qa.pickerData}
-                        data-options={qa.optionData}
-                      >
-                        Select
-                      </button>
-                    ) : (
-                      <button class="cu-add" data-add data-variant-id={p.firstVariantId}>+ Add</button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )
-    }
   </div>
 
   <div id="cartSummaryWrap" style="display:none;">
     <div class="cart-coupon">
-      <div class="cart-coupon-head">
-        <Icon name="bolt" size={14} /> Coupon Code
-      </div>
       <form id="couponForm">
-        <input type="text" id="couponInput" aria-label="Coupon code" placeholder="Enter code (e.g. WELCOME10)" autocomplete="off" />
+        <input type="text" id="couponInput" aria-label="Coupon code" placeholder="Promo or gift code…" autocomplete="off" />
         <button type="submit" class="cc-apply" id="couponApply">Apply</button>
       </form>
       <div class="cart-coupon-codes" id="couponCodes"></div>
@@ -156,23 +64,32 @@ function quickAdd(p: ProductCard) {
       <div class="cs-row" id="csDiscountRow" style="display:none;">
         <span id="csDiscountLabel">Discount</span><span id="csDiscount" style="color:#5D8A3C"></span>
       </div>
-      <div class="cs-row total"><span>Total</span><span id="csTotal">$0</span></div>
-    </div>
-    <div class="cart-ctas">
-      <button class="btn btn-primary btn-block btn-lg" id="cartCheckout">Checkout · <span id="csBtnTotal">$0</span></button>
-      <a class="btn btn-secondary btn-block" href="/cart">View Cart</a>
-      <button class="btn btn-secondary btn-block" data-close="cart">Continue Shopping</button>
+      <div class="cs-row total"><span>Estimated Total</span><span id="csTotal">$0</span></div>
     </div>
     <div class="cart-trust">
       <span><Icon name="check" size={13} stroke={2.4} /> Secure checkout</span>
       <span><Icon name="check" size={13} stroke={2.4} /> Free 30-day returns</span>
-      <span><Icon name="check" size={13} stroke={2.4} /> Crafted to last</span>
+      <span><Icon name="check" size={13} stroke={2.4} /> Fast delivery</span>
+    </div>
+    <div class="cart-pay" aria-hidden="true">
+      <span class="pay-icon">VISA</span>
+      <span class="pay-icon">MC</span>
+      <span class="pay-icon">AMEX</span>
+      <span class="pay-icon">PayPal</span>
+      <span class="pay-icon">GPay</span>
+    </div>
+    <div class="cart-ctas">
+      <button class="btn btn-primary btn-block btn-lg cart-checkout-btn" id="cartCheckout">
+        Checkout · <span id="csBtnTotal">$0</span>
+        <Icon name="arrow-right" size={12} stroke={2.2} />
+      </button>
+      <button class="cart-continue" data-close="cart">Continue Shopping</button>
     </div>
   </div>
 </aside>
 
 <style>
-  /* ── Overlay + drawer shell (Maison skin) ───────────────────────── */
+  /* ── Overlay + drawer shell (Marvexa skin) ───────────────────────── */
   .cart-overlay {
     position: fixed;
     inset: 0;
@@ -218,28 +135,22 @@ function quickAdd(p: ProductCard) {
     gap: 8px;
   }
 
-  .cart-header h5 {
+  .cart-head-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .cart-title {
     font-family: var(--fh);
     font-size: 16px;
     font-weight: 700;
     letter-spacing: -.3px;
-    display: flex;
-    align-items: center;
-    gap: 9px;
   }
 
-  .cart-count-chip {
-    font-size: 10px;
-    font-weight: 700;
-    color: #fff;
-    background: var(--accent);
-    border-radius: 999px;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+  .cart-subcount {
+    font-size: 11px;
+    color: var(--muted);
   }
 
   .cart-x {
@@ -251,13 +162,73 @@ function quickAdd(p: ProductCard) {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--muted);
+    color: var(--text);
     transition: all .2s ease;
   }
 
   .cart-x:hover {
     background: var(--card);
     color: var(--text);
+  }
+
+  /* ── Free-shipping progress meter ────────────────────────────────── */
+  .cart-ship-bar {
+    padding: 12px 22px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .cart-ship-bar__msg {
+    font-size: 11px;
+    color: var(--text);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .cart-ship-bar__msg strong {
+    color: var(--accent);
+  }
+
+  .cart-ship-bar__track {
+    height: 4px;
+    background: var(--card);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .cart-ship-bar__fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #9aaf50);
+    border-radius: 4px;
+    transition: width .7s cubic-bezier(.25, .46, .45, .94);
+  }
+
+  /* ── Payment icons ───────────────────────────────────────────────── */
+  .cart-pay {
+    padding: 0 22px 14px;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .pay-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    min-width: 36px;
+    height: 22px;
+    padding: 0 6px;
+    font-size: 8px;
+    font-weight: 800;
+    color: #888;
+    letter-spacing: .3px;
+    white-space: nowrap;
+    font-family: var(--fb);
   }
 
   /* ── Error / status ──────────────────────────────────────────────── */
@@ -348,13 +319,8 @@ function quickAdd(p: ProductCard) {
     flex: 1;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     min-width: 0;
-  }
-
-  .ci-brand {
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 2px;
   }
 
   .ci-name {
@@ -362,6 +328,12 @@ function quickAdd(p: ProductCard) {
     font-weight: 600;
     line-height: 1.35;
     color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .ci-meta {
+    font-size: 11px;
+    color: var(--muted);
   }
 
   .ci-soldout {
@@ -375,7 +347,6 @@ function quickAdd(p: ProductCard) {
     font-size: 13px;
     font-weight: 700;
     color: var(--text);
-    margin-top: 4px;
   }
 
   .ci-row {
@@ -423,14 +394,21 @@ function quickAdd(p: ProductCard) {
     text-align: center;
   }
 
-  .ci-remove {
-    display: inline-flex;
+  .ci-btns {
+    display: flex;
     align-items: center;
-    gap: 4px;
+    margin-top: 5px;
+  }
+
+  .ci-remove,
+  .ci-save {
     font-size: 10px;
     color: var(--muted);
     background: none;
     border: none;
+    padding: 0;
+    cursor: pointer;
+    font-family: var(--fb);
     transition: color .15s ease;
   }
 
@@ -438,97 +416,21 @@ function quickAdd(p: ProductCard) {
     color: var(--rust);
   }
 
-  /* ── Upsell ──────────────────────────────────────────────────────── */
-  .cart-upsell {
-    padding: 16px 22px;
-    border-top: 1px solid var(--border);
+  .ci-save {
+    border-left: 1px solid var(--border);
+    padding-left: 8px;
+    margin-left: 8px;
   }
 
-  .cart-upsell-head {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1.4px;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 12px;
-  }
-
-  .cart-upsell-scroll {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-  }
-
-  .cart-upsell-card {
-    flex: 0 0 130px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .cart-upsell-card .cu-img {
-    display: block;
-    aspect-ratio: 3/4;
-    border-radius: 8px;
-    overflow: hidden;
-    background: var(--card);
-  }
-
-  .cart-upsell-card .cu-img img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .cu-name {
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1.3;
-  }
-
-  .cu-price {
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  .cu-add {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: .6px;
-    text-transform: uppercase;
-    color: var(--text);
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 10px;
-    text-align: center;
-    transition: all .15s ease;
-  }
-
-  .cu-add:hover {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
+  .ci-save:hover {
+    color: var(--accent);
   }
 
   /* ── Coupon ──────────────────────────────────────────────────────── */
   .cart-coupon {
-    padding: 14px 22px;
+    padding: 12px 22px;
     border-top: 1px solid var(--border);
     flex-shrink: 0;
-  }
-
-  .cart-coupon-head {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 10px;
   }
 
   #couponForm {
@@ -649,6 +551,30 @@ function quickAdd(p: ProductCard) {
     gap: 8px;
   }
 
+  .cart-checkout-btn {
+    border-radius: 10px;
+  }
+
+  .cart-continue {
+    display: block;
+    width: 100%;
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--fb);
+    padding: 6px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color .2s ease;
+  }
+
+  .cart-continue:hover {
+    color: var(--text);
+  }
+
   .cart-trust {
     padding: 0 22px 18px;
     display: flex;
@@ -692,7 +618,7 @@ function quickAdd(p: ProductCard) {
   import { formatMoney } from '../../../lib/money';
   import type { Cart } from '../../../lib/shopify/types';
 
-  // Single money formatter shared with the rest of the app (OMNIX "$289" style,
+  // Single money formatter shared with the rest of the app (MARVEXA "$289" style,
   // locale + currency safe) so the drawer and quick-view never disagree.
   const money = (m?: { amount: string; currencyCode: string } | null) => (m ? formatMoney(m) : '$0');
 
@@ -703,10 +629,10 @@ function quickAdd(p: ProductCard) {
     );
 
   const drawer = document.getElementById('cartDrawer');
+  const FREE_SHIP = Number(drawer?.dataset.freeShip ?? 0);
   const linesEl = document.getElementById('cartLines');
   const emptyEl = document.getElementById('cartEmpty');
   const summaryWrap = document.getElementById('cartSummaryWrap');
-  const upsellEl = document.getElementById('cartUpsell');
   const chip = document.getElementById('cartChip');
   const headerBadge = document.getElementById('cartBadge');
   const errorEl = document.getElementById('cartError');
@@ -722,8 +648,6 @@ function quickAdd(p: ProductCard) {
           .filter((o) => o.value && o.value !== 'Default Title')
           .map((o) => o.value)
           .join(' · ');
-        const trash =
-          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
         // Stock-aware: cap inc at the variant's available qty (when tracked) and
         // the global 99; flag a line that is no longer purchasable.
         const qa = typeof m.quantityAvailable === 'number' ? m.quantityAvailable : null;
@@ -734,17 +658,22 @@ function quickAdd(p: ProductCard) {
         <div class="cart-item${soldOut ? ' is-soldout' : ''}" data-line="${esc(l.id)}">
           <div class="ci-img"><img src="${esc(img)}" alt="${esc(m.product.title)}" loading="lazy"></div>
           <div class="ci-info">
-            ${opts ? `<div class="ci-brand">${esc(opts)}</div>` : ''}
-            <a class="ci-name" href="/products/${esc(m.product.handle)}">${esc(m.product.title)}</a>
-            ${soldOut ? '<div class="ci-soldout">No longer available</div>' : ''}
-            <div class="ci-price">${money(l.cost.totalAmount)}</div>
+            <div>
+              <a class="ci-name" href="/products/${esc(m.product.handle)}">${esc(m.product.title)}</a>
+              ${opts ? `<div class="ci-meta">${esc(opts)}</div>` : ''}
+              ${soldOut ? '<div class="ci-soldout">No longer available</div>' : ''}
+            </div>
             <div class="ci-row">
+              <span class="ci-price">${money(l.cost.totalAmount)}</span>
               <div class="ci-qty">
                 <button data-act="dec" aria-label="Decrease">−</button>
                 <span>${l.quantity}</span>
                 <button data-act="inc" aria-label="Increase"${soldOut || atMax ? ' disabled' : ''}>+</button>
               </div>
-              <button class="ci-remove" data-act="remove" aria-label="Remove">${trash} Remove</button>
+            </div>
+            <div class="ci-btns">
+              <button class="ci-remove" data-act="remove">Remove</button>
+              <button class="ci-save" data-act="save">Save for later</button>
             </div>
           </div>
         </div>`;
@@ -759,8 +688,7 @@ function quickAdd(p: ProductCard) {
 
     if (emptyEl) emptyEl.style.display = hasItems ? 'none' : '';
     if (summaryWrap) summaryWrap.style.display = hasItems ? '' : 'none';
-    if (upsellEl) upsellEl.style.display = hasItems ? '' : 'none';
-    if (chip) chip.textContent = String(count);
+    if (chip) chip.textContent = count > 0 ? `${count} item${count > 1 ? 's' : ''}` : '';
     if (headerBadge) {
       headerBadge.textContent = String(count);
       headerBadge.style.display = hasItems ? '' : 'none';
@@ -778,7 +706,28 @@ function quickAdd(p: ProductCard) {
     set('csTotal', tot);
     set('csBtnTotal', tot);
 
+    renderShipBar(cart, hasItems);
     renderDiscount(cart);
+  }
+
+  // Free-shipping meter — remaining amount + progress, from the live subtotal.
+  function renderShipBar(cart: Cart | null, hasItems: boolean) {
+    if (FREE_SHIP <= 0) return;
+    const bar = document.getElementById('cartShipBar');
+    if (bar) bar.style.display = hasItems ? '' : 'none';
+    if (!hasItems) return;
+    const cur = cart?.cost.subtotalAmount.currencyCode ?? 'USD';
+    const subAmt = Number(cart?.cost.subtotalAmount.amount ?? 0);
+    const remaining = Math.max(0, FREE_SHIP - subAmt);
+    const pct = Math.min(100, Math.round((subAmt / FREE_SHIP) * 100));
+    const msg = document.getElementById('shipMsg');
+    const fill = document.getElementById('shipFill');
+    if (msg) {
+      msg.innerHTML = remaining > 0
+        ? `Add <strong>${money({ amount: String(remaining), currencyCode: cur })}</strong> more for <strong>free shipping</strong>`
+        : `<strong>You’ve unlocked free shipping!</strong>`;
+    }
+    if (fill) fill.style.width = pct + '%';
   }
 
   // Discount summary row + applied-code chips, driven by Shopify's cart.
@@ -858,7 +807,7 @@ function quickAdd(p: ProductCard) {
     }
   }
 
-  // Open/close — toggle the OMNIX is-open class from store state + trap focus.
+  // Open/close — toggle the MARVEXA is-open class from store state + trap focus.
   $cartOpen.subscribe((open) => {
     drawer?.classList.toggle('is-open', open);
     document.querySelector('.cart-overlay')?.classList.toggle('is-open', open);
@@ -891,7 +840,38 @@ function quickAdd(p: ProductCard) {
     if (act === 'inc') updateItem(lineId, qty + 1);
     else if (act === 'dec') updateItem(lineId, qty - 1);
     else if (act === 'remove') removeItem(lineId);
+    else if (act === 'save') saveForLater(lineId);
   });
+
+  // "Save for later" — move a Shopify cart line into the localStorage wishlist,
+  // then remove it from the cart. Mirrors the HTML template's behaviour.
+  const WISH_KEY = 'marvexa_wishlist';
+  function saveForLater(lineId: string) {
+    const cart = $cart.get();
+    const line = cart?.lines.find((l) => l.id === lineId);
+    if (!line) return;
+    const m = line.merchandise;
+    const handle = m.product.handle;
+    try {
+      const items = JSON.parse(localStorage.getItem(WISH_KEY) || '[]') as Array<{ handle: string }>;
+      if (!items.some((i) => i.handle === handle)) {
+        items.push({
+          handle,
+          name: m.product.title,
+          price: money(m.price),
+          img: m.image?.url ?? m.product.featuredImage?.url ?? '',
+          href: `/products/${handle}`,
+          variantId: m.id,
+        } as never);
+        localStorage.setItem(WISH_KEY, JSON.stringify(items));
+        // Tell the wishlist drawer (Overlays) to re-render badge + list.
+        window.dispatchEvent(new CustomEvent('wishlist:changed'));
+      }
+    } catch {
+      /* localStorage unavailable — still remove the line */
+    }
+    removeItem(lineId);
+  }
 
   document.getElementById('cartCheckout')?.addEventListener('click', () => checkout());
 

@@ -1,8 +1,8 @@
 /* ============================================================
-   ABOUT (MAISON "Modern") — scoped. Faithful port of the maison
+   ABOUT (MARVEXA "Modern") — scoped. Faithful port of the marvexa
    About.html sections: story hero, by-the-numbers, philosophy,
-   craft, promise, team, FAQ, closing CTA. Uses the global Maison
-   design tokens defined in omnix.css.
+   craft, promise, team, FAQ, closing CTA. Uses the global Marvexa
+   design tokens defined in marvexa.css.
    ============================================================ */
 
 .about-pg {
@@ -606,119 +606,6 @@
 }
 .ab-team-lk:hover { border-color: var(--accent); color: var(--accent); }
 
-/* ── FAQ ── */
-.ab-faq { padding: 96px 0; border-bottom: 1px solid var(--border); }
-.ab-faq-c { max-width: var(--container); margin: 0 auto; padding: 0 var(--gutter); }
-.ab-faq-head { text-align: center; margin-bottom: 52px; }
-.ab-faq-title {
-  font-family: var(--fh);
-  font-size: clamp(32px, 4vw, 52px);
-  font-weight: 700;
-  letter-spacing: -2.2px;
-  color: var(--text);
-  line-height: 1;
-  margin: 12px 0 0;
-}
-.ab-faq-list { max-width: 820px; margin: 0 auto; }
-.ab-faq-item { border-top: 1px solid var(--border); }
-.ab-faq-item:last-child { border-bottom: 1px solid var(--border); }
-.ab-faq-item summary {
-  list-style: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 24px 0;
-  font-family: var(--fh);
-  font-size: clamp(16px, 1.8vw, 19px);
-  font-weight: 700;
-  letter-spacing: -.4px;
-  color: var(--text);
-  transition: color var(--ease);
-}
-.ab-faq-item summary::-webkit-details-marker { display: none; }
-.ab-faq-item summary:hover { color: var(--accent); }
-.ab-faq-icon {
-  flex-shrink: 0;
-  width: 32px; height: 32px;
-  display: grid; place-items: center;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg2);
-  color: var(--accent);
-  transition: transform var(--ease), background var(--ease), color var(--ease), border-color var(--ease);
-}
-.ab-faq-icon svg { width: 15px; height: 15px; transition: transform var(--ease); }
-.ab-faq-item[open] .ab-faq-icon { background: var(--accent); border-color: var(--accent); color: var(--white); }
-.ab-faq-item[open] .ab-faq-icon svg { transform: rotate(45deg); }
-.ab-faq-answer { padding: 0 0 26px; animation: abFaqIn .3s var(--ease-md); }
-.ab-faq-answer p {
-  font-family: var(--fb);
-  font-size: 14px;
-  line-height: 1.8;
-  color: var(--muted);
-  margin: 0;
-  max-width: 680px;
-}
-@keyframes abFaqIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-
-/* ── CLOSING CTA ── */
-.ab-cta { padding: 100px 0; background: var(--bg); }
-.ab-cta-c {
-  max-width: var(--container);
-  margin: 0 auto;
-  padding: 0 var(--gutter);
-  text-align: center;
-}
-.ab-cta-ey {
-  font-family: var(--fb);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 2.5px;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 14px;
-}
-.ab-cta-title {
-  font-family: var(--fh);
-  font-size: clamp(34px, 4.5vw, 56px);
-  font-weight: 700;
-  letter-spacing: -2.4px;
-  color: var(--text);
-  line-height: 1;
-  margin: 0 0 18px;
-}
-.ab-cta-sub {
-  font-family: var(--fb);
-  font-size: 15px;
-  color: var(--muted);
-  line-height: 1.7;
-  max-width: 520px;
-  margin: 0 auto 36px;
-}
-.ab-cta-actions { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
-.ab-cta-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  font-family: var(--fb);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .2px;
-  padding: 15px 30px;
-  border-radius: 4px;
-  text-decoration: none;
-  transition: background var(--ease), color var(--ease), border-color var(--ease), transform var(--ease);
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-.ab-cta-btn svg { width: 16px; height: 16px; }
-.ab-cta-btn.solid { background: var(--dark); color: var(--white); }
-.ab-cta-btn.solid:hover { background: var(--accent); transform: translateY(-2px); }
-.ab-cta-btn.line { background: transparent; color: var(--text); border-color: var(--border); }
-.ab-cta-btn.line:hover { border-color: var(--text); transform: translateY(-2px); }
-
 /* ── Responsive ── */
 @media (max-width: 1024px) {
   .ab-promise-grid { grid-template-columns: 1fr 1fr; }
@@ -745,6 +632,11 @@
 @media (max-width: 600px) {
   .ab-team-grid { grid-template-columns: 1fr; }
   .ab-nums-row { grid-template-columns: 1fr 1fr; }
+  /* Tighten the by-the-numbers hero strip so the third stat ("80+ Countries")
+     no longer clips off the right edge on small phones. */
+  .cart-hd-stat { padding: 14px 10px; }
+  .cart-hd-stat-num { font-size: 21px; }
+  .cart-hd-stat-lbl { font-size: 9px; }
   .ab-num-cell:nth-child(2) { border-right: none; }
   .ab-num-cell:nth-child(n+3) { border-top: 1px solid rgba(255, 255, 255, .07); padding-top: 24px; margin-top: 24px; }
   .ab-promise-grid { grid-template-columns: 1fr; }

@@ -1,6 +1,6 @@
 ---
 // ============================================================
-//  Header (Maison) — fixed transparent-over-hero bar that turns
+//  Header (Marvexa) — fixed transparent-over-hero bar that turns
 //  solid on scroll. Logo, primary nav with Women/Men mega menus,
 //  and the action cluster (search / account / wishlist / cart /
 //  burger). Action triggers carry data-open="…"; the controller in
@@ -9,13 +9,15 @@
 //  Overlays. Mobile menu (#mobMenu) toggles .is-open via the same
 //  controller. Header scroll state + announce-collapse are local JS.
 // ============================================================
-import { BRAND } from '~/config/omnix';
-import { getAllCollections } from '~/lib/shopify';
-import type { Collection } from '~/lib/shopify/types';
+import { BRAND } from '~/config/marvexa';
+import { getAllCollections, getProducts } from '~/lib/shopify';
+import type { Collection, ProductCard } from '~/lib/shopify/types';
 
-// Nav is driven by REAL Shopify collections so it never links to handles the
-// store doesn't have (the old hardcoded Women/Men/Bags/Sale links were a
-// design-mockup leftover). A failure degrades to New Arrivals + All Products.
+// Primary nav follows the Marvexa design: New Arrivals, Women + Men mega menus,
+// then Bags / Accessories / Sale. Top-level category links resolve to a real
+// Shopify collection when the store has one (matched by handle or title) and
+// fall back to the slug. Mega sub-links route to catalogue search so they
+// always land on a real results page even before those collections exist.
 let collections: Collection[] = [];
 try {
   collections = await getAllCollections();
@@ -23,20 +25,135 @@ try {
   console.error('[header] collections load failed:', (err as Error).message);
 }
 
-// "Shop" mega: real collections split across two columns + a featured tile.
-const navCollections = collections.slice(0, 12);
-const half = Math.ceil(navCollections.length / 2);
-const megaColA = navCollections.slice(0, half);
-const megaColB = navCollections.slice(half);
-const featured = navCollections[0];
-const featuredImg =
-  featured?.image?.url ??
-  'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&auto=format&fit=crop&q=80';
+// Real sale stats — scan the catalogue for genuine markdowns (compareAtPrice >
+// price) and take the deepest discount. Drives the mega "X% Off" badges: they
+// stay hidden while nothing is on sale and surface the true max % the moment a
+// merchant sets a compare-at price. No hardcoded percentages.
+let saleStats = { hasSale: false, maxPct: 0 };
+try {
+  const page = await getProducts({ pageSize: 250 }, Astro.locals.market);
+  let max = 0;
+  for (const p of page.items as ProductCard[]) {
+    const price = Number(p.priceRange.minVariantPrice.amount) || 0;
+    const compare = Number(p.compareAtPriceRange?.minVariantPrice?.amount) || 0;
+    if (compare > price && price > 0) max = Math.max(max, Math.round((1 - price / compare) * 100));
+  }
+  saleStats = { hasSale: max > 0, maxPct: max };
+} catch (err) {
+  console.error('[header] sale stats failed:', (err as Error).message);
+}
+const saleBadge = saleStats.hasSale ? `${saleStats.maxPct}% Off` : undefined;
+const saleTag = saleStats.hasSale ? 'Sale' : undefined;
+const SALE_HREF = '/products?sale=1';
+
+const slugify = (s: string) =>
+  s.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+// Resolve a category label to a real collection handle, else its slug.
+const handleFor = (label: string) => {
+  const key = label.toLowerCase();
+  const m = collections.find(
+    (c) => (c.handle ?? '').toLowerCase() === key || (c.title ?? '').trim().toLowerCase() === key,
+  );
+  return m?.handle ?? slugify(label);
+};
+
+// Mega sub-link fallback target: search the catalogue by the label (always resolves).
+const searchFor = (label: string) => `/products?q=${encodeURIComponent(label)}`;
+
+type MegaLink = { label: string; href?: string; badge?: string; rust?: boolean };
+interface Mega {
+  label: string;
+  href: string;
+  columns: { title: string; links: MegaLink[] }[];
+  image: string;
+  imageLabel: string;
+}
+
+const MEGAS: Mega[] = [
+  {
+    label: 'Women',
+    href: `/collections/${handleFor('Women')}`,
+    columns: [
+      {
+        title: 'Clothing',
+        links: [
+          { label: 'Dresses', badge: 'New' },
+          { label: 'Blazers & Jackets' },
+          { label: 'Tops & Shirts' },
+          { label: 'Trousers & Shorts' },
+          { label: 'Knitwear' },
+          { label: 'Skirts', badge: saleTag, rust: true },
+        ],
+      },
+      {
+        title: 'Shop By',
+        links: [
+          { label: 'New Arrivals', href: '/products?sort=newest' },
+          { label: 'Best Sellers', href: '/products?sort=best-selling' },
+          { label: 'Organic Linen Edit' },
+          { label: 'Under $150' },
+          { label: 'Sale Items', href: SALE_HREF, badge: saleBadge, rust: true },
+        ],
+      },
+    ],
+    image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&auto=format&fit=crop&q=80',
+    imageLabel: 'SS26 Drop',
+  },
+  {
+    label: 'Men',
+    href: `/collections/${handleFor('Men')}`,
+    columns: [
+      {
+        title: 'Clothing',
+        links: [
+          { label: 'Shirts', badge: 'New' },
+          { label: 'Blazers & Jackets' },
+          { label: 'Trousers' },
+          { label: 'Shorts' },
+          { label: 'Knitwear' },
+          { label: 'T-Shirts', badge: saleTag, rust: true },
+        ],
+      },
+      {
+        title: 'Shop By',
+        links: [
+          { label: 'New Arrivals', href: '/products?sort=newest' },
+          { label: 'Best Sellers', href: '/products?sort=best-selling' },
+          { label: 'Linen Collection' },
+          { label: 'Under $120' },
+          { label: 'Sale Items', href: SALE_HREF, badge: saleBadge, rust: true },
+        ],
+      },
+    ],
+    image: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=200&auto=format&fit=crop&q=80',
+    imageLabel: "Men's Edit",
+  },
+];
+
+// Plain top-level links after the megas. "Sale" points at the real on-sale view.
+const flatLinks = ['Bags', 'Accessories', 'Sale'].map((label) => {
+  const sale = label.toLowerCase() === 'sale';
+  return { label, href: sale ? SALE_HREF : `/collections/${handleFor(label)}`, sale };
+});
+
+// Mobile menu mirrors the same top-level set (no mega panels on mobile).
+const mobLinks = [
+  ...MEGAS.map((m) => ({ label: m.label, href: m.href, sale: false })),
+  ...flatLinks,
+];
 
 const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
+
+interface Props {
+  /** Solid (light bg, dark text) from the top — for pages without a dark hero.
+      When false the header is transparent over the hero until scrolled. */
+  solid?: boolean;
+}
+const { solid = false } = Astro.props;
 ---
 
-<header class="header" id="siteHeader">
+<header class:list={['header', { scrolled: solid }]} id="siteHeader" data-solid={solid ? '1' : undefined}>
   <div class="header__inner">
     <a href="/" class="header__logo" aria-label={`${BRAND.name} Home`}>
       <div class="header__logo-m">{initial}</div>
@@ -46,44 +163,39 @@ const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
     <nav class="header__nav" role="navigation" aria-label="Main">
       <a href="/products?sort=newest" class="nav-link new-a">New Arrivals</a>
 
-      {navCollections.length > 0 && (
+      {MEGAS.map((m) => (
         <div class="nav-link has-mega" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false">
-          Shop
+          {m.label}
           <svg class="nav-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
           <div class="mega" role="menu">
-            <div>
-              <div class="mega__col-title">Collections</div>
-              <div class="mega__links">
-                {megaColA.map((c) => (
-                  <a href={`/collections/${c.handle}`} class="mega__link">{c.title}</a>
-                ))}
-              </div>
-            </div>
-            {megaColB.length > 0 && (
+            {m.columns.map((col) => (
               <div>
-                <div class="mega__col-title">More</div>
+                <div class="mega__col-title">{col.title}</div>
                 <div class="mega__links">
-                  {megaColB.map((c) => (
-                    <a href={`/collections/${c.handle}`} class="mega__link">{c.title}</a>
+                  {col.links.map((l) => (
+                    <a href={l.href ?? searchFor(l.label)} class="mega__link">
+                      {l.label}
+                      {l.badge && <span class:list={['mega__link-badge', { rust: l.rust }]}>{l.badge}</span>}
+                    </a>
                   ))}
                 </div>
               </div>
-            )}
-            {featured && (
-              <div>
-                <a href={`/collections/${featured.handle}`} class="mega__img-card">
-                  <img src={featuredImg} alt={`${featured.title} collection`} />
-                  <span class="mega__img-label">{featured.title}</span>
-                </a>
-              </div>
-            )}
+            ))}
+            <div>
+              <a href={m.href} class="mega__img-card">
+                <img src={m.image} alt={`${m.label}'s campaign`} />
+                <span class="mega__img-label">{m.imageLabel}</span>
+              </a>
+            </div>
           </div>
         </div>
-      )}
+      ))}
 
-      <a href="/products" class="nav-link">All Products</a>
+      {flatLinks.map((l) => (
+        <a href={l.href} class:list={['nav-link', { sale: l.sale }]}>{l.label}</a>
+      ))}
     </nav>
 
     <div class="header__actions">
@@ -100,6 +212,11 @@ const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
         <span class="h-badge" id="wishBadge" style="display:none">0</span>
       </button>
+
+      <a href="/compare" class="hbtn" aria-label="Compare">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3L4 7l4 4" /><line x1="4" y1="7" x2="20" y2="7" /><path d="M16 21l4-4-4-4" /><line x1="20" y1="17" x2="4" y2="17" /></svg>
+        <span class="h-badge" id="compareBadge" style="display:none">0</span>
+      </a>
 
       <button class="hbtn" data-open="cart" aria-label="Shopping bag">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
@@ -127,15 +244,15 @@ const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
   </div>
   <nav class="mob-menu__nav">
     <a href="/products?sort=newest" class="mob-nav-link new-a">New Arrivals<span class="mob-nav-badge">New</span></a>
-    {navCollections.map((c) => (
-      <a href={`/collections/${c.handle}`} class="mob-nav-link">{c.title}</a>
+    {mobLinks.map((l) => (
+      <a href={l.href} class:list={['mob-nav-link', { sale: l.sale }]}>{l.label}</a>
     ))}
     <a href="/products" class="mob-nav-link">All Products</a>
   </nav>
   <div class="mob-menu__info">
     <div class="mob-info-item">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="1" y="3" width="15" height="13" rx="2" /><path d="M16 8h4l3 5v3h-7V8z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>
-      Free shipping on orders $150+
+      Free shipping on orders $99+
     </div>
     <div class="mob-info-item">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
@@ -182,6 +299,13 @@ const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
     top: 0;
   }
 
+  /* mobile announcement bar wraps to 2 lines (56px) — keep header below it */
+  @media (max-width: 768px) {
+    .header {
+      top: 56px;
+    }
+  }
+
   .header.scrolled {
     background: rgba(250, 250, 247, .97);
     backdrop-filter: blur(20px);
@@ -206,6 +330,7 @@ const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
     font-size: 17px;
     font-weight: 800;
     letter-spacing: -.3px;
+    text-transform: uppercase;
     color: var(--white);
     transition: color .3s ease;
     display: inline-flex;
@@ -312,6 +437,17 @@ const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
     z-index: 200;
   }
 
+  /* Invisible bridge across the 10px gap between the trigger and the menu, so
+     moving the cursor down to the mega doesn't drop :hover and close it. */
+  .mega::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -14px;
+    height: 14px;
+  }
+
   .nav-link.has-mega:hover .mega,
   .nav-link.has-mega:focus-within .mega {
     opacity: 1;
@@ -412,8 +548,8 @@ const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
 
   .hbtn {
     position: relative;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -547,8 +683,8 @@ const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
   }
 
   .mob-close {
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
     background: rgba(255, 255, 255, .07);
     border: 1px solid rgba(255, 255, 255, .1);
     border-radius: 8px;
@@ -655,7 +791,7 @@ const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
     flex-shrink: 0;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 991.98px) {
     .header__inner {
       height: 64px;
     }
@@ -671,13 +807,21 @@ const initial = (BRAND.name?.[0] ?? 'M').toUpperCase();
     .hbtn-divider {
       display: none;
     }
+
+    /* Make room for the hamburger on small screens — wishlist + compare
+       live inside the mobile slide-in menu, so hide their header icons. */
+    .header__actions [data-open="wishlist"],
+    .header__actions a[href="/compare"] {
+      display: none;
+    }
   }
 </style>
 
 <script>
   // Solid header on scroll (transparent over the hero by default).
   const header = document.getElementById('siteHeader');
-  if (header) {
+  // Solid pages (no hero) bake the .scrolled look server-side — leave it on.
+  if (header && !header.dataset.solid) {
     const onScroll = () => header.classList.toggle('scrolled', window.scrollY > 20);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });

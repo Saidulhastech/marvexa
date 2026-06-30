@@ -1,13 +1,15 @@
 ---
 // ============================================================
-//  Collections index (OMNIX) — every Shopify collection as a
-//  lifestyle category tile. Uses the OMNIX chrome (Layout =
-//  new header/footer/cart drawer) and the shared `.cat-card`.
-//  Local demo art fills in for image-less collections.
+//  Collections index (MARVEXA "Modern") — every Shopify collection
+//  as an editorial category tile. Marvexa chrome (Layout header /
+//  footer / cart drawer) + the shared design tokens, matching the
+//  Shop header block and the Collection PLP skin. Local demo art
+//  fills in for image-less collections.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
-import SectionHeading from '~/components/ui/omnix/SectionHeading.astro';
-import CategoryCard from '~/components/collection/omnix/CategoryCard.astro';
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import Newsletter from '~/components/home/marvexa/Newsletter.astro';
 import { resolveImage } from '~/lib/asset';
 import { getAllCollections } from '~/lib/shopify';
 import type { Collection } from '~/lib/shopify/types';
@@ -31,72 +33,407 @@ const fallbacks = [
   'speaker.jpg',
   'cat-tablets.jpg',
 ];
+
+// Header stats — derived from the real catalogue.
+const totalProducts = collections.reduce((n, c) => n + (c.productCount ?? 0), 0);
+const anyPlus = collections.some((c) => c.productCountPlus);
 ---
 
 <Layout title="Collections" description="Shop the full range by collection.">
-  <section class="sec">
-    <div class="container">
-      <nav class="crumb" aria-label="Breadcrumb">
-        <a href="/">Home</a><span>/</span><span class="cur">Collections</span>
-      </nav>
+  <main class="coll-page">
 
-      <SectionHeading
-        eyebrow="Browse"
-        title="Shop by collection"
-        body="Curated edits for every part of the rotation — explore the full catalogue by collection."
-      />
+    {/* ── HEADER BLOCK ── */}
+    <div class="coll-hd-block">
+      <div class="coll-hd-inner">
 
+        {/* Top row: breadcrumb + perks */}
+        <div class="chd-toprow">
+          <nav class="chd-bc" aria-label="Breadcrumb">
+            <a href="/">Home</a>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            <span class="chd-bc-cur">Collections</span>
+          </nav>
+          <div class="chd-perks">
+            <span class="chd-perk">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round"><path
+                  d="M5 8h14M5 8a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"
+                ></path></svg>
+              Free Shipping over $99
+            </span>
+            <span class="chd-perk-div"></span>
+            <span class="chd-perk">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg>
+              Free Returns
+            </span>
+            <span class="chd-perk-div"></span>
+            <span class="chd-perk chd-perk--live"><span class="chd-live-dot"></span> SS26 — Live Now</span>
+          </div>
+        </div>
+
+        {/* Hero row */}
+        <div class="chd-hero">
+          <div class="chd-hero-left">
+            <div class="chd-eyebrow">Browse</div>
+            <h1 class="chd-title">Shop by Collection</h1>
+            <p class="chd-sub">Curated edits for every part of the rotation — explore the full catalogue by collection.</p>
+          </div>
+          {collections.length > 0 && (
+            <div class="chd-stats">
+              <div class="chd-stat">
+                <div class="chd-stat-num">{collections.length}</div>
+                <div class="chd-stat-lbl">Collection{collections.length === 1 ? '' : 's'}</div>
+              </div>
+              {totalProducts > 0 && (
+                <>
+                  <div class="chd-stat-div"></div>
+                  <div class="chd-stat">
+                    <div class="chd-stat-num">{totalProducts}{anyPlus ? '+' : ''}</div>
+                    <div class="chd-stat-lbl">Products</div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+
+    {/* ── COLLECTION GRID ── */}
+    <div class="coll-wrap">
       {
         collections.length > 0 ? (
-          <div class="cat-grid">
-            {collections.map((c, i) => (
-              <CategoryCard
-                title={c.title}
-                href={`/collections/${c.handle}`}
-                image={c.image?.url ?? resolveImage(fallbacks[i % fallbacks.length])}
-                count={c.productCount}
-                countPlus={c.productCountPlus}
-                eager={i < 3}
-              />
-            ))}
+          <div class="coll-grid">
+            {collections.map((c, i) => {
+              const remote = c.image?.url ?? null;
+              const local = remote ? null : resolveImage(fallbacks[i % fallbacks.length]);
+              const eager = i < 3;
+              return (
+                <a href={`/collections/${c.handle}`} class="coll-card">
+                  <div class="coll-card-img">
+                    {remote ? (
+                      <Image src={remote} alt={c.title} width={560} height={700} loading={eager ? 'eager' : 'lazy'} />
+                    ) : (
+                      <Image src={local as ImageMetadata} alt={c.title} width={560} height={700} loading={eager ? 'eager' : 'lazy'} />
+                    )}
+                    <div class="coll-card-overlay"></div>
+                    <span class="coll-card-index">{String(i + 1).padStart(2, '0')}</span>
+                  </div>
+                  <div class="coll-card-body">
+                    <div class="coll-card-text">
+                      <h2 class="coll-card-title">{c.title}</h2>
+                      {c.productCount != null && (
+                        <span class="coll-card-count">{c.productCount}{c.productCountPlus ? '+' : ''} product{c.productCount === 1 ? '' : 's'}</span>
+                      )}
+                    </div>
+                    <span class="coll-card-cta">
+                      Shop
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12" /><polyline points="13 6 19 12 13 18" />
+                      </svg>
+                    </span>
+                  </div>
+                </a>
+              );
+            })}
           </div>
         ) : (
           <div class="coll-empty">
+            <span class="chd-eyebrow">{loadError ? 'Unavailable' : 'Coming soon'}</span>
             <b>{loadError ? 'Collections unavailable' : 'No collections yet'}</b>
             <p>
               {loadError
                 ? 'We could not load collections right now. Please try again shortly.'
                 : 'New collections are on the way. Check back soon.'}
             </p>
-            <a class="btn btn-primary" href="/products">Browse all products</a>
+            <a class="coll-btn" href="/products">Browse all products</a>
           </div>
         )
       }
     </div>
-  </section>
+
+  </main>
+
+  <Newsletter surface="var(--bg)" />
 </Layout>
 
 <style>
-  .crumb {
+  .coll-page {
+    background: var(--bg);
+    min-height: 100vh;
+    padding-top: 110px;
+  }
+
+  /* ═══════════════════════════ HEADER BLOCK ═══════════════════════════ */
+  .coll-hd-block {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+  }
+  .coll-hd-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 44px;
+  }
+
+  /* Top row: breadcrumb + perks */
+  .chd-toprow {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.82rem;
-    color: var(--muted, #6b7280);
-    margin-bottom: 22px;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
   }
-  .crumb a:hover { color: var(--text); }
-  .crumb .cur { color: var(--text); font-weight: 500; }
+  .chd-bc {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--fb);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .chd-bc a { color: var(--muted); text-decoration: none; transition: color .18s; }
+  .chd-bc a:hover { color: var(--text); }
+  .chd-bc svg { opacity: .4; flex-shrink: 0; }
+  .chd-bc-cur { color: var(--text); font-weight: 600; letter-spacing: .1px; }
 
+  .chd-perks { display: flex; align-items: center; gap: 10px; }
+  .chd-perk {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .chd-perk svg { color: var(--accent); flex-shrink: 0; }
+  .chd-perk-div { width: 1px; height: 12px; background: var(--border); }
+  .chd-perk--live { color: var(--accent); font-weight: 600; }
+  .chd-live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); animation: chd-pulse 2s infinite; flex-shrink: 0;
+  }
+  @keyframes chd-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .5; transform: scale(1.3); }
+  }
+
+  /* Hero row */
+  .chd-hero {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
+    padding: 28px 0 32px;
+  }
+  .chd-hero-left { flex: 1; }
+  .chd-eyebrow {
+    font-family: var(--fb);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .chd-title {
+    font-family: var(--fh);
+    font-size: 48px;
+    font-weight: 700;
+    line-height: .95;
+    letter-spacing: -2px;
+    color: var(--text);
+    margin: 0 0 12px;
+  }
+  .chd-sub {
+    font-family: var(--fb);
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.6;
+    max-width: 440px;
+  }
+  .chd-stats {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .chd-stat { padding: 16px 28px; text-align: center; }
+  .chd-stat-num {
+    font-family: var(--fh);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    color: var(--text);
+    line-height: 1;
+  }
+  .chd-stat-lbl {
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: .4px;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+  .chd-stat-div { width: 1px; background: var(--border); align-self: stretch; }
+
+  /* ═══════════════════════════ GRID ═══════════════════════════ */
+  .coll-wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 48px 44px 100px;
+  }
+  .coll-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 36px 24px;
+  }
+
+  .coll-card { display: block; text-decoration: none; }
+  .coll-card-img {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    border-radius: 10px;
+    background: var(--bg2);
+  }
+  .coll-card-img :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform .6s cubic-bezier(.22, 1, .36, 1);
+  }
+  .coll-card:hover .coll-card-img :global(img) { transform: scale(1.05); }
+  .coll-card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,.28) 100%);
+    opacity: 0;
+    transition: opacity .35s var(--ease, ease);
+  }
+  .coll-card:hover .coll-card-overlay { opacity: 1; }
+  .coll-card-index {
+    position: absolute;
+    top: 14px;
+    left: 16px;
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #fff;
+    mix-blend-mode: difference;
+  }
+
+  .coll-card-body {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 4px 0;
+  }
+  .coll-card-title {
+    font-family: var(--fh);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -.5px;
+    color: var(--text);
+    margin: 0;
+    line-height: 1.2;
+    transition: color .2s;
+  }
+  .coll-card:hover .coll-card-title { color: var(--accent); }
+  .coll-card-count {
+    display: block;
+    margin-top: 5px;
+    font-family: var(--fb);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .coll-card-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text);
+    transition: gap .2s, color .2s;
+  }
+  .coll-card:hover .coll-card-cta { gap: 10px; color: var(--accent); }
+
+  /* ═══════════════════════════ EMPTY / ERROR ═══════════════════════════ */
   .coll-empty {
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
     gap: 10px;
-    padding: 72px 20px;
+    padding: 80px 20px;
   }
-  .coll-empty b { font-size: 1.25rem; }
-  .coll-empty p { color: var(--muted, #6b7280); max-width: 30rem; margin: 0; }
-  .coll-empty .btn { margin-top: 14px; }
+  .coll-empty .chd-eyebrow { margin-bottom: 0; }
+  .coll-empty b {
+    font-family: var(--fh);
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -.5px;
+    color: var(--text);
+  }
+  .coll-empty p {
+    font-family: var(--fb);
+    color: var(--muted);
+    max-width: 30rem;
+    margin: 0;
+    line-height: 1.6;
+  }
+  .coll-btn {
+    margin-top: 16px;
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--bg);
+    background: var(--text);
+    border: 1.5px solid var(--text);
+    border-radius: 6px;
+    padding: 13px 26px;
+    text-decoration: none;
+    transition: background .2s, border-color .2s;
+  }
+  .coll-btn:hover { background: var(--accent); border-color: var(--accent); }
+
+  /* ═══════════════════════════ RESPONSIVE ═══════════════════════════ */
+  @media (max-width: 1024px) {
+    .coll-grid { gap: 28px 18px; }
+  }
+  @media (max-width: 860px) {
+    .coll-hd-inner, .coll-wrap { padding-left: 24px; padding-right: 24px; }
+    .chd-toprow { flex-wrap: wrap; }
+    .chd-hero { flex-direction: column; align-items: flex-start; gap: 24px; }
+    .chd-title { font-size: 38px; }
+    .coll-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 600px) {
+    .chd-perks { display: none; }
+    .chd-stats { width: 100%; justify-content: space-between; }
+    .coll-wrap { padding-top: 32px; }
+    .coll-grid { grid-template-columns: 1fr; gap: 28px; }
+  }
 </style>

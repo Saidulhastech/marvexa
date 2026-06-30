@@ -51,6 +51,15 @@ export const PRODUCT_CARD_FRAGMENT = /* GraphQL */ `
     handle
     vendor
     productType
+    # Collections drive dynamic category tabs/facets when productType is unset.
+    collections(first: 8) {
+      edges {
+        node {
+          title
+          handle
+        }
+      }
+    }
     availableForSale
     featuredImage {
       ...ImageFields
@@ -169,6 +178,9 @@ export const CART_FRAGMENT = /* GraphQL */ `
                 value
               }
               price {
+                ...Money
+              }
+              compareAtPrice {
                 ...Money
               }
               image {

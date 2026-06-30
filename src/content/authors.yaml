@@ -4,31 +4,32 @@
 #  Avatars use the pravatar service (allowed in astro.config
 #  remotePatterns) so no local asset files are needed.
 # ============================================================
-maya-chen:
-  name: Maya Chen
-  role: Senior Audio Editor
-  avatar: "https://i.pravatar.cc/200?img=47"
+sophie-laurent:
+  name: Sophie Laurent
+  role: Founder & Creative Director
+  avatar: "https://i.pravatar.cc/200?img=45"
   bio: >-
-    Maya has spent a decade testing headphones on planes, trains and in
-    open-plan offices. She cares more about what a spec sheet hides than
-    what it shows, and writes the buying guides she wishes she'd had.
-  twitter: "@mayachen"
+    Sophie founded MARVEXA in Paris in 2019 after 15 years in luxury fashion.
+    She writes about considered dressing, quality over quantity, and the art
+    of building a wardrobe that actually works for your life.
+  twitter: "@sophielaurent"
 
-ravi-okafor:
-  name: Ravi Okafor
-  role: Hardware Engineer
+emeka-osei:
+  name: Emeka Osei
+  role: Head of Materials
   avatar: "https://i.pravatar.cc/200?img=12"
   bio: >-
-    Ravi works on acoustic and mechanical design at Omnix. He writes the
-    behind-the-build stories — the trade-offs, the dead ends, and the five
-    grams that took eighteen months.
-  twitter: "@raviokafor"
+    Former textile specialist at Loro Piana, Emeka sources every MARVEXA fabric
+    personally from mills in Italy and Japan. He writes the craft-and-care
+    stories — what quality really means, and how to make it last.
+  twitter: "@emekaosei"
 
-elena-fischer:
-  name: Elena Fischer
-  role: Fitness & Wearables Writer
+mia-thornton:
+  name: Mia Thornton
+  role: Brand Director
   avatar: "https://i.pravatar.cc/200?img=32"
   bio: >-
-    Elena reviews wearables the only way she trusts — by training with them.
-    Marathons, trail runs and the occasional 3am battery-anxiety check.
-  twitter: "@elenafischer"
+    Ten years in fashion across Paris and New York. Mia shapes how MARVEXA
+    talks about style — practical guides for getting dressed with less effort
+    and more intention.
+  twitter: "@miathornton"

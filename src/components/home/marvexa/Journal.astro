@@ -1,11 +1,47 @@
 ---
+// ============================================================
+//  Journal — latest posts from the real blog collection. Each card
+//  deep-links to its post (/blog/<id>) instead of the index, with
+//  author + meta resolved from content collections.
+// ============================================================
+import { Image } from 'astro:assets';
+import { getCollection, getEntry } from 'astro:content';
+import { resolveImage } from '~/lib/asset';
+
+const fmt = (d: Date) =>
+  d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const initial = (name: string) => (name.trim()[0] ?? 'M').toUpperCase();
+
+const latest = (await getCollection('blog'))
+  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime())
+  .slice(0, 3);
+
+const cards = await Promise.all(
+  latest.map(async (post) => {
+    const author = post.data.author
+      ? await getEntry('authors', post.data.author)
+      : undefined;
+    return {
+      href: `/blog/${post.id}`,
+      title: post.data.title,
+      excerpt: post.data.excerpt,
+      image: post.data.image,
+      tag: post.data.category ?? post.data.tags[0] ?? 'Journal',
+      date: fmt(post.data.date),
+      readingTime: post.data.readingTime,
+      authorName: author?.data.name ?? 'MARVEXA',
+      authorSlug: author ? post.data.author : undefined,
+      authorAvatar: author?.data.avatar,
+    };
+  }),
+);
 ---
 
 <section class="blog" aria-labelledby="blog-h">
   <div class="wrap">
     <div class="bs-head rv">
       <div class="bs-head__left">
-        <div class="bs-head__eyebrow">The MAISON Journal</div>
+        <div class="bs-head__eyebrow">The MARVEXA Journal</div>
         <h2 class="bs-head__title" id="blog-h">Style &amp; Stories</h2>
       </div>
       <div class="bs-head__right">
@@ -20,99 +56,44 @@
       </div>
     </div>
     <div class="blog-grid">
-      <article class="blog-card">
-        <div class="blog-card__img-wrap">
-          <img
-            src="https://images.unsplash.com/photo-1559697242-cacab5d5b62c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-            alt="Wardrobe guide" class="blog-card__img" loading="lazy" />
-          <div class="blog-card__img-overlay"></div>
-          <span class="blog-card__tag">Style Guide</span>
-        </div>
-        <div class="blog-card__body">
-          <div class="blog-card__meta">
-            <span class="blog-card__date">May 8, 2026</span>
-            <span class="blog-card__meta-dot"></span>
-            <span class="blog-card__read-time">6 min read</span>
-          </div>
-          <h3 class="blog-card__title">How to Build a Wardrobe That Works All Year Round</h3>
-          <p class="blog-card__exc">The 12 essential pieces that form the foundation of a truly versatile wardrobe —
-            plus tips on mixing and layering effortlessly.</p>
-          <div class="blog-card__footer">
-            <div class="blog-card__author">
-              <div class="blog-card__av">E</div>
-              <span class="blog-card__author-name">Emma Laurent</span>
+      {cards.map((c) => (
+        <article class="blog-card">
+          <a href={c.href} class="blog-card__img-wrap" aria-label={c.title}>
+            <Image src={resolveImage(c.image)} alt={c.title} width={560} height={420}
+              class="blog-card__img" loading="lazy" />
+            <div class="blog-card__img-overlay"></div>
+            <span class="blog-card__tag">{c.tag}</span>
+          </a>
+          <div class="blog-card__body">
+            <div class="blog-card__meta">
+              <span class="blog-card__date">{c.date}</span>
+              {c.readingTime && <span class="blog-card__meta-dot"></span>}
+              {c.readingTime && <span class="blog-card__read-time">{c.readingTime}</span>}
             </div>
-            <a href="/blog" class="blog-card__link">Read
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </a>
-          </div>
-        </div>
-      </article>
-      <article class="blog-card">
-        <div class="blog-card__img-wrap">
-          <img
-            src="https://images.unsplash.com/photo-1559127452-cb4ef7888fa1?q=80&w=2069&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-            alt="Premium knitwear care" class="blog-card__img" loading="lazy" />
-          <div class="blog-card__img-overlay"></div>
-          <span class="blog-card__tag">Care Guide</span>
-        </div>
-        <div class="blog-card__body">
-          <div class="blog-card__meta">
-            <span class="blog-card__date">April 22, 2026</span>
-            <span class="blog-card__meta-dot"></span>
-            <span class="blog-card__read-time">4 min read</span>
-          </div>
-          <h3 class="blog-card__title">The Proper Way to Care for Premium Knitwear</h3>
-          <p class="blog-card__exc">Your wool and cashmere pieces deserve the best care. Keep them looking exceptional
-            for years with our expert guide.</p>
-          <div class="blog-card__footer">
-            <div class="blog-card__author">
-              <div class="blog-card__av">T</div>
-              <span class="blog-card__author-name">Tom Sinclair</span>
+            <h3 class="blog-card__title"><a href={c.href}>{c.title}</a></h3>
+            <p class="blog-card__exc">{c.excerpt}</p>
+            <div class="blog-card__footer">
+              {c.authorSlug ? (
+                <a class="blog-card__author" href={`/blog/author/${c.authorSlug}`}>
+                  <div class="blog-card__av">{c.authorAvatar ? <img src={c.authorAvatar} alt={c.authorName} loading="lazy" /> : initial(c.authorName)}</div>
+                  <span class="blog-card__author-name">{c.authorName}</span>
+                </a>
+              ) : (
+                <div class="blog-card__author">
+                  <div class="blog-card__av">{c.authorAvatar ? <img src={c.authorAvatar} alt={c.authorName} loading="lazy" /> : initial(c.authorName)}</div>
+                  <span class="blog-card__author-name">{c.authorName}</span>
+                </div>
+              )}
+              <a href={c.href} class="blog-card__link">Read
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                  stroke-linecap="round">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </a>
             </div>
-            <a href="/blog" class="blog-card__link">Read
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </a>
           </div>
-        </div>
-      </article>
-      <article class="blog-card">
-        <div class="blog-card__img-wrap">
-          <img
-            src="https://images.unsplash.com/photo-1562592282-9dd0ca7d71ac?q=80&w=2101&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-            alt="SS 2026 collection story" class="blog-card__img" loading="lazy" />
-          <div class="blog-card__img-overlay"></div>
-          <span class="blog-card__tag">Brand Story</span>
-        </div>
-        <div class="blog-card__body">
-          <div class="blog-card__meta">
-            <span class="blog-card__date">April 10, 2026</span>
-            <span class="blog-card__meta-dot"></span>
-            <span class="blog-card__read-time">5 min read</span>
-          </div>
-          <h3 class="blog-card__title">Behind the Collection: The Inspiration for SS 2026</h3>
-          <p class="blog-card__exc">A conversation with our creative team about the ideas and materials that shaped
-            this season's defining looks.</p>
-          <div class="blog-card__footer">
-            <div class="blog-card__author">
-              <div class="blog-card__av">A</div>
-              <span class="blog-card__author-name">Arya Nakamura</span>
-            </div>
-            <a href="/blog" class="blog-card__link">Read
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </a>
-          </div>
-        </div>
-      </article>
+        </article>
+      ))}
     </div>
   </div>
 </section>
@@ -248,6 +229,7 @@
   }
 
   .blog-card__img-wrap {
+    display: block;
     position: relative;
     overflow: hidden;
     flex-shrink: 0;
@@ -341,6 +323,8 @@
     transition: color var(--ease);
   }
 
+  .blog-card__title a { color: inherit; }
+
   .blog-card:hover .blog-card__title {
     color: var(--accent);
   }
@@ -366,7 +350,11 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    color: inherit;
   }
+
+  a.blog-card__author:hover .blog-card__author-name { color: var(--accent); }
+  a.blog-card__author:hover .blog-card__av { border-color: var(--accent); color: var(--accent); }
 
   .blog-card__av {
     width: 26px;
@@ -381,6 +369,15 @@
     font-weight: 700;
     color: var(--muted);
     flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .blog-card__av img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
   }
 
   .blog-card__author-name {

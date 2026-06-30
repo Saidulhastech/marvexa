@@ -9,24 +9,25 @@ import sitemap from "@astrojs/sitemap";
 // https://astro.build/config
 export default defineConfig({
   // Public origin — used by the sitemap and canonical URLs.
-  // Replace with your production domain before deploying.
-  site: "https://omnix.store",
+  // ⚠️ Replace with your real production domain before deploying.
+  site: "https://marvexa.com",
   output: "server",
   adapter: cloudflare({
-    // Use Cloudflare's platform proxy in `astro dev` so getSecret() and
-    // bindings resolve from .dev.vars / wrangler config locally.
-    platformProxy: { enabled: true },
+    // The adapter now runs on @cloudflare/vite-plugin, so in `astro dev`
+    // getSecret() and bindings resolve automatically from .dev.vars /
+    // wrangler config — no explicit platformProxy flag needed.
     // Workers has no sharp/native image binary — don't optimize at runtime.
     // Local images are pre-optimized in src/assets/images; remote Shopify
     // images are already served from its CDN.
     imageService: "passthrough",
   }),
   integrations: [mdx(), sitemap()],
-  // This app doesn't use Astro.session. Pick the in-memory driver so the
+  // This app doesn't use Astro.session. Pick an in-memory driver so the
   // Cloudflare adapter doesn't force a KV "SESSION" binding at deploy time.
-  // Switch to a KV driver (and provision the namespace) if you add sessions.
+  // (Astro 7 dropped sessionDrivers.memory() — lruCache is the in-memory
+  // unstorage driver.) Switch to cloudflareKVBinding if you add sessions.
   session: {
-    driver: sessionDrivers.memory(),
+    driver: sessionDrivers.lruCache(),
   },
   // Single source of truth for env vars. Secrets are read at runtime via
   // getSecret() (Workers exposes them per-request, not as process.env).

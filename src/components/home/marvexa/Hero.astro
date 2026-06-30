@@ -1,7 +1,7 @@
 ---
 ---
 
-<section class="hero" aria-label="Hero — MAISON SS 2026">
+<section class="hero" aria-label="Hero — MARVEXA SS 2026">
   <div class="hero__bg">
     <img
       src="https://images.unsplash.com/photo-1627489105008-063e31b2dbcd?q=80&w=1932&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
@@ -22,8 +22,8 @@
         high-fashion aesthetics and daily comfort.
       </p>
       <div class="hero__actions">
-        <a href="#" class="btn btn-accent">Shop Collection</a>
-        <a href="#" class="btn btn-outline-w">Watch Film</a>
+        <a href="/collections" class="btn btn-accent">Shop Collection</a>
+        <a href="/about" class="btn btn-outline-w">Our Story</a>
       </div>
     </div>
   </div>
@@ -158,12 +158,14 @@
     display: flex;
     align-items: center;
     gap: 20px;
+    flex-wrap: wrap;
   }
 
   .hero__actions .btn {
     padding: 16px 36px;
     font-size: 11px;
     border-radius: 2px;
+    white-space: nowrap;
   }
 
   .hero__scroll {
@@ -223,18 +225,52 @@
     color: rgba(255, 255, 255, 0.4);
   }
 
-  @media(max-width:1100px) {
+  @media(max-width:991.98px) {
+    .hero {
+      height: auto;
+      min-height: 0;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .hero__container {
+      padding-top: 88px;
+      padding-bottom: 56px;
+    }
+
     .hero__title {
       font-size: clamp(44px, 7.5vw, 82px)
     }
 
+    /* iPad: stats out of the absolute corner → in normal flow, full width */
     .hero__stats {
-      padding: 32px 40px;
-      gap: 40px
+      position: relative;
+      right: auto;
+      bottom: auto;
+      width: 100%;
+      border-radius: 0;
+      border: none;
+      background: rgba(17, 17, 17, 0.3);
+      justify-content: space-between;
+      padding: 28px var(--gutter);
+      gap: 24px
+    }
+
+    .hero__scroll {
+      display: none
     }
   }
 
   @media(max-width:768px) {
+    .hero__container {
+      padding-top: 160px;
+      padding-bottom: 60px;
+    }
+
+    .hero__stats {
+      margin-top: 4px;
+    }
+
     .hero__title {
       font-size: clamp(38px, 10vw, 56px);
       letter-spacing: -2px
@@ -245,27 +281,28 @@
       margin-bottom: 32px
     }
 
+    .hero__actions .btn {
+      padding: 14px 28px
+    }
+
     .hero__stats {
-      position: relative;
-      border-radius: 0;
-      border: none;
-      background: rgba(17, 17, 17, 0.3);
-      width: 100%;
-      justify-content: space-between;
-      padding: 24px var(--gutter);
-      gap: 12px
+      padding: 20px var(--gutter);
+      gap: 10px
+    }
+
+    .hero-stat {
+      flex: 1;
+      min-width: 0;
     }
 
     .hero-stat__n {
-      font-size: 24px
+      font-size: clamp(18px, 5vw, 24px);
+      white-space: nowrap
     }
 
     .hero-stat__l {
-      font-size: 9px
-    }
-
-    .hero__scroll {
-      display: none
+      font-size: clamp(7px, 2.4vw, 9px);
+      white-space: nowrap
     }
   }
 </style>

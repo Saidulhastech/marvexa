@@ -1,17 +1,18 @@
 ---
 // ============================================================
-//  Layout — Maison html shell. Loads the design system (plain CSS),
+//  Layout — Marvexa html shell. Loads the design system (plain CSS),
 //  Plus Jakarta Sans + Inter fonts, SEO <head>, and the vanilla chrome
 //  (announcement, header, footer, cart drawer, mobile nav).
 // ============================================================
-import '~/styles/omnix.css';
-import { BRAND } from '~/config/omnix';
+import '~/styles/marvexa.css';
+import '~/styles/drawers.css';
+import { BRAND } from '~/config/marvexa';
 import SEO from '~/components/seo/SEO.astro';
-import Announcement from '~/components/layout/omnix/Announcement.astro';
-import Header from '~/components/layout/omnix/Header.astro';
-import Footer from '~/components/layout/omnix/Footer.astro';
-import CartDrawer from '~/components/layout/omnix/CartDrawer.astro';
-import Overlays from '~/components/layout/omnix/Overlays.astro';
+import Announcement from '~/components/layout/marvexa/Announcement.astro';
+import Header from '~/components/layout/marvexa/Header.astro';
+import Footer from '~/components/layout/marvexa/Footer.astro';
+import CartDrawer from '~/components/layout/marvexa/CartDrawer.astro';
+import Overlays from '~/components/layout/marvexa/Overlays.astro';
 
 interface Props {
   title?: string;
@@ -21,9 +22,13 @@ interface Props {
   noindex?: boolean;
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
   noFooter?: boolean;
+  /** Transparent-over-hero header. Set true ONLY on pages with a dark
+      full-bleed hero behind the header (e.g. the homepage). Defaults to a
+      solid header so inner pages don't show white text on a light bg. */
+  transparentHeader?: boolean;
 }
 
-const { title, description, image, type, noindex, jsonLd, noFooter = false } = Astro.props;
+const { title, description, image, type, noindex, jsonLd, noFooter = false, transparentHeader = false } = Astro.props;
 
 // Site-wide JSON-LD: Organization + WebSite (merged with any page blocks).
 const baseJsonLd: Record<string, unknown>[] = [
@@ -59,7 +64,7 @@ const allJsonLd = [...baseJsonLd, ...pageJsonLd];
         cold connection (helps LCP on product grids/PDP). */}
     <link rel="preconnect" href="https://cdn.shopify.com" crossorigin />
 
-    {/* Fonts — Plus Jakarta Sans (headings) · Inter (body), matching the Maison template */}
+    {/* Fonts — Plus Jakarta Sans (headings) · Inter (body), matching the Marvexa template */}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -79,7 +84,7 @@ const allJsonLd = [...baseJsonLd, ...pageJsonLd];
     <a href="#main" class="skip-link">Skip to content</a>
 
     <Announcement />
-    <Header />
+    <Header solid={!transparentHeader} />
 
     <main id="main">
       <slot />

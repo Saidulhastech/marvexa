@@ -1,12 +1,37 @@
 ---
-import ProductCard from '~/components/product/omnix/ProductCard.astro';
+import ProductCard from '~/components/product/marvexa/ProductCard.astro';
+import Icon from '~/components/ui/marvexa/Icon.astro';
 import type { ProductCard as TProductCard } from '~/lib/shopify/types';
 
 interface Props {
   products: TProductCard[];
+  /** Total new-arrival styles available (for the "Showing X of Y" line). */
+  total?: number;
+  /** True when the real total exceeds the count cap → render "Y+". */
+  totalPlus?: boolean;
+  /** "View All" destination (a collection page or the shop). */
+  viewAllHref?: string;
 }
 
-const { products } = Astro.props;
+const { products, total, totalPlus = false, viewAllHref = '/products' } = Astro.props;
+const shown = products.length;
+// Only show "of Y" when the catalogue is bigger than what's on screen.
+const totalLabel = total && total > shown ? ` of ${total}${totalPlus ? '+' : ''}` : '';
+
+// Filter tabs derived from the real collections these products belong to
+// (this store leaves productType/tags empty, so collections are the only
+// category signal). Map handle → title, deduped, sorted by label.
+// Drop the section's own collection (this IS the new-arrivals grid) so its
+// tab doesn't just duplicate "All".
+const selfHandle = viewAllHref.split('/collections/')[1]?.split(/[/?#]/)[0] ?? '';
+const categoryMap = new Map<string, string>();
+for (const p of products) {
+  for (const c of p.collections ?? []) {
+    if (c.handle && c.handle !== selfHandle) categoryMap.set(c.handle, c.title || c.handle);
+  }
+}
+const categories = Array.from(categoryMap, ([value, label]) => ({ value, label }))
+  .sort((a, b) => a.label.localeCompare(b.label));
 ---
 
 <section class="new-arrivals" aria-labelledby="na-h">
@@ -18,20 +43,37 @@ const { products } = Astro.props;
         <div class="na-header__eyebrow">New Arrivals</div>
         <h2 class="na-header__title" id="na-h">Fresh This Week</h2>
       </div>
-      <div class="na-filters" role="tablist" aria-label="Filter by category">
-        <button class="na-tab on" role="tab" aria-selected="true" data-cat="all">All</button>
-        <button class="na-tab" role="tab" aria-selected="false" data-cat="women">Women</button>
-        <button class="na-tab" role="tab" aria-selected="false" data-cat="men">Men</button>
-        <button class="na-tab" role="tab" aria-selected="false" data-cat="accessories">Accessories</button>
-      </div>
+      {categories.length > 0 && (
+        <div class="na-filters" role="tablist" aria-label="Filter by category">
+          <button class="na-tab on" role="tab" aria-selected="true" data-cat="all">All</button>
+          {categories.map((c) => (
+            <button class="na-tab" role="tab" aria-selected="false" data-cat={c.value}>{c.label}</button>
+          ))}
+        </div>
+      )}
     </div>
 
     <!-- Products grid -->
     <div class="products-grid rv d1" id="na-grid">
       {products.map((p, i) => (
-        <ProductCard product={p} eager={i < 4} attrs={{ 'data-cat': (p.productType ?? '').toLowerCase() }} />
+        <ProductCard product={p} eager={i < 4} attrs={{ 'data-cat': (p.collections ?? []).map((c) => c.handle).join(',') }} />
       ))}
     </div>
+
+    <!-- Empty state — shown when a filter (or an empty batch) yields no items -->
+    <p class="na-empty" id="na-empty" role="status" hidden={products.length > 0}>
+      No new arrivals in this category yet. Check back soon.
+    </p>
+
+    {shown > 0 && (
+      <div class="na-footer rv">
+        <span class="na-count">Showing {shown}{totalLabel} new styles</span>
+        <a href={viewAllHref} class="btn btn-outline">
+          View All New Arrivals
+          <Icon name="arrow-right" size={12} stroke={2.2} />
+        </a>
+      </div>
+    )}
 
   </div>
 </section>
@@ -43,13 +85,19 @@ const { products } = Astro.props;
 
     const tabs = document.querySelectorAll<HTMLButtonElement>('.na-filters .na-tab');
     const cards = grid.querySelectorAll<HTMLElement>('.prod-card');
+    const empty = document.getElementById('na-empty');
 
     function applyFilter(cat: string) {
+      let visible = 0;
       cards.forEach((card) => {
-        const cardCat = (card.getAttribute('data-cat') ?? '').toLowerCase();
-        const show = cat === 'all' || cardCat.includes(cat);
+        const cardCats = (card.getAttribute('data-cat') ?? '').split(',');
+        const show = cat === 'all' || cardCats.includes(cat);
         card.style.display = show ? '' : 'none';
+        if (show) visible++;
       });
+      // No matches → show the empty message, hide the grid.
+      if (empty) empty.hidden = visible > 0;
+      if (grid) grid.style.display = visible > 0 ? '' : 'none';
     }
 
     tabs.forEach((tab) => {
@@ -74,7 +122,7 @@ const { products } = Astro.props;
    ⑥ NEW ARRIVALS
 ══════════════════════════════════════════════════ */
   .new-arrivals {
-    padding: 0px 120px 120px 120px;
+    padding: 0px 0px 120px 0px;
     background: var(--bg);
   }
 
@@ -160,6 +208,37 @@ const { products } = Astro.props;
     box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
   }
 
+  /* Section footer — centered count + View All */
+  .na-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-top: 56px;
+    flex-wrap: wrap;
+  }
+
+  .na-count {
+    font-family: var(--fb);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: .2px;
+  }
+
+  /* Empty state */
+  .na-empty {
+    margin: 0;
+    padding: 56px 24px;
+    text-align: center;
+    font-family: var(--fb);
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .na-empty[hidden] {
+    display: none;
+  }
+
   /* Products grid */
   .products-grid {
     display: grid;
@@ -177,6 +256,31 @@ const { products } = Astro.props;
     .products-grid {
       grid-template-columns: repeat(2, 1fr);
       gap: 10px;
+    }
+  }
+
+  /* Stack the title above the filter pill so they never overlap, and let the
+     pill scroll horizontally instead of overflowing the viewport. */
+  @media (max-width: 640px) {
+    .na-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+
+    .na-filters {
+      max-width: 100%;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .na-filters::-webkit-scrollbar {
+      display: none;
+    }
+
+    .na-tab {
+      flex-shrink: 0;
     }
   }
 </style>

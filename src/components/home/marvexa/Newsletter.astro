@@ -1,7 +1,20 @@
 ---
+interface Props {
+  // Section background. Defaults to the stone surface (--bg2) used on the
+  // home page; the products page passes white to override it.
+  surface?: string;
+  // Top padding override (e.g. '0' to sit flush under the previous section).
+  // Defaults to the scoped 140px used on the home page.
+  padTop?: string;
+}
+const { surface, padTop } = Astro.props;
+const sectionStyle =
+  [surface && `background:${surface}`, padTop !== undefined && `padding-top:${padTop}`]
+    .filter(Boolean)
+    .join(';') || undefined;
 ---
 
-<section class="newsletter" aria-labelledby="nl-h">
+<section class="newsletter" aria-labelledby="nl-h" style={sectionStyle}>
   <div class="wrap">
     <div class="nl-card rv">
 
@@ -18,7 +31,7 @@
         <form class="nl-form" novalidate>
           <div class="nl-field">
             <input type="email" class="nl-input" placeholder="Your email address" required autocomplete="email"
-              aria-label="Email address" />
+              aria-label="Email address" aria-describedby="nl-fine" />
           </div>
           <button type="submit" class="nl-btn">
             Subscribe Now
@@ -28,7 +41,7 @@
               <polyline points="12 5 19 12 12 19" />
             </svg>
           </button>
-          <p class="nl-fine">No spam. Unsubscribe anytime. &nbsp;<a href="#">Privacy Policy</a>.</p>
+          <p class="nl-fine" id="nl-fine">No spam. Unsubscribe anytime. &nbsp;<a href="/pages/privacy-policy">Privacy Policy</a>.</p>
         </form>
       </div>
 
@@ -38,6 +51,10 @@
 
 <style>
   .newsletter {
+    /* static (override global `section{position:relative}`) so the dark
+       footer paints OVER this section's bg2 in the overlap zone; only the
+       positioned .nl-card (z-index:10) floats above the footer. */
+    position: static;
     background: var(--bg2);
     padding: 140px 0 0;
   }
@@ -126,6 +143,15 @@
     outline: none;
     transition: border-color 0.22s, background 0.22s;
     box-sizing: border-box;
+  }
+
+  .nl-input--error,
+  .nl-input[aria-invalid='true'] {
+    border-color: #dc2626;
+  }
+
+  .nl-input--error::placeholder {
+    color: #dc2626;
   }
 
   .nl-input::placeholder {
@@ -230,13 +256,30 @@
       const inp = form.querySelector<HTMLInputElement>('input');
       if (!btn || !inp) return;
 
+      // Validate before giving any success feedback — the form is `novalidate`,
+      // so check the email manually and surface invalid input instead of
+      // showing a false "subscribed" message.
+      const email = inp.value.trim();
+      const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      if (!valid) {
+        inp.setAttribute('aria-invalid', 'true');
+        inp.focus();
+        inp.placeholder = 'Enter a valid email address';
+        inp.classList.add('nl-input--error');
+        return;
+      }
+      inp.removeAttribute('aria-invalid');
+      inp.classList.remove('nl-input--error');
+
+      // TODO: POST `email` to your email provider (Shopify customer marketing,
+      // Klaviyo, Mailchimp, …). Until then this only confirms client-side.
       btn.textContent = "✓ You're subscribed!";
       btn.style.background = '#617230';
       inp.value = '';
       inp.placeholder = 'Thanks for joining!';
 
       setTimeout(() => {
-        btn.textContent = 'Subscribe';
+        btn.textContent = 'Subscribe Now';
         btn.style.background = '';
         inp.placeholder = 'Your email address';
       }, 5000);

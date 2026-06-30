@@ -1,63 +1,212 @@
 ---
 // ============================================================
-//  Journal index (OMNIX) — every blog post as a card. Links to the
-//  post detail pages; reuses the home `.blog-grid` design.
+//  Journal / Blog index (MARVEXA "Modern") — editorial landing.
+//  Same design as marvexa Blog.html, now driven by the `blog`
+//  content collection: a featured article + a grid of the rest.
+//  Site chrome + newsletter come from Layout / <Newsletter />.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
-import PostCard from '~/components/blog/PostCard.astro';
-import { getCollection } from 'astro:content';
+import '~/styles/blog.css';
+import Newsletter from '~/components/home/marvexa/Newsletter.astro';
+import { getCollection, getEntry } from 'astro:content';
+import { resolveImage } from '~/lib/asset';
 
-const posts = (await getCollection('blog')).sort(
+// Coloured category pill — per-category background/colour, matching the
+// original static design. Unknown categories fall back to the muted style.
+const CAT_STYLE: Record<string, string> = {
+  'Style Guide': 'background:rgba(122,143,58,.12);color:var(--accent);',
+  'Wardrobe Tips': 'background:rgba(100,130,180,.12);color:#5A7AB4;',
+  'Craft & Care': 'background:rgba(160,100,60,.12);color:#A0643C;',
+  'Behind MARVEXA': 'background:rgba(80,80,80,.1);color:var(--muted);',
+};
+const catStyle = (c?: string) => (c && CAT_STYLE[c]) || CAT_STYLE['Behind MARVEXA'];
+
+const fmt = (d: Date) =>
+  d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const initials = (name: string) =>
+  name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+
+const all = (await getCollection('blog')).sort(
   (a, b) => b.data.date.getTime() - a.data.date.getTime(),
 );
+const featured = all.find((p) => p.data.featured) ?? all[0];
+const posts = all.filter((p) => p.id !== featured?.id);
+
+const featAuthor = featured?.data.author
+  ? await getEntry('authors', featured.data.author)
+  : undefined;
+const featAuthorName = featAuthor?.data.name ?? 'MARVEXA';
+const featAuthorRole = featAuthor?.data.role ?? 'The MARVEXA Journal';
+const featAuthorAvatar = featAuthor?.data.avatar;
 ---
 
-<Layout title="Journal" description="Long-form buying guides and gear stories from the Omnix team.">
-  <section class="sec">
-    <div class="container">
-      <nav class="crumb" aria-label="Breadcrumb">
-        <a href="/">Home</a><span>/</span><span class="cur">Journal</span>
-      </nav>
+<Layout
+  title="Journal — MARVEXA"
+  description="The MARVEXA Journal — wardrobe guides, care tips, and the stories behind the clothes you love. Style, craft, and culture from a modern fashion house."
+>
+  <main id="mainContent" class="blog-pg">
 
-      <header class="jr-head">
-        <div class="jr-eyebrow">From the Omnix journal</div>
-        <h1 class="h1">Buy smarter. Read deeper.</h1>
-        <p class="jr-sub">
-          Long-form buying guides and gear stories, written by people who use the things they review.
-        </p>
-      </header>
-
-      {
-        posts.length > 0 ? (
-          <div class="blog-grid">
-            {posts.map((p) => <PostCard post={p} />)}
+    {/* ── HEADER ── */}
+    <div class="cart-hd-block">
+      <div class="cart-hd-inner">
+        <div class="cart-hd-toprow">
+          <nav class="cart-bc"><a href="/">Home</a><svg width="12" height="12" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg><span class="cart-bc-cur">Journal</span></nav>
+          <div class="cart-hd-perks">
+            <span class="cart-hd-perk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg> hello@marvexass26.com</span>
+            <span class="cart-hd-perk-div"></span>
+            <span class="cart-hd-perk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path
+                  d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.54 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l.81-.81a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg> +1 (212) 555-0140</span>
+            <span class="cart-hd-perk-div"></span>
+            <span class="cart-hd-perk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg> Free Shipping Over $250</span>
           </div>
-        ) : (
-          <p class="jr-empty">No posts yet — check back soon.</p>
-        )
-      }
+        </div>
+        <div class="cart-hd-hero">
+          <div class="cart-hd-hero-left">
+            <div class="cart-hd-eyebrow">The MARVEXA Journal</div>
+            <h1 class="cart-hd-title">Style, Craft &amp; Culture</h1>
+            <p class="cart-hd-sub">Wardrobe guides, care tips, and the stories behind the clothes you love.</p>
+          </div>
+          <div class="cart-hd-stats">
+            <div class="cart-hd-stat">
+              <div class="cart-hd-stat-num">{all.length}</div>
+              <div class="cart-hd-stat-lbl">Articles</div>
+            </div>
+            <div class="cart-hd-stat-div"></div>
+            <div class="cart-hd-stat">
+              <div class="cart-hd-stat-num">4</div>
+              <div class="cart-hd-stat-lbl">Categories</div>
+            </div>
+            <div class="cart-hd-stat-div"></div>
+            <div class="cart-hd-stat">
+              <div class="cart-hd-stat-num">Weekly</div>
+              <div class="cart-hd-stat-lbl">New Posts</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  </section>
+
+    {/* ── FEATURED POST ── */}
+    {featured && (
+      <section class="bl-featured">
+        <div class="bl-featured-inner">
+          <div class="bl-feat-label">Featured Article</div>
+          <div class="bl-feat-card">
+            <div class="bl-feat-img-wrap">
+              <img src={resolveImage(featured.data.image).src} alt={featured.data.title} loading="eager" />
+              <div class="bl-feat-img-overlay"></div>
+            </div>
+            <div class="bl-feat-content">
+              <div class="bl-feat-cat">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <polygon
+                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                {featured.data.category ?? 'Featured'} · Editor's Pick
+              </div>
+              <h2 class="bl-feat-title"><a href={`/blog/${featured.id}`}>{featured.data.title}</a></h2>
+              <p class="bl-feat-excerpt">{featured.data.excerpt}</p>
+              <a href={`/blog/${featured.id}`} class="bl-feat-cta">Read the full guide <svg width="14" height="14"
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                  <polyline points="13 6 19 12 13 18" />
+                </svg></a>
+              <div class="bl-feat-meta">
+                <div class="bl-feat-author">
+                  <div class="bl-feat-author-av">{featAuthorAvatar ? <img src={featAuthorAvatar} alt={featAuthorName} /> : initials(featAuthorName)}</div>
+                  <div>
+                    <div class="bl-feat-author-name">
+                      {featured.data.author ? <a href={`/blog/author/${featured.data.author}`}>{featAuthorName}</a> : featAuthorName}
+                    </div>
+                    <div class="bl-feat-author-role">{featAuthorRole}</div>
+                  </div>
+                </div>
+                <div class="bl-feat-meta-right">
+                  {featured.data.readingTime && (
+                    <span class="bl-feat-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg> {featured.data.readingTime}</span>
+                  )}
+                  <span class="bl-meta-sep"></span>
+                  <span class="bl-feat-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg> {fmt(featured.data.date)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    )}
+
+    {/* ── BLOG GRID ── */}
+    <section class="bl-grid-section">
+      <div class="bl-grid-inner">
+        <div class="bl-grid-header">
+          <h2 class="bl-grid-title">More from the Journal</h2>
+          <span class="bl-grid-count">{posts.length} article{posts.length === 1 ? '' : 's'}</span>
+        </div>
+        <div class="bl-grid">
+          {
+            posts.map((p) => (
+              <article class="bl-card">
+                <a href={`/blog/${p.id}`} class="bl-card-img-wrap">
+                  <img src={resolveImage(p.data.image).src} alt={p.data.title} loading="lazy" class="bl-card-img" />
+                  <div class="bl-card-img-overlay"></div>
+                </a>
+                <div class="bl-card-body">
+                  <div class="bl-card-meta-top"><span class="bl-cat" style={catStyle(p.data.category)}>{p.data.category}</span></div>
+                  <h3 class="bl-card-title"><a href={`/blog/${p.id}`}>{p.data.title}</a></h3>
+                  <p class="bl-card-excerpt">{p.data.excerpt}</p>
+                  <div class="bl-card-meta-bot">
+                    {p.data.readingTime && (
+                      <span class="bl-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg> {p.data.readingTime}</span>
+                    )}
+                    <span class="bl-meta-sep"></span>
+                    <span class="bl-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                      </svg> {fmt(p.data.date)}</span>
+                  </div>
+                </div>
+              </article>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  {/* ── Newsletter CTA (last — overlaps the footer) ── */}
+  <Newsletter surface="var(--bg)" padTop="0" />
 </Layout>
-
-<style>
-  .crumb {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 0.82rem; color: var(--muted); margin-bottom: 22px; flex-wrap: wrap;
-  }
-  .crumb a:hover { color: var(--text); }
-  .crumb .cur { color: var(--text); font-weight: 500; }
-
-  .jr-head { margin-bottom: 36px; max-width: 46rem; }
-  .jr-eyebrow {
-    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--accent); margin-bottom: 10px;
-  }
-  .jr-head .h1 {
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-    font-size: clamp(1.9rem, 4vw, 2.8rem); font-weight: 700;
-    letter-spacing: -0.02em; line-height: 1.05; margin: 0;
-  }
-  .jr-sub { margin: 12px 0 0; color: var(--muted); line-height: 1.6; }
-  .jr-empty { color: var(--muted); padding: 40px 0; }
-</style>

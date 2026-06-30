@@ -1,13 +1,14 @@
 ---
 // ============================================================
-//  PDP (OMNIX "Modern") — product detail. Faithful reproduction of
+//  PDP (MARVEXA "Modern") — product detail. Faithful reproduction of
 //  the Modern Style HTML design, server-rendered from real Shopify
 //  data and driven by a vanilla controller (gallery, variant→cart,
-//  qty, tabs, sticky bar, aligns carousel). The cart uses the shared
+//  qty, accordions, sticky bar). The cart uses the shared
 //  nanostore (addItem/buyNow) so the header badge + drawer stay live.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
-import ProductCard from '~/components/product/omnix/ProductCard.astro';
+import ProductCard from '~/components/product/marvexa/ProductCard.astro';
+import Newsletter from '~/components/home/marvexa/Newsletter.astro';
 import { getProduct, getProductRecommendations } from '~/lib/shopify';
 import { applyMarketCache } from '~/lib/market';
 import { formatMoney, percentOff } from '~/lib/money';
@@ -88,6 +89,12 @@ const singleVariant =
     product.options[0].name === 'Title' &&
     product.options[0].optionValues.every((v) => v.name === 'Default Title'));
 
+// Size Guide — show the trigger + modal ONLY when this product really has a
+// size option (no fake button on sizeless products). The chart is universal
+// garment-sizing reference (cm), matching the HTML design.
+const sizeOptionName = product?.options.find((o) => /size/i.test(o.name))?.name ?? null;
+const hasSizeOption = !!sizeOptionName && !singleVariant;
+
 // "New" badge — match the card/grid rule (tagged `new` OR published < 30 days)
 // so the badge is consistent between listing and detail.
 const NEW_WINDOW_MS = 1000 * 60 * 60 * 24 * 30;
@@ -136,14 +143,7 @@ const variantData = variants.map((v) => ({
 // controller refines this to the selected variant on load + every change.
 const seedPickup = variantData.find((v) => v.pickup.length)?.pickup[0] ?? null;
 const hasPickup = variantData.some((v) => v.pickup.length);
-const alignsData = recommendations.map((p) => ({
-  name: p.title,
-  img: p.featuredImage?.url ?? '',
-  price: Number(p.priceRange.minVariantPrice.amount),
-  was: p.compareAtPriceRange?.minVariantPrice ? Number(p.compareAtPriceRange.minVariantPrice.amount) : null,
-  href: `/products/${p.handle}`,
-}));
-const bootData = { currency, variants: variantData, aligns: alignsData, singleVariant };
+const bootData = { currency, variants: variantData, singleVariant };
 
 const firstImg = images[0]?.url ?? '';
 
@@ -164,12 +164,39 @@ const dStockLabel = !dAvailable
 // Highlights: real metafield → product tags fallback → none.
 const highlights = (product?.highlights?.length ? product.highlights : (product?.tags ?? [])).slice(0, 4);
 
+// Materials & Care + Shipping & Returns: real `custom.*` metafield bullets when
+// the merchant set them, else generic boilerplate so the template still reads
+// complete on a store that hasn't populated these fields.
+const MATERIALS_CARE_FALLBACK = [
+  'Crafted from considered, natural-fibre cloth chosen to wear in beautifully',
+  'Partially lined for comfort and shape retention',
+  'Cold gentle machine wash or dry clean for best results',
+  'Do not bleach — lay flat to dry, reshape while damp',
+  'Warm iron on the reverse to preserve the texture',
+];
+const SHIPPING_RETURNS_FALLBACK = [
+  'Standard delivery in 3–5 business days; express & overnight at checkout',
+  'Shipping rates are calculated at checkout based on your address',
+  'International shipping available to 80+ countries',
+  'Free returns within 30 days of delivery',
+  'Items must be unworn, unwashed, with original tags attached',
+  'Exchanges processed within 3 business days of receiving the return',
+];
+const materialsCare = product?.materialsCare?.length ? product.materialsCare : MATERIALS_CARE_FALLBACK;
+const shippingReturns = product?.shippingReturns?.length ? product.shippingReturns : SHIPPING_RETURNS_FALLBACK;
+
 // Real spec rows from the custom.specifications metafield (if present).
 const metaSpecs = product?.specs ?? [];
-const metaSpecMid = Math.ceil(metaSpecs.length / 2);
-const metaSpecGroups = metaSpecs.length
-  ? [metaSpecs.slice(0, metaSpecMid), metaSpecs.slice(metaSpecMid)].filter((g) => g.length)
-  : [];
+
+// Sidebar "Product Specs" card — real metafield rows, else fall back to the
+// product's real fields (brand/type), always appending SKU when present. The
+// card hides entirely when there's nothing real to show (no fabricated specs).
+const sidebarSpecs: { label: string; value: string }[] = metaSpecs.map((r) => ({ label: r.label, value: r.value }));
+if (metaSpecs.length === 0) {
+  if (product?.vendor) sidebarSpecs.push({ label: 'Brand', value: product.vendor });
+  if (product?.productType) sidebarSpecs.push({ label: 'Type', value: product.productType });
+}
+if (dSku) sidebarSpecs.push({ label: 'SKU', value: dSku });
 
 // ---- Reviews — fully driven by real Shopify data ----
 // Individual reviews come from a review metafield (review app); the store may
@@ -191,11 +218,6 @@ const distTotal = dist ? dist.reduce((a, b) => a + b, 0) : 0;
 const distRows = dist
   ? dist.map((count, i) => ({ star: 5 - i, count, pct: distTotal ? Math.round((count / distTotal) * 100) : 0 }))
   : [];
-
-// Avatar palette + initials for real review cards.
-const AVATAR_COLORS = ['#2563EB', '#16A34A', '#F59E0B', '#EF4444', '#7C3AED', '#0891B2'];
-const initialsOf = (name: string) =>
-  name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || 'A';
 
 // ---- Product JSON-LD (schema.org) for rich results ----
 const variantPrices = variants.map((v) => Number(v.price.amount)).filter((n) => Number.isFinite(n));
@@ -292,14 +314,6 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
                   {dOnSale && <span class="pm-sbadge sale">Save {money(dSave)}</span>}
                   {isNew && <span class="pm-sbadge new">New</span>}
                 </div>
-                <div class="pm-stage-tools">
-                  <button class="pm-tool" id="pmZoom" aria-label="Toggle zoom" title="Zoom">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/></svg>
-                  </button>
-                  <button class="pm-tool" id="pmShare" aria-label="Share" title="Share">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
-                  </button>
-                </div>
                 <button class="pm-nav prev" id="pmPrev" aria-label="Previous image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
                 <button class="pm-nav next" id="pmNext" aria-label="Next image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
                 {images.map((img, i) => (
@@ -311,25 +325,9 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
 
             {/* Info */}
             <div class="pm-info">
-              <div class="pm-info-top">
-                <span class="pm-brandrow">
-                  {product.vendor && <span class="pm-brand">{product.vendor}</span>}
-                  <span class="pm-brand-verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>Verified brand</span>
-                </span>
-                <button
-                  class="pm-wishbtn"
-                  id="pmWish"
-                  aria-label="Add to wishlist"
-                  data-wish
-                  data-handle={product.handle}
-                  data-name={product.title}
-                  data-price={money(dPrice)}
-                  data-img={firstImg}
-                  data-href={`/products/${product.handle}`}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                </button>
-              </div>
+              {(product.productType || product.vendor) && (
+                <div class="pm-eyebrow">{product.productType || product.vendor}</div>
+              )}
 
               <h1 class="pm-title">{product.title}</h1>
 
@@ -337,15 +335,11 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
                 <div class="pm-ratingrow">
                   <span class="pm-stars" aria-label={`Rated ${rating} out of 5`}>
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <svg viewBox="0 0 24 24" fill="currentColor" style={i < ratingRounded ? '' : 'opacity:.25'}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      <svg viewBox="0 0 24 24" fill="currentColor" style={i < ratingRounded ? '' : 'opacity:.3'}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                     ))}
                   </span>
-                  <span class="pm-rating-txt"><b>{rating!.toFixed(1)}</b>{ratingCount ? <> &middot; <a href="#pmReviewsTab" data-gototab="reviews">{ratingCount} reviews</a></> : null}</span>
-                  {dSku && <><span class="pm-stock-sep"></span><span class="pm-sold">SKU: {dSku}</span></>}
-                </div>
-              ) : dSku ? (
-                <div class="pm-ratingrow">
-                  <span class="pm-sold">SKU: {dSku}</span>
+                  <span class="pm-rating-score">{rating!.toFixed(1)}</span>
+                  {ratingCount ? <a class="pm-rating-ct" href="#pmReviewsAcc" data-gototab="reviews">{ratingCount} Reviews</a> : null}
                 </div>
               ) : null}
 
@@ -353,15 +347,8 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
                 <div class="pm-pricerow">
                   <span class="pm-price" id="pmPrice">{money(dPrice)}</span>
                   {dOnSale && dCompare != null && <span class="pm-price-was" id="pmWas">{money(dCompare)}</span>}
-                  {dOnSale && <span class="pm-price-save" id="pmSave">Save {money(dSave)}</span>}
+                  {dOnSale && <span class="pm-price-save" id="pmSave">Save {dOff}%</span>}
                 </div>
-                <p class="pm-price-note">or 4 interest-free payments of <b id="pmInstall">{money(dPrice / 4)}</b> with <a href="#">Klarna</a> &middot; <a href="#">Learn more</a></p>
-              </div>
-
-              <div class="pm-stock">
-                <span class="pm-stock-badge" id="pmStockBadge"><span class="pm-stock-dot"></span>{dStockLabel}</span>
-                <span class="pm-stock-sep"></span>
-                <span class="pm-stock-meta"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7zM5.5 18.5a2.5 2.5 0 1 0 0-.01M18.5 18.5a2.5 2.5 0 1 0 0-.01"/></svg>Delivery &mdash; <b>2&ndash;5 business days</b></span>
               </div>
 
               {/* Store pickup — real Shopify Local Pickup (storeAvailability).
@@ -392,8 +379,7 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
                   isColorOption(opt) ? (
                     <div class="pm-variant" data-option={opt.name}>
                       <div class="pm-variant-head">
-                        <span class="pm-variant-label">{opt.name}</span>
-                        <span class="pm-variant-cur">Selected: <b data-cur={opt.name}>{selectedInit[opt.name]}</b></span>
+                        <span class="pm-variant-label">{opt.name} <span class="pm-variant-cur" data-cur={opt.name}>{selectedInit[opt.name]}</span></span>
                       </div>
                       <div class="pm-swatches" data-opts={opt.name}>
                         {opt.optionValues.map((ov) => (
@@ -412,7 +398,11 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
                     <div class="pm-variant" data-option={opt.name}>
                       <div class="pm-variant-head">
                         <span class="pm-variant-label">{opt.name}</span>
-                        <span class="pm-variant-cur">Selected: <b data-cur={opt.name}>{selectedInit[opt.name]}</b></span>
+                        {opt.name === sizeOptionName ? (
+                          <button type="button" class="pm-size-guide" id="pmSizeGuideBtn">Size Guide</button>
+                        ) : (
+                          <span class="pm-variant-cur">Selected: <b data-cur={opt.name}>{selectedInit[opt.name]}</b></span>
+                        )}
                       </div>
                       <div class="pm-options" data-opts={opt.name}>
                         {opt.optionValues.map((ov) => (
@@ -425,225 +415,206 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
                   ),
                 )}
 
-              {/* Buy */}
-              <div class="pm-buy">
+              {/* Quantity + live stock */}
+              <div class="pm-qtyrow">
                 <div class="pm-qty">
                   <button id="pmQtyDec" aria-label="Decrease quantity" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
                   <input type="text" id="pmQty" value="1" inputmode="numeric" aria-label="Quantity">
                   <button id="pmQtyInc" aria-label="Increase quantity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
                 </div>
+                <span class="pm-stock-badge" id="pmStockBadge"><span class="pm-stock-dot"></span>{dStockLabel}</span>
+              </div>
+
+              {/* Add to bag + wishlist */}
+              <div class="pm-buyrow">
                 <button class="pm-addcart" id="pmAddCart" disabled={!dAvailable}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-                  <span id="pmAddLabel">Add to cart &mdash; <span id="pmAddTotal">{money(dPrice)}</span></span>
+                  <span id="pmAddLabel">Add to Bag</span>
+                </button>
+                <button
+                  class="pm-wishbtn"
+                  id="pmWish"
+                  aria-label="Add to wishlist"
+                  data-wish
+                  data-handle={product.handle}
+                  data-name={product.title}
+                  data-price={money(dPrice)}
+                  data-img={firstImg}
+                  data-href={`/products/${product.handle}`}
+                  data-variant-id={singleVariant ? (variantData[0]?.id ?? '') : ''}
+                  data-needs-picker={singleVariant ? '' : '1'}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                 </button>
               </div>
-              <button class="pm-buynow" id="pmBuyNow" disabled={!dAvailable}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                Buy it now
-              </button>
+              <button class="pm-buynow" id="pmBuyNow" disabled={!dAvailable}>Buy Now — Instant Checkout</button>
 
+              {/* Trust strip (3-up, matches the HTML design) */}
               <div class="pm-trust">
                 <div class="pm-trust-item">
-                  <span class="pm-trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7zM5.5 18.5a2.5 2.5 0 1 0 0-.01M18.5 18.5a2.5 2.5 0 1 0 0-.01"/></svg></span>
-                  <span class="pm-trust-txt"><b>Fast shipping</b><span>Rates shown at checkout</span></span>
+                  <span class="pm-trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h5a1 1 0 0 1 1 1v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
+                  <span class="pm-trust-lbl">Free Shipping</span>
+                  <span class="pm-trust-sub">On orders $99+</span>
                 </div>
                 <div class="pm-trust-item">
-                  <span class="pm-trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></span>
-                  <span class="pm-trust-txt"><b>2-year warranty</b><span>Plus optional protection</span></span>
+                  <span class="pm-trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg></span>
+                  <span class="pm-trust-lbl">Free Returns</span>
+                  <span class="pm-trust-sub">30-day window</span>
                 </div>
                 <div class="pm-trust-item">
-                  <span class="pm-trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></span>
-                  <span class="pm-trust-txt"><b>30-day returns</b><span>Free &amp; easy, no questions</span></span>
-                </div>
-                <div class="pm-trust-item">
-                  <span class="pm-trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-                  <span class="pm-trust-txt"><b>Secure checkout</b><span>SSL encrypted payment</span></span>
+                  <span class="pm-trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                  <span class="pm-trust-lbl">Secure Pay</span>
+                  <span class="pm-trust-sub">SSL encrypted</span>
                 </div>
               </div>
 
-              {/* Aligns well with (compact carousel) */}
-              {alignsData.length > 0 && (
-                <div class="pm-aligns">
-                  <div class="pm-aligns-head">
-                    <h3>Aligns well with</h3>
-                    <div class="pm-aligns-nav">
-                      <button class="pm-aligns-btn" id="pmAlignPrev" aria-label="Previous suggestion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-                      <button class="pm-aligns-btn" id="pmAlignNext" aria-label="Next suggestion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
-                    </div>
-                  </div>
-                  <div class="pm-aligns-card" id="pmAlignCard"></div>
+              {/* Delivery estimate — real date computed client-side (no fake countdown) */}
+              <div class="pm-delivery">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <p>Order today for delivery by <strong id="pmDeliveryDate">soon</strong></p>
+              </div>
+
+              {/* Share */}
+              <div class="pm-share-row">
+                <span class="pm-share-lbl">Share</span>
+                <div class="pm-share-btns">
+                  <a class="pm-share-btn" title="Share on Pinterest" target="_blank" rel="noopener" href={`https://pinterest.com/pin/create/button/?url=${encodeURIComponent(Astro.url.href)}&media=${encodeURIComponent(ogImage ?? '')}&description=${encodeURIComponent(product.title)}`}><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 0 1 .083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.632-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg></a>
+                  <a class="pm-share-btn" title="Instagram" target="_blank" rel="noopener" href="https://www.instagram.com"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg></a>
+                  <button class="pm-share-btn" id="pmShareCopy" type="button" title="Copy link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
                 </div>
-              )}
+              </div>
             </div>
           </div>
 
-          {/* DETAILS TABS */}
-          <div class="pm-details" id="pmDetails">
-            <div class="pm-tabs" role="tablist">
-              <button class="pm-tab is-active" data-tab="overview" role="tab">Overview</button>
-              <button class="pm-tab" data-tab="specs" role="tab">Specifications</button>
-              <button class="pm-tab" data-tab="reviews" id="pmReviewsTab" role="tab">Reviews {reviewCount > 0 ? <span class="cnt">({reviewCount})</span> : null}</button>
-              <button class="pm-tab" data-tab="shipping" role="tab">Shipping &amp; Returns</button>
-            </div>
-
-            {/* Overview */}
-            <div class="pm-panel is-active" data-panel="overview">
-              <div class="pm-ov">
-                <div>
+          {/* DETAILS — accordions (left) + specs/returns sidebar (right) */}
+          <div class="pm-dx" id="pmDetails">
+            {/* Left: accordions */}
+            <div class="pm-acc">
+              {/* Product Description (open) — real Shopify description + highlights */}
+              <div class="pm-acc-item is-open">
+                <div class="pm-acc-hd" data-acc>
+                  <span class="pm-acc-title">Product Description</span>
+                  <svg class="pm-acc-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="9" y1="3" x2="9" y2="15"/><line x1="3" y1="9" x2="15" y2="9"/></svg>
+                </div>
+                <div class="pm-acc-body">
                   {product.descriptionHtml ? (
                     <div set:html={product.descriptionHtml} />
+                  ) : product.description ? (
+                    <p>{product.description}</p>
                   ) : (
-                    <p class="pm-ov-lead">{product.description}</p>
+                    <p>No description available for this product yet.</p>
+                  )}
+                  {highlights.length > 0 && (
+                    <ul>{highlights.map((h) => <li>{h}</li>)}</ul>
                   )}
                 </div>
-                <div class="pm-feat-cards">
-                  <div class="pm-feat-card">
-                    <span class="pm-feat-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg></span>
-                    <div><h4>Premium Fabric</h4><p>Cut from considered, natural-fibre cloth chosen to wear in beautifully.</p></div>
-                  </div>
-                  <div class="pm-feat-card">
-                    <span class="pm-feat-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 14.5 8 21 8.7 16.2 12.9 17.7 19.4 12 16 6.3 19.4 7.8 12.9 3 8.7 9.5 8"/></svg></span>
-                    <div><h4>Considered Fit</h4><p>Patterns refined across real bodies for an easy, true-to-size silhouette.</p></div>
-                  </div>
-                  <div class="pm-feat-card">
-                    <span class="pm-feat-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8a7 7 0 0 1-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg></span>
-                    <div><h4>Responsibly Made</h4><p>Produced in limited runs by ateliers we know, with low-impact finishing.</p></div>
-                  </div>
+              </div>
+
+              {/* Materials & Care */}
+              <div class="pm-acc-item">
+                <div class="pm-acc-hd" data-acc>
+                  <span class="pm-acc-title">Materials &amp; Care</span>
+                  <svg class="pm-acc-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="9" y1="3" x2="9" y2="15"/><line x1="3" y1="9" x2="15" y2="9"/></svg>
+                </div>
+                <div class="pm-acc-body">
+                  <ul>
+                    {materialsCare.map((m) => <li>{m}</li>)}
+                  </ul>
                 </div>
               </div>
-            </div>
 
-            {/* Specs — real custom.specifications metafield when present, else the design's spec groups */}
-            <div class="pm-panel" data-panel="specs">
-              <div class="pm-specs">
-                {metaSpecGroups.length > 0 ? (
-                  metaSpecGroups.map((group, gi) => (
-                    <div class="pm-spec-group">
-                      <h4>{gi === 0 ? 'Specifications' : 'Details'}</h4>
-                      <dl>
-                        {group.map((row) => (
-                          <div class="pm-spec-row"><dt>{row.label}</dt><dd>{row.value}</dd></div>
-                        ))}
-                      </dl>
-                    </div>
-                  ))
-                ) : (
-                  <>
-                    <div class="pm-spec-group">
-                      <h4>Materials</h4>
-                      <dl>
-                        <div class="pm-spec-row"><dt>Main fabric</dt><dd>Natural-fibre blend</dd></div>
-                        <div class="pm-spec-row"><dt>Lining</dt><dd>Cupro / unlined</dd></div>
-                        <div class="pm-spec-row"><dt>Weight</dt><dd>Mid-weight</dd></div>
-                        <div class="pm-spec-row"><dt>Finish</dt><dd>Garment-washed</dd></div>
-                      </dl>
-                    </div>
-                    <div class="pm-spec-group">
-                      <h4>Fit &amp; Sizing</h4>
-                      <dl>
-                        <div class="pm-spec-row"><dt>Fit</dt><dd>Relaxed, true to size</dd></div>
-                        <div class="pm-spec-row"><dt>Model wears</dt><dd>Size S / 180cm</dd></div>
-                        <div class="pm-spec-row"><dt>Length</dt><dd>Regular</dd></div>
-                        <div class="pm-spec-row"><dt>Stretch</dt><dd>Minimal</dd></div>
-                      </dl>
-                    </div>
-                    <div class="pm-spec-group">
-                      <h4>Care</h4>
-                      <dl>
-                        <div class="pm-spec-row"><dt>Washing</dt><dd>Cold gentle cycle</dd></div>
-                        <div class="pm-spec-row"><dt>Drying</dt><dd>Lay flat to dry</dd></div>
-                        <div class="pm-spec-row"><dt>Ironing</dt><dd>Warm, inside out</dd></div>
-                        <div class="pm-spec-row"><dt>Dry clean</dt><dd>If preferred</dd></div>
-                      </dl>
-                    </div>
-                    <div class="pm-spec-group">
-                      <h4>Details</h4>
-                      <dl>
-                        <div class="pm-spec-row"><dt>Closure</dt><dd>Concealed buttons</dd></div>
-                        <div class="pm-spec-row"><dt>Pockets</dt><dd>Side seam</dd></div>
-                        <div class="pm-spec-row"><dt>Origin</dt><dd>Ethically made</dd></div>
-                        <div class="pm-spec-row"><dt>Packaging</dt><dd>Recycled, plastic-free</dd></div>
-                      </dl>
-                    </div>
-                  </>
-                )}
+              {/* Shipping & Returns */}
+              <div class="pm-acc-item">
+                <div class="pm-acc-hd" data-acc>
+                  <span class="pm-acc-title">Shipping &amp; Returns</span>
+                  <svg class="pm-acc-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="9" y1="3" x2="9" y2="15"/><line x1="3" y1="9" x2="15" y2="9"/></svg>
+                </div>
+                <div class="pm-acc-body">
+                  <ul>
+                    {shippingReturns.map((s) => <li>{s}</li>)}
+                  </ul>
+                </div>
               </div>
-            </div>
 
-            {/* Reviews — entirely from real Shopify review metafields */}
-            <div class="pm-panel" data-panel="reviews">
-              {showReviews ? (
-                <div class="pm-rev">
-                  <div class="pm-rev-summary">
-                    <div class="pm-rev-big">{ratingDisplay}</div>
-                    <span class="pm-stars" aria-label={`${ratingDisplay} out of 5`}>
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <svg viewBox="0 0 24 24" fill="currentColor" style={i < ratingStars ? '' : 'opacity:.25'}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                      ))}
-                    </span>
-                    <div class="pm-rev-count">{reviewCount > 0 ? `Based on ${reviewCount} review${reviewCount === 1 ? '' : 's'}` : 'Customer rating'}</div>
-                    {distRows.length > 0 && (
-                      <div class="pm-rev-bars">
-                        {distRows.map((r) => (
-                          <div class="pm-rev-bar"><span class="lbl">{r.star}&#9733;</span><span class="track"><span class="fill" style={`width:${r.pct}%`}></span></span><span class="pct">{r.pct}%</span></div>
-                        ))}
-                      </div>
-                    )}
-                    <button class="pm-rev-writebtn">Write a review</button>
-                  </div>
-                  <div class="pm-rev-list" id="pmRevList">
-                    {hasReviews ? (
-                      reviews.map((r, idx) => (
-                        <div class="pm-rev-card">
-                          <div class="pm-rev-card-top">
-                            <span class="pm-rev-avatar" style={`background:${AVATAR_COLORS[idx % AVATAR_COLORS.length]};`}>{initialsOf(r.author)}</span>
-                            <div class="pm-rev-who">
-                              <div class="pm-rev-name">{r.author} <span class="pm-rev-verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Verified buyer</span></div>
-                              {r.date && <div class="pm-rev-date">{r.date}</div>}
-                            </div>
-                          </div>
-                          <div class="pm-rev-card-stars"><span class="pm-stars" aria-label={`${r.rating} out of 5`}>
+              {/* Customer Reviews — real Shopify rating/distribution/reviews */}
+              <div class:list={['pm-acc-item', { 'is-open': showReviews }]} id="pmReviewsAcc">
+                <div class="pm-acc-hd" data-acc>
+                  <span class="pm-acc-title">Customer Reviews{reviewCount > 0 ? ` (${reviewCount})` : ''}</span>
+                  <svg class="pm-acc-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="9" y1="3" x2="9" y2="15"/><line x1="3" y1="9" x2="15" y2="9"/></svg>
+                </div>
+                <div class="pm-acc-body">
+                  {showReviews ? (
+                    <>
+                      <div class="pm-rsum">
+                        <div class="pm-rbig">
+                          <div class="pm-rscore">{ratingDisplay}</div>
+                          <div class="pm-rstars-big" aria-label={`${ratingDisplay} out of 5`}>
                             {Array.from({ length: 5 }).map((_, i) => (
-                              <svg viewBox="0 0 24 24" fill="currentColor" style={i < Math.round(r.rating) ? '' : 'opacity:.25'}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                              <svg viewBox="0 0 24 24" fill="currentColor" style={i < ratingStars ? '' : 'opacity:.3'}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                             ))}
-                          </span></div>
-                          {r.title && <h4 class="pm-rev-title">{r.title}</h4>}
-                          {r.body && <p class="pm-rev-body">{r.body}</p>}
+                          </div>
+                          <div class="pm-rct-big">{reviewCount > 0 ? `${reviewCount} review${reviewCount === 1 ? '' : 's'}` : 'Customer rating'}</div>
                         </div>
-                      ))
-                    ) : (
-                      <div class="pm-rev-empty">
-                        <p class="pm-ov-lead" style="margin:0 0 6px;">{reviewCount} verified {reviewCount === 1 ? 'rating' : 'ratings'} &middot; {ratingDisplay} average</p>
-                        <p style="margin:0; color:var(--muted); font-family:var(--fb); font-size:14px;">Written reviews appear here once a reviews app (e.g. Judge.me, Yotpo, Loox) is connected to this store.</p>
+                        {distRows.length > 0 && (
+                          <div class="pm-rbars">
+                            {distRows.map((r) => (
+                              <div class="pm-rbar"><span class="pm-rbar-lbl">{r.star}★</span><div class="pm-rbar-track"><div class="pm-rbar-fill" style={`width:${r.pct}%`}></div></div><span class="pm-rbar-pct">{r.pct}%</span></div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <p class="pm-ov-lead">No reviews yet — be the first to review this product.</p>
-              )}
-            </div>
-
-            {/* Shipping */}
-            <div class="pm-panel" data-panel="shipping">
-              <div class="pm-ship-grid">
-                <div class="pm-ship-card">
-                  <span class="pm-ship-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7zM5.5 18.5a2.5 2.5 0 1 0 0-.01M18.5 18.5a2.5 2.5 0 1 0 0-.01"/></svg></span>
-                  <h4>Fast delivery</h4>
-                  <p>Standard delivery in 5&ndash;7 business days, with express and overnight available at checkout. Shipping rates are calculated at checkout based on your address.</p>
-                </div>
-                <div class="pm-ship-card">
-                  <span class="pm-ship-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></span>
-                  <h4>30-day easy returns</h4>
-                  <p>Changed your mind? Return any unused item within 30 days for a full refund. We cover the return shipping &mdash; no questions asked.</p>
-                </div>
-                <div class="pm-ship-card">
-                  <span class="pm-ship-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></span>
-                  <h4>Quality guarantee</h4>
-                  <p>Every piece is made to last and backed by our craftsmanship guarantee. Reach out and our team will repair, replace, or refund any fault.</p>
+                      {hasReviews ? (
+                        <div class="pm-rlist">
+                          {reviews.map((r) => (
+                            <div class="pm-rev2">
+                              <div class="pm-rev2-stars" aria-label={`${r.rating} out of 5`}>
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <svg viewBox="0 0 24 24" fill="currentColor" style={i < Math.round(r.rating) ? '' : 'opacity:.3'}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                ))}
+                              </div>
+                              <div class="pm-rev2-hd">
+                                <span class="pm-rev2-name">{r.author}</span>
+                                {r.date && <span class="pm-rev2-date">{r.date}</span>}
+                              </div>
+                              {r.title && <h4 class="pm-rev2-title">{r.title}</h4>}
+                              {r.body && <p class="pm-rev2-text">{r.body}</p>}
+                              <div class="pm-rev2-verified"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Verified Purchase</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p class="pm-acc-note">{reviewCount} verified {reviewCount === 1 ? 'rating' : 'ratings'} &middot; {ratingDisplay} average. Written reviews appear here once a reviews app (Judge.me, Yotpo, Loox) is connected to this store.</p>
+                      )}
+                    </>
+                  ) : (
+                    <p class="pm-acc-note">No reviews yet — be the first to review this product.</p>
+                  )}
                 </div>
               </div>
             </div>
+
+            {/* Right: specs + returns sidebar */}
+            <aside class="pm-dx-side">
+              {sidebarSpecs.length > 0 && (
+                <div class="pm-dcard">
+                  <div class="pm-dcard-hd">Product Specs</div>
+                  <div class="pm-dcard-body">
+                    {sidebarSpecs.map((row) => (
+                      <div class="pm-dspec"><span class="pm-dspec-key">{row.label}</span><span class="pm-dspec-val">{row.value}</span></div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div class="pm-dcard">
+                <div class="pm-dcard-hd">Returns Policy</div>
+                <div class="pm-dcard-body">
+                  <div class="pm-dret-list">
+                    {['Free returns within 30 days', 'Must be unworn with tags attached', 'Exchanges processed in 3 days', 'Refund to original payment method'].map((t) => (
+                      <div class="pm-dret-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>{t}</div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </aside>
           </div>
 
           {/* Related */}
@@ -686,6 +657,35 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
         </div>
       </div>
 
+      {/* Newsletter CTA (overlaps the footer) — bg synced to the section above */}
+      <Newsletter surface="var(--bg)" />
+
+      {/* Size Guide modal — only for products with a real size option */}
+      {hasSizeOption && (
+        <div class="pm-sg-overlay" id="pmSizeGuide">
+          <div class="pm-sg-modal" role="dialog" aria-modal="true" aria-labelledby="pmSgTitle">
+            <div class="pm-sg-hd">
+              <h3 id="pmSgTitle">Size Guide</h3>
+              <button class="pm-sg-close" id="pmSgClose" type="button" aria-label="Close size guide">✕</button>
+            </div>
+            <p class="pm-sg-note">All measurements in centimeters. For a relaxed fit, choose your usual size.</p>
+            <table class="pm-sg-table">
+              <thead>
+                <tr><th>Size</th><th>Bust</th><th>Waist</th><th>Hip</th><th>Shoulder</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>XS</td><td>82–86</td><td>64–68</td><td>88–92</td><td>38</td></tr>
+                <tr><td>S</td><td>86–90</td><td>68–72</td><td>92–96</td><td>39.5</td></tr>
+                <tr><td>M</td><td>90–94</td><td>72–76</td><td>96–100</td><td>41</td></tr>
+                <tr><td>L</td><td>94–98</td><td>76–80</td><td>100–104</td><td>42.5</td></tr>
+                <tr><td>XL</td><td>98–104</td><td>80–86</td><td>104–110</td><td>44</td></tr>
+                <tr><td>XXL</td><td>104–110</td><td>86–92</td><td>110–116</td><td>46</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <script>
         import { addItem, buyNow, openCart } from '~/stores/cart';
 
@@ -694,9 +694,8 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
         if (root && boot) {
           interface Pickup { name: string; time: string | null; }
           interface VData { id: string; opts: Record<string, string>; price: number; compareAt: number | null; available: boolean; qty: number | null; img: string | null; pickup: Pickup[]; }
-          interface Align { name: string; img: string; price: number; was: number | null; href: string; }
           const data = JSON.parse(boot.textContent || '{}') as {
-            currency: string; variants: VData[]; aligns: Align[]; singleVariant: boolean;
+            currency: string; variants: VData[]; singleVariant: boolean;
           };
           const $ = <T extends Element = HTMLElement>(s: string) => root.querySelector<T>(s);
           const $$ = <T extends Element = HTMLElement>(s: string) => Array.from(root.querySelectorAll<T>(s));
@@ -720,16 +719,21 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
           // ---- gallery ----
           const slides = $$('.pm-slide');
           const thumbs = $$('.pm-thumb');
-          const stage = $('#pmStage');
           const total = slides.length;
           let cur = 0;
+          let zoomActive = false;
           function goTo(i: number) {
             if (!total) return;
             cur = (i + total) % total;
             slides.forEach((s) => s.classList.toggle('is-active', Number(s.dataset.idx) === cur));
             thumbs.forEach((t) => t.classList.toggle('is-active', Number(t.dataset.idx) === cur));
             const idxEl = $('#pmCurIdx'); if (idxEl) idxEl.textContent = String(cur + 1);
-            stage?.classList.remove('is-zoom');
+            // Reset any hover-zoom transform when the slide changes.
+            zoomActive = false;
+            slides.forEach((s) => {
+              const im = s.querySelector<HTMLImageElement>('img');
+              if (im) { im.style.transition = ''; im.style.transform = ''; im.style.transformOrigin = 'center center'; }
+            });
           }
           $('#pmThumbs')?.addEventListener('click', (e) => {
             const t = (e.target as HTMLElement).closest<HTMLElement>('.pm-thumb');
@@ -737,86 +741,43 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
           });
           $('#pmPrev')?.addEventListener('click', () => goTo(cur - 1));
           $('#pmNext')?.addEventListener('click', () => goTo(cur + 1));
-          $('#pmZoom')?.addEventListener('click', (e) => { e.stopPropagation(); stage?.classList.toggle('is-zoom'); });
-          stage?.addEventListener('click', (e) => {
-            if ((e.target as HTMLElement).closest('.pm-nav') || (e.target as HTMLElement).closest('.pm-tool')) return;
-            stage.classList.toggle('is-zoom');
+
+          // ---- Cursor-follow hover zoom on the active slide (ported from HTML) ----
+          const stageEl = $('#pmStage');
+          const ZOOM = 2.2;
+          const activeImg = () => stageEl?.querySelector<HTMLImageElement>('.pm-slide.is-active img') ?? null;
+          function zoomOrigin(e: MouseEvent) {
+            if (!stageEl) return;
+            const r = stageEl.getBoundingClientRect();
+            const x = (((e.clientX - r.left) / r.width) * 100).toFixed(2);
+            const y = (((e.clientY - r.top) / r.height) * 100).toFixed(2);
+            const img = activeImg();
+            if (img) img.style.transformOrigin = `${x}% ${y}%`;
+          }
+          stageEl?.addEventListener('mouseenter', (e) => {
+            const img = activeImg();
+            if (!img) return;
+            zoomActive = true;
+            zoomOrigin(e as MouseEvent);
+            img.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
+            img.style.transform = `scale(${ZOOM})`;
+            // After the zoom-in settles, drop the transition so origin tracks the cursor with no lag.
+            setTimeout(() => { if (zoomActive) img.style.transition = 'none'; }, 360);
           });
-          // ---- Share menu (Facebook / X / WhatsApp / Email / Copy link) ----
-          const SHARE_ICONS: Record<string, string> = {
-            facebook: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z"/></svg>',
-            x: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.21-6.82-5.97 6.82H1.68l7.73-8.84L1.25 2.25h6.83l4.71 6.23 5.45-6.23zm-1.16 17.52h1.83L7.08 4.13H5.12l11.96 15.64z"/></svg>',
-            whatsapp: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M.06 24l1.69-6.16a11.87 11.87 0 0 1-1.59-5.95C.16 5.34 5.5 0 12.05 0a11.82 11.82 0 0 1 8.41 3.49 11.82 11.82 0 0 1 3.48 8.41c0 6.56-5.34 11.89-11.89 11.89a11.9 11.9 0 0 1-5.69-1.45L.06 24zm6.6-3.8c1.68.99 3.28 1.59 5.39 1.59 5.45 0 9.89-4.43 9.89-9.88a9.88 9.88 0 0 0-9.88-9.89c-5.45 0-9.89 4.43-9.89 9.88 0 2.22.65 3.88 1.51 5.26l-.99 3.65 3.97-1.04zm11.39-5.55c-.07-.12-.27-.2-.56-.34-.29-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.29-.77.96-.94 1.16-.17.2-.35.22-.64.07-.29-.15-1.25-.46-2.38-1.47-.88-.78-1.48-1.76-1.65-2.05-.17-.29-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.2-.29.29-.49.1-.2.05-.37-.02-.51-.07-.15-.67-1.62-.92-2.21-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01-.2 0-.52.07-.79.37-.27.29-1.04 1.01-1.04 2.48s1.06 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.62.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2-1.41.25-.69.25-1.28.18-1.41z"/></svg>',
-            email: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
-            copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
-          };
-          // Share the canonical URL when present (the real public domain),
-          // so links shared from a tunnel/preview host still point to prod.
-          const shareUrl = () =>
-            document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href || location.href;
-          let shareMenu: HTMLElement | null = null;
-          function buildShareMenu(): HTMLElement | null {
-            if (shareMenu || !stage) return shareMenu;
-            const u = encodeURIComponent(shareUrl());
-            const t = encodeURIComponent(document.title);
-            const links: [string, string, string][] = [
-              ['Facebook', 'facebook', `https://www.facebook.com/sharer/sharer.php?u=${u}`],
-              ['X', 'x', `https://twitter.com/intent/tweet?url=${u}&text=${t}`],
-              ['WhatsApp', 'whatsapp', `https://wa.me/?text=${t}%20${u}`],
-              ['Email', 'email', `mailto:?subject=${t}&body=${u}`],
-            ];
-            shareMenu = document.createElement('div');
-            shareMenu.className = 'pm-share-menu';
-            shareMenu.setAttribute('role', 'menu');
-            shareMenu.innerHTML =
-              links
-                .map(([label, icon, href]) =>
-                  `<a class="pm-share-item" role="menuitem" href="${href}" target="_blank" rel="noopener noreferrer">${SHARE_ICONS[icon]}<span>${label}</span></a>`,
-                )
-                .join('') +
-              `<button class="pm-share-item" type="button" role="menuitem" data-copy>${SHARE_ICONS.copy}<span>Copy link</span></button>`;
-            // Keep clicks inside the menu from bubbling to the stage (which would zoom).
-            shareMenu.addEventListener('click', (e) => e.stopPropagation());
-            // Social links close the menu after opening their tab.
-            shareMenu.querySelectorAll<HTMLElement>('a.pm-share-item').forEach((a) =>
-              a.addEventListener('click', () => closeShareMenu()),
-            );
-            // Copy link → clipboard + inline "Copied!" confirmation (menu stays open).
-            shareMenu.querySelector<HTMLElement>('[data-copy]')?.addEventListener('click', () => {
-              navigator.clipboard?.writeText(shareUrl()).catch(() => {});
-              const lbl = shareMenu!.querySelector<HTMLElement>('[data-copy] span');
-              if (lbl) {
-                lbl.textContent = 'Copied!';
-                setTimeout(() => { lbl.textContent = 'Copy link'; }, 1300);
-              }
-            });
-            stage.appendChild(shareMenu);
-            return shareMenu;
-          }
-          const shareBtn = $('#pmShare');
-          function closeShareMenu() {
-            shareMenu?.classList.remove('is-show');
-            shareBtn?.setAttribute('aria-expanded', 'false');
-          }
-          function toggleShareMenu() {
-            const m = buildShareMenu();
-            if (!m) return;
-            if (m.classList.contains('is-show')) {
-              closeShareMenu();
-            } else {
-              requestAnimationFrame(() => m.classList.add('is-show'));
-              shareBtn?.setAttribute('aria-expanded', 'true');
-            }
-          }
-          shareBtn?.setAttribute('aria-haspopup', 'true');
-          shareBtn?.setAttribute('aria-expanded', 'false');
-          shareBtn?.addEventListener('click', function (e: Event) {
-            e.stopPropagation(); // never reach the stage zoom handler
-            toggleShareMenu();
+          stageEl?.addEventListener('mousemove', (e) => {
+            if (!zoomActive) return;
+            zoomOrigin(e as MouseEvent);
+            const img = activeImg();
+            if (img) img.style.transform = `scale(${ZOOM})`;
           });
-          // Close on outside click or Esc.
-          document.addEventListener('click', () => closeShareMenu());
-          document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeShareMenu(); });
+          stageEl?.addEventListener('mouseleave', () => {
+            zoomActive = false;
+            const img = activeImg();
+            if (!img) return;
+            img.style.transition = 'transform .3s cubic-bezier(.25,.46,.45,.94)';
+            img.style.transform = 'scale(1)';
+            img.style.transformOrigin = 'center center';
+          });
           document.addEventListener('keydown', (e) => {
             if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
             // Don't hijack arrows while typing in a field or while a modal/drawer
@@ -857,12 +818,10 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
 
             const set = (sel: string, txt: string) => { const el = $(sel); if (el) el.textContent = txt; };
             set('#pmPrice', invalidCombo ? 'Unavailable' : money(price));
-            set('#pmInstall', money(price / 4));
-            set('#pmAddTotal', money(price * qty));
             set('#pmSbPrice', money(price));
 
             const was = $('#pmWas'); if (was) { was.textContent = compare != null ? money(compare) : ''; was.style.display = onSale ? '' : 'none'; }
-            const save = $('#pmSave'); if (save) { save.textContent = onSale && compare != null ? `Save ${money(compare - price)}` : ''; save.style.display = onSale ? '' : 'none'; }
+            const save = $('#pmSave'); if (save) { const pct = onSale && compare ? Math.round(((compare - price) / compare) * 100) : 0; save.textContent = pct > 0 ? `Save ${pct}%` : ''; save.style.display = onSale ? '' : 'none'; }
             const sbWas = $('.pm-sb-price .was'); if (sbWas) { sbWas.textContent = compare != null ? money(compare) : ''; sbWas.style.display = onSale ? '' : 'none'; }
 
             const meta = $('#pmSbMeta'); if (meta) meta.textContent = Object.values(selected).join(' · ');
@@ -878,7 +837,7 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
             }
 
             const addLabel = $('#pmAddLabel');
-            if (addLabel) addLabel.innerHTML = available ? `Add to cart &mdash; <span id="pmAddTotal">${money(price * qty)}</span>` : 'Sold out';
+            if (addLabel) addLabel.textContent = available ? 'Add to Bag' : 'Sold out';
             [$('#pmAddCart'), $('#pmBuyNow'), $('#pmSbAddCart')].forEach((b) => {
               if (b) (b as HTMLButtonElement).disabled = !available;
             });
@@ -954,48 +913,23 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
           // wishlist: handled globally by Overlays.astro via [data-wish] —
           // it toggles localStorage, the header badge, and the .is-active state.
 
-          // ---- tabs ----
-          function activateTab(name: string) {
-            $$('.pm-tab').forEach((t) => t.classList.toggle('is-active', (t as HTMLElement).dataset.tab === name));
-            $$('.pm-panel').forEach((p) => p.classList.toggle('is-active', (p as HTMLElement).dataset.panel === name));
-          }
-          $('.pm-tabs')?.addEventListener('click', (e) => {
-            const t = (e.target as HTMLElement).closest<HTMLElement>('.pm-tab');
-            if (t) activateTab(t.dataset.tab || 'overview');
-          });
+          // ---- details accordions ----
+          $$('.pm-acc-hd').forEach((hd) =>
+            hd.addEventListener('click', () => hd.closest('.pm-acc-item')?.classList.toggle('is-open')),
+          );
+          // "N reviews" link in the rating row → open + scroll to the reviews accordion.
           $$('[data-gototab]').forEach((a) =>
             a.addEventListener('click', (e) => {
               e.preventDefault();
-              activateTab((a as HTMLElement).dataset.gototab || 'overview');
-              document.getElementById('pmDetails')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              const acc = document.getElementById('pmReviewsAcc');
+              acc?.classList.add('is-open');
+              acc?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }),
           );
 
-          // ---- aligns-well carousel (real recommendations) ----
-          const aligns = data.aligns;
-          const alignCard = $('#pmAlignCard');
-          let alignIdx = 0;
-          function renderAlign() {
-            if (!alignCard || !aligns.length) return;
-            const p = aligns[alignIdx];
-            const was = p.was != null ? `<span class="was">${money(p.was)}</span>` : '';
-            alignCard.innerHTML = `<span class="pm-aligns-thumb"><img src="${p.img}" alt="${p.name}"></span><span class="pm-aligns-meta"><span class="pm-aligns-name">${p.name}</span><span class="pm-aligns-price"><span class="now">${money(p.price)}</span>${was}</span></span><a href="${p.href}" class="pm-aligns-view">View</a>`;
-          }
-          function stepAlign(dir: number) {
-            if (!alignCard || !aligns.length) return;
-            alignCard.classList.add('is-fading');
-            setTimeout(() => {
-              alignIdx = (alignIdx + dir + aligns.length) % aligns.length;
-              renderAlign();
-              alignCard.classList.remove('is-fading');
-            }, 180);
-          }
-          $('#pmAlignPrev')?.addEventListener('click', () => stepAlign(-1));
-          $('#pmAlignNext')?.addEventListener('click', () => stepAlign(1));
-
           // ---- sticky bar visibility ----
           const bar = document.getElementById('pmStickyBar');
-          const buyRow = $('.pm-buy');
+          const buyRow = $('.pm-buyrow');
           if ('IntersectionObserver' in window && buyRow && bar) {
             const io = new IntersectionObserver((entries) => {
               entries.forEach((en) => bar.classList.toggle('is-visible', !en.isIntersecting && en.boundingClientRect.top < 0));
@@ -1032,10 +966,36 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
             showPickupStore();
           });
 
+          // ---- Size Guide modal ----
+          // The overlay/modal render OUTSIDE #prodModern, so query the document
+          // (root-scoped `$` would return null and the button would do nothing).
+          const sgOverlay = document.getElementById('pmSizeGuide');
+          const openSizeGuide = () => sgOverlay?.classList.add('is-open');
+          const closeSizeGuide = () => sgOverlay?.classList.remove('is-open');
+          $('#pmSizeGuideBtn')?.addEventListener('click', openSizeGuide);
+          document.getElementById('pmSgClose')?.addEventListener('click', closeSizeGuide);
+          sgOverlay?.addEventListener('click', (e) => { if (e.target === sgOverlay) closeSizeGuide(); });
+          document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSizeGuide(); });
+
+          // ---- Delivery estimate (real date, computed fresh client-side) ----
+          const ddEl = $('#pmDeliveryDate');
+          if (ddEl) {
+            const d = new Date(Date.now() + 5 * 86400000); // ~5 days out
+            ddEl.textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+          }
+
+          // ---- Share: copy link ----
+          $('#pmShareCopy')?.addEventListener('click', () => {
+            const url = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href || location.href;
+            navigator.clipboard?.writeText(url).catch(() => {});
+            const btn = $('#pmShareCopy');
+            btn?.classList.add('is-copied');
+            setTimeout(() => btn?.classList.remove('is-copied'), 1300);
+          });
+
           // init
           setQty(1);
           render();
-          renderAlign();
         }
       </script>
     </Layout>

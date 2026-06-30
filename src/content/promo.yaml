@@ -1,8 +1,8 @@
-# Two promo banners (OMNIX). title may contain <br>.
+# Two promo banners (MARVEXA). title may contain <br>.
 - id: trade-in
   tag: "Trade-In"
   title: "Trade your old gear,<br>save up to 40%."
-  body: "Send us your old phone, laptop, or wearable — get instant credit toward your next Omnix."
+  body: "Send us your old phone, laptop, or wearable — get instant credit toward your next Marvexa."
   image: "promo-banner-headphones.jpg"
   cta: { label: "Estimate trade-in value", href: "#" }
 - id: gaming

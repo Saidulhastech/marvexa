@@ -1,487 +1,284 @@
 ---
+// ============================================================
+//  Shop the Look (Marvexa) — curated outfit looks, LIVE Shopify data.
+//  Each look's hotspots resolve to real products (pinned by handle or
+//  filled from best-sellers in src/pages/index.astro). Name / price /
+//  image and the inline size + colour variant pickers all come from
+//  Shopify. "Add Complete Look" adds every selected variant in one go.
+//  Editorial bits (look photo, label, pin coordinates) live in
+//  src/content/lookbook.yaml.
+// ============================================================
+import { Image } from 'astro:assets';
+import { formatMoney } from '~/lib/money';
+import { tryResolveImage } from '~/lib/asset';
+import { colorHex } from '~/lib/shopify/transforms';
+import type { ProductCard, Product } from '~/lib/shopify/types';
+
+interface LookItemIn { top: string; left: string; cardLeft: boolean; product: ProductCard | Product | null }
+interface LookIn { id: string; label: string; image: string; items: LookItemIn[] }
+const { looks = [] } = Astro.props as { looks: LookIn[] };
+
+const COLOR_RE = /colou?r|finish|shade/i;
+const isUrl = (s: string) => /^https?:\/\//.test(s);
+
+// Build a render view-model for one hotspot product, mirroring ProductCard's
+// variant logic: every real option becomes an inline picker; a single in-stock
+// variant resolves the add target directly.
+function buildItem(raw: LookItemIn) {
+  const p = raw.product;
+  if (!p) return null;
+  const variants = p.variants ?? [];
+  const realOptions = (p.options ?? []).filter(
+    (o) => !(o.name === 'Title' && o.optionValues.every((v) => v.name === 'Default Title')),
+  );
+  const colorOpt = realOptions.find((o) => COLOR_RE.test(o.name) || o.optionValues.some((v) => v.swatch?.color));
+  const def = variants.find((v) => v.availableForSale) ?? variants[0] ?? null;
+  const min = p.priceRange?.minVariantPrice;
+  const currency = min?.currencyCode ?? def?.price.currencyCode ?? 'USD';
+
+  // An option value is sellable when at least one available variant carries it.
+  const valueAvailable = (optName: string, val: string) =>
+    variants.some((v) => v.availableForSale && v.selectedOptions.some((o) => o.name === optName && o.value === val));
+
+  const options = realOptions.map((o) => ({
+    name: o.name,
+    isColor: o === colorOpt,
+    values: o.optionValues.map((ov) => ({
+      name: ov.name,
+      // Real Shopify swatch hex when set, else map the colour name → hex.
+      color: o === colorOpt ? colorHex(ov.name, ov.swatch?.color) : null,
+      available: valueAvailable(o.name, ov.name),
+    })),
+  }));
+  // Compact variant table the client uses to resolve a selection → variant id,
+  // price and image (so picking a colour swaps the thumbnail).
+  const variantTable = variants.map((v) => ({
+    id: v.id,
+    opts: Object.fromEntries(v.selectedOptions.map((o) => [o.name, o.value])),
+    price: Number(v.price.amount),
+    img: v.image?.url ?? null,
+    available: v.availableForSale,
+  }));
+  const defaultOpts = def ? Object.fromEntries(def.selectedOptions.map((o) => [o.name, o.value])) : {};
+  const price = def ? Number(def.price.amount) : Number(min?.amount ?? 0);
+  const cat =
+    (p as ProductCard).collections?.[0]?.title ?? p.productType ?? p.vendor ?? '';
+
+  return {
+    handle: p.handle,
+    title: p.title,
+    href: `/products/${p.handle}`,
+    img: p.featuredImage?.url ?? '',
+    cat,
+    currency,
+    soldOut: !p.availableForSale,
+    defaultVariantId: def?.id ?? null,
+    defaultOpts,
+    price,
+    priceLabel: formatMoney(def?.price ?? min ?? null),
+    hasOptions: options.length > 0,
+    options,
+    variantTable,
+    top: raw.top,
+    left: raw.left,
+    cardLeft: raw.cardLeft,
+  };
+}
+
+const looksVm = looks
+  .map((l) => {
+    const items = l.items.map(buildItem).filter((x): x is NonNullable<typeof x> => x !== null);
+    const currency = items[0]?.currency ?? 'USD';
+    const total = items.reduce((s, it) => s + it.price, 0);
+    return {
+      id: l.id,
+      label: l.label,
+      currency,
+      items,
+      totalLabel: formatMoney({ amount: String(total), currencyCode: currency }),
+      imgAsset: isUrl(l.image) ? null : tryResolveImage(l.image),
+      imgUrl: isUrl(l.image) ? l.image : null,
+    };
+  })
+  .filter((l) => l.items.length > 0);
+
+const hasLooks = looksVm.length > 0;
+
+// Inline bag SVG (reused on every add button).
+const bagSvg =
+  '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>';
 ---
 
-<section class="stl" id="lb" aria-labelledby="stl-h">
-  <div class="stl__inner">
+{hasLooks && (
+  <section class="stl" id="lb" aria-labelledby="stl-h" data-stl>
+    <div class="stl__inner">
 
-    <!-- ═══ LEFT: Image Panel ═══ -->
-    <div class="stl__img-panel">
+      {/* ═══ LEFT: Image panel — one slot per look ═══ */}
+      <div class="stl__img-panel">
+        {looksVm.map((look, li) => (
+          <div class:list={['stl__img-slot', { active: li === 0 }]} data-look-slot={look.id}>
+            <div class="stl__look-label">
+              <span class="stl__look-dot" />
+              <span class="stl__look-label-text">{look.label}</span>
+            </div>
+            {look.imgAsset ? (
+              <Image src={look.imgAsset} alt={look.label} class="stl__img" loading="lazy" width={1200} height={1500} />
+            ) : (
+              <img src={look.imgUrl} alt={look.label} class="stl__img" loading="lazy" />
+            )}
 
-      <!-- Look label badge -->
-      <div class="stl__look-label">
-        <span class="stl__look-dot"></span>
-        <span class="stl__look-label-text" id="stl-look-text">Look 01 — SS 2026</span>
+            {look.items.map((it, idx) => (
+              <div class="stl__pin" style={`top:${it.top};left:${it.left};`} aria-label={it.title} role="button" tabindex="0">
+                <div class="stl__pin-dot">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </div>
+                <div class:list={['stl__pin-popup', it.cardLeft ? 'pop-left' : 'pop-right']}>
+                  {it.img && <img src={it.img} class="stl__popup-img" alt={it.title} />}
+                  <div class="stl__popup-body">
+                    {it.cat && <div class="stl__popup-cat">{it.cat}</div>}
+                    <div class="stl__popup-name">{it.title}</div>
+                    <div class="stl__popup-row">
+                      <span class="stl__popup-price">{it.priceLabel}</span>
+                      {it.soldOut ? (
+                        <a class="stl__popup-add" href={it.href}>View</a>
+                      ) : (
+                        <button class="stl__popup-add" data-stl-add data-look={look.id} data-idx={idx}>+ Bag</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
 
-      <!-- Look 01 Image -->
-      <div class="stl__img-slot active" data-look="1">
-        <img
-          src="https://images.unsplash.com/photo-1672753755304-140359dc739a?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-          alt="Look 01 — SS 2026" class="stl__img" loading="lazy" />
-        <!-- Pin 1: Shirt -->
-        <div class="stl__pin" style="top:30%;left:38%;" aria-label="Oversized Linen Shirt" role="button" tabindex="0">
-          <div class="stl__pin-dot"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg></div>
-          <div class="stl__pin-popup pop-right">
-            <img src="https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=300&auto=format&fit=crop&q=70"
-              class="stl__popup-img" alt="Oversized Linen Shirt" />
-            <div class="stl__popup-body">
-              <div class="stl__popup-cat">Women · Tops</div>
-              <div class="stl__popup-name">Oversized Linen Shirt</div>
-              <div class="stl__popup-row">
-                <span class="stl__popup-price">$165</span>
-                <button class="stl__popup-add" onclick="addToCart('Oversized Linen Shirt',165)">+ Bag</button>
+      {/* ═══ RIGHT: Content panel ═══ */}
+      <div class="stl__panel rv d1">
+        <div class="stl__eyebrow">Shop the Look</div>
+        <h2 class="stl__title" id="stl-h">Curated for the<br />Modern Wardrobe</h2>
+        <p class="stl__desc">Pick your size, build the full outfit, add it in one tap.</p>
+
+        {/* Look switcher thumbnails */}
+        {looksVm.length > 1 && (
+          <div class="stl__switcher" role="tablist" aria-label="Select a look">
+            {looksVm.map((look, li) => (
+              <button
+                class:list={['stl__sw-btn', { active: li === 0 }]}
+                data-look-switch={look.id}
+                role="tab"
+                aria-selected={li === 0 ? 'true' : 'false'}
+                aria-label={`Look 0${li + 1}`}
+              >
+                {look.imgAsset ? (
+                  <Image src={look.imgAsset} alt={`Look 0${li + 1}`} class="stl__sw-img" width={200} height={250} />
+                ) : (
+                  <img src={look.imgUrl} class="stl__sw-img" alt={`Look 0${li + 1}`} />
+                )}
+                <span class="stl__sw-label">Look 0{li + 1}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Per-look item lists */}
+        {looksVm.map((look, li) => (
+          <div class:list={['stl__look-block', { hidden: li !== 0 }]} data-look-block={look.id}>
+            <div class="stl__items">
+              {look.items.map((it, idx) => (
+                <div
+                  class="stl__item"
+                  data-stl-item
+                  data-look={look.id}
+                  data-idx={idx}
+                  data-variant-id={it.soldOut ? '' : it.defaultVariantId ?? ''}
+                  data-price={it.price}
+                  data-currency={it.currency}
+                  data-img={it.img}
+                  data-variants={JSON.stringify(it.variantTable)}
+                  data-default={JSON.stringify(it.defaultOpts)}
+                >
+                  <span class="stl__item-num">0{idx + 1}</span>
+                  {it.img && <img src={it.img} alt={it.title} class="stl__item-img" loading="lazy" />}
+                  <div class="stl__item-info">
+                    {it.cat && <div class="stl__item-cat">{it.cat}</div>}
+                    <a class="stl__item-name" href={it.href}>{it.title}</a>
+                    <div class="stl__item-bottom">
+                      <span class="stl__item-price" data-row-price>{it.priceLabel}</span>
+                    </div>
+
+                    {/* Inline variant pickers — size as pills, colour as swatches */}
+                    {it.options.map((opt) => (
+                      <div class="stl__opt" data-opt data-opt-name={opt.name}>
+                        {!opt.isColor && <span class="stl__opt-label">{opt.name}</span>}
+                        <div class={opt.isColor ? 'stl__item-sws' : 'stl__sizes'}>
+                          {opt.values.map((v) =>
+                            opt.isColor ? (
+                              <button
+                                type="button"
+                                class:list={['look-sw', { 'is-sel': it.defaultOpts[opt.name] === v.name, 'is-off': !v.available }]}
+                                style={`background:${v.color ?? '#ccc'}`}
+                                title={v.available ? v.name : `${v.name} — sold out`}
+                                aria-label={v.name}
+                                aria-pressed={it.defaultOpts[opt.name] === v.name}
+                                data-val
+                                data-opt-name={opt.name}
+                                data-val-name={v.name}
+                                disabled={!v.available}
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                class:list={['stl__size', { active: it.defaultOpts[opt.name] === v.name, 'is-off': !v.available }]}
+                                aria-pressed={it.defaultOpts[opt.name] === v.name}
+                                data-val
+                                data-opt-name={opt.name}
+                                data-val-name={v.name}
+                                disabled={!v.available}
+                              >
+                                {v.name}
+                              </button>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {it.soldOut ? (
+                    <a class="stl__item-add" href={it.href} aria-label="View product">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" set:html={bagSvg} />
+                    </a>
+                  ) : (
+                    <button class="stl__item-add" data-stl-add data-look={look.id} data-idx={idx} aria-label="Add to bag">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" set:html={bagSvg} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Total + add-all */}
+            <div class="stl__total">
+              <div class="stl__total-meta">
+                <span class="stl__total-label">Complete Look · {look.items.length} items</span>
+                <span class="stl__total-ship">✓ Free shipping included</span>
+              </div>
+              <div class="stl__total-right">
+                <span class="stl__total-price" data-stl-total data-look={look.id} data-currency={look.currency}>{look.totalLabel}</span>
               </div>
             </div>
-          </div>
-        </div>
-        <!-- Pin 2: Trousers -->
-        <div class="stl__pin" style="top:62%;left:32%;" aria-label="Relaxed Tailored Trousers" role="button"
-          tabindex="0">
-          <div class="stl__pin-dot"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg></div>
-          <div class="stl__pin-popup pop-right">
-            <img src="https://images.unsplash.com/photo-1509631179647-0177331693ae?w=300&auto=format&fit=crop&q=70"
-              class="stl__popup-img" alt="Relaxed Tailored Trousers" />
-            <div class="stl__popup-body">
-              <div class="stl__popup-cat">Women · Bottoms</div>
-              <div class="stl__popup-name">Relaxed Tailored Trousers</div>
-              <div class="stl__popup-row">
-                <span class="stl__popup-price">$185</span>
-                <button class="stl__popup-add" onclick="addToCart('Relaxed Tailored Trousers',185)">+ Bag</button>
-              </div>
+            <div class="stl__actions">
+              <button class="stl__add-all" data-stl-addall data-look={look.id}>Add Complete Look to Cart</button>
             </div>
           </div>
-        </div>
-        <!-- Pin 3: Bag -->
-        <div class="stl__pin" style="top:72%;right:20%;" aria-label="Leather Crossbody Bag" role="button"
-          tabindex="0">
-          <div class="stl__pin-dot"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg></div>
-          <div class="stl__pin-popup pop-left">
-            <img src="https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300&auto=format&fit=crop&q=70"
-              class="stl__popup-img" alt="Leather Crossbody Bag" />
-            <div class="stl__popup-body">
-              <div class="stl__popup-cat">Bags · Crossbody</div>
-              <div class="stl__popup-name">Leather Crossbody Bag</div>
-              <div class="stl__popup-row">
-                <span class="stl__popup-price">$220</span>
-                <button class="stl__popup-add" onclick="addToCart('Leather Crossbody Bag',220)">+ Bag</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
-
-      <!-- Look 02 Image -->
-      <div class="stl__img-slot" data-look="2">
-        <img
-          src="https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-          alt="Look 02 — AW 2026" class="stl__img" loading="lazy" />
-        <!-- Pin 1: Crewneck -->
-        <div class="stl__pin" style="top:28%;left:42%;" aria-label="Merino Wool Crewneck" role="button" tabindex="0">
-          <div class="stl__pin-dot"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg></div>
-          <div class="stl__pin-popup pop-right">
-            <img src="https://images.unsplash.com/photo-1516826957135-700dedea698c?w=300&auto=format&fit=crop&q=70"
-              class="stl__popup-img" alt="Merino Wool Crewneck" />
-            <div class="stl__popup-body">
-              <div class="stl__popup-cat">Men · Knitwear</div>
-              <div class="stl__popup-name">Merino Wool Crewneck</div>
-              <div class="stl__popup-row">
-                <span class="stl__popup-price">$165</span>
-                <button class="stl__popup-add" onclick="addToCart('Merino Wool Crewneck',165)">+ Bag</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Pin 2: Chino -->
-        <div class="stl__pin" style="top:60%;left:38%;" aria-label="Tailored Chino Trousers" role="button"
-          tabindex="0">
-          <div class="stl__pin-dot"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg></div>
-          <div class="stl__pin-popup pop-right">
-            <img src="https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=300&auto=format&fit=crop&q=70"
-              class="stl__popup-img" alt="Tailored Chino Trousers" />
-            <div class="stl__popup-body">
-              <div class="stl__popup-cat">Men · Bottoms</div>
-              <div class="stl__popup-name">Tailored Chino Trousers</div>
-              <div class="stl__popup-row">
-                <span class="stl__popup-price">$155</span>
-                <button class="stl__popup-add" onclick="addToCart('Tailored Chino Trousers',155)">+ Bag</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Pin 3: Sunglasses -->
-        <div class="stl__pin" style="top:18%;right:22%;" aria-label="Premium Sunglasses" role="button" tabindex="0">
-          <div class="stl__pin-dot"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg></div>
-          <div class="stl__pin-popup pop-left">
-            <img src="https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=300&auto=format&fit=crop&q=70"
-              class="stl__popup-img" alt="Premium Sunglasses" />
-            <div class="stl__popup-body">
-              <div class="stl__popup-cat">Accessories · Eyewear</div>
-              <div class="stl__popup-name">Premium Sunglasses</div>
-              <div class="stl__popup-row">
-                <span class="stl__popup-price">$175</span>
-                <button class="stl__popup-add" onclick="addToCart('Premium Sunglasses',175)">+ Bag</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Look 03 Image -->
-      <div class="stl__img-slot" data-look="3">
-        <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1200&auto=format&fit=crop&q=85"
-          alt="Look 03 — Resort 2026" class="stl__img" loading="lazy" />
-        <!-- Pin 1: Dress -->
-        <div class="stl__pin" style="top:42%;left:40%;" aria-label="Silk Slip Dress" role="button" tabindex="0">
-          <div class="stl__pin-dot"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg></div>
-          <div class="stl__pin-popup pop-right">
-            <img src="https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=300&auto=format&fit=crop&q=70"
-              class="stl__popup-img" alt="Silk Slip Dress" />
-            <div class="stl__popup-body">
-              <div class="stl__popup-cat">Women · Dresses</div>
-              <div class="stl__popup-name">Silk Slip Dress</div>
-              <div class="stl__popup-row">
-                <span class="stl__popup-price">$235</span>
-                <button class="stl__popup-add" onclick="addToCart('Silk Slip Dress',235)">+ Bag</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Pin 2: Scarf -->
-        <div class="stl__pin" style="top:22%;right:28%;" aria-label="Cashmere Ribbed Scarf" role="button"
-          tabindex="0">
-          <div class="stl__pin-dot"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg></div>
-          <div class="stl__pin-popup pop-left">
-            <img src="https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?w=300&auto=format&fit=crop&q=70"
-              class="stl__popup-img" alt="Cashmere Ribbed Scarf" />
-            <div class="stl__popup-body">
-              <div class="stl__popup-cat">Accessories · Scarves</div>
-              <div class="stl__popup-name">Cashmere Ribbed Scarf</div>
-              <div class="stl__popup-row">
-                <span class="stl__popup-price">$95</span>
-                <button class="stl__popup-add" onclick="addToCart('Cashmere Ribbed Scarf',95)">+ Bag</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Pin 3: Bag -->
-        <div class="stl__pin" style="top:68%;left:30%;" aria-label="Leather Crossbody Bag" role="button" tabindex="0">
-          <div class="stl__pin-dot"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg></div>
-          <div class="stl__pin-popup pop-right">
-            <img src="https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300&auto=format&fit=crop&q=70"
-              class="stl__popup-img" alt="Leather Crossbody Bag" />
-            <div class="stl__popup-body">
-              <div class="stl__popup-cat">Bags · Crossbody</div>
-              <div class="stl__popup-name">Leather Crossbody Bag</div>
-              <div class="stl__popup-row">
-                <span class="stl__popup-price">$285</span>
-                <button class="stl__popup-add" onclick="addToCart('Leather Crossbody Bag',285)">+ Bag</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /stl__img-panel -->
-
-    <!-- ═══ RIGHT: Content Panel ═══ -->
-    <div class="stl__panel rv d1">
-
-      <!-- Header -->
-      <div class="stl__eyebrow">Shop the Look</div>
-      <h2 class="stl__title" id="stl-h">Curated for the<br>Modern Wardrobe</h2>
-      <p class="stl__desc">Three pieces, one complete look. Every item ships free over $150.</p>
-
-      <!-- Look switcher thumbnails -->
-      <div class="stl__switcher" role="tablist" aria-label="Select a look">
-        <button class="stl__sw-btn active" data-look="1" onclick="switchLook(1)" role="tab" aria-selected="true"
-          aria-label="Look 01">
-          <img
-            src="https://images.unsplash.com/photo-1672753755304-140359dc739a?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-            class="stl__sw-img" alt="Look 01" />
-          <span class="stl__sw-label">Look 01</span>
-        </button>
-        <button class="stl__sw-btn" data-look="2" onclick="switchLook(2)" role="tab" aria-selected="false"
-          aria-label="Look 02">
-          <img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?w=200&auto=format&fit=crop&q=60"
-            class="stl__sw-img" alt="Look 02" />
-          <span class="stl__sw-label">Look 02</span>
-        </button>
-        <button class="stl__sw-btn" data-look="3" onclick="switchLook(3)" role="tab" aria-selected="false"
-          aria-label="Look 03">
-          <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&auto=format&fit=crop&q=60"
-            class="stl__sw-img" alt="Look 03" />
-          <span class="stl__sw-label">Look 03</span>
-        </button>
-      </div>
-
-      <!-- ── Look 01 Items ── -->
-      <div class="stl__items" id="stl-items-1">
-        <div class="stl__item">
-          <span class="stl__item-num">01</span>
-          <img src="https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=200&auto=format&fit=crop&q=70"
-            alt="Linen Shirt" class="stl__item-img" loading="lazy" />
-          <div class="stl__item-info">
-            <div class="stl__item-cat">Women · Tops</div>
-            <div class="stl__item-name">Oversized Linen Shirt</div>
-            <div class="stl__item-bottom">
-              <span class="stl__item-price">$165</span>
-              <div class="stl__item-sws">
-                <span class="look-sw" style="background:#E0D9CE" title="Stone"></span>
-                <span class="look-sw" style="background:#FAFAF7" title="White"></span>
-                <span class="look-sw" style="background:#6B7B5A" title="Sage"></span>
-              </div>
-            </div>
-          </div>
-          <button class="stl__item-add" aria-label="Add to bag"
-            onclick="stlAdd(this,'Oversized Linen Shirt',165)"><svg width="13" height="13" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg></button>
-        </div>
-        <div class="stl__item">
-          <span class="stl__item-num">02</span>
-          <img src="https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&auto=format&fit=crop&q=70"
-            alt="Tailored Trousers" class="stl__item-img" loading="lazy" />
-          <div class="stl__item-info">
-            <div class="stl__item-cat">Women · Bottoms</div>
-            <div class="stl__item-name">Relaxed Tailored Trousers</div>
-            <div class="stl__item-bottom">
-              <span class="stl__item-price">$185</span>
-              <div class="stl__item-sws">
-                <span class="look-sw" style="background:#F5F0E8" title="Ivory"></span>
-                <span class="look-sw" style="background:#1D1D1B" title="Black"></span>
-                <span class="look-sw" style="background:#5B6B3A" title="Olive"></span>
-              </div>
-            </div>
-          </div>
-          <button class="stl__item-add" aria-label="Add to bag"
-            onclick="stlAdd(this,'Relaxed Tailored Trousers',185)"><svg width="13" height="13" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg></button>
-        </div>
-        <div class="stl__item">
-          <span class="stl__item-num">03</span>
-          <img src="https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=200&auto=format&fit=crop&q=70"
-            alt="Crossbody Bag" class="stl__item-img" loading="lazy" />
-          <div class="stl__item-info">
-            <div class="stl__item-cat">Bags · Crossbody</div>
-            <div class="stl__item-name">Leather Crossbody Bag</div>
-            <div class="stl__item-bottom">
-              <span class="stl__item-price">$220</span>
-              <div class="stl__item-sws">
-                <span class="look-sw" style="background:#7A5C3E" title="Tobacco"></span>
-                <span class="look-sw" style="background:#1D1D1B" title="Black"></span>
-              </div>
-            </div>
-          </div>
-          <button class="stl__item-add" aria-label="Add to bag"
-            onclick="stlAdd(this,'Leather Crossbody Bag',220)"><svg width="13" height="13" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg></button>
-        </div>
-      </div>
-
-      <!-- ── Look 02 Items ── -->
-      <div class="stl__items hidden" id="stl-items-2">
-        <div class="stl__item">
-          <span class="stl__item-num">01</span>
-          <img src="https://images.unsplash.com/photo-1516826957135-700dedea698c?w=200&auto=format&fit=crop&q=70"
-            alt="Merino Crewneck" class="stl__item-img" loading="lazy" />
-          <div class="stl__item-info">
-            <div class="stl__item-cat">Men · Knitwear</div>
-            <div class="stl__item-name">Merino Wool Crewneck</div>
-            <div class="stl__item-bottom">
-              <span class="stl__item-price">$165</span>
-              <div class="stl__item-sws">
-                <span class="look-sw" style="background:#8B9E8B" title="Sage"></span>
-                <span class="look-sw" style="background:#C4A882" title="Camel"></span>
-                <span class="look-sw" style="background:#1A1A1A" title="Charcoal"></span>
-              </div>
-            </div>
-          </div>
-          <button class="stl__item-add" aria-label="Add to bag" onclick="stlAdd(this,'Merino Wool Crewneck',165)"><svg
-              width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round">
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg></button>
-        </div>
-        <div class="stl__item">
-          <span class="stl__item-num">02</span>
-          <img src="https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=200&auto=format&fit=crop&q=70"
-            alt="Chino Trousers" class="stl__item-img" loading="lazy" />
-          <div class="stl__item-info">
-            <div class="stl__item-cat">Men · Bottoms</div>
-            <div class="stl__item-name">Tailored Chino Trousers</div>
-            <div class="stl__item-bottom">
-              <span class="stl__item-price">$155</span>
-              <div class="stl__item-sws">
-                <span class="look-sw" style="background:#C4B08A" title="Sand"></span>
-                <span class="look-sw" style="background:#4A5568" title="Navy"></span>
-              </div>
-            </div>
-          </div>
-          <button class="stl__item-add" aria-label="Add to bag"
-            onclick="stlAdd(this,'Tailored Chino Trousers',155)"><svg width="13" height="13" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg></button>
-        </div>
-        <div class="stl__item">
-          <span class="stl__item-num">03</span>
-          <img src="https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=200&auto=format&fit=crop&q=70"
-            alt="Sunglasses" class="stl__item-img" loading="lazy" />
-          <div class="stl__item-info">
-            <div class="stl__item-cat">Accessories · Eyewear</div>
-            <div class="stl__item-name">Premium Sunglasses</div>
-            <div class="stl__item-bottom">
-              <span class="stl__item-price">$175</span>
-              <div class="stl__item-sws">
-                <span class="look-sw" style="background:#1A1A1A" title="Black"></span>
-                <span class="look-sw" style="background:#8B7355" title="Tortoise"></span>
-              </div>
-            </div>
-          </div>
-          <button class="stl__item-add" aria-label="Add to bag" onclick="stlAdd(this,'Premium Sunglasses',175)"><svg
-              width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round">
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg></button>
-        </div>
-      </div>
-
-      <!-- ── Look 03 Items ── -->
-      <div class="stl__items hidden" id="stl-items-3">
-        <div class="stl__item">
-          <span class="stl__item-num">01</span>
-          <img src="https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=200&auto=format&fit=crop&q=70"
-            alt="Silk Dress" class="stl__item-img" loading="lazy" />
-          <div class="stl__item-info">
-            <div class="stl__item-cat">Women · Dresses</div>
-            <div class="stl__item-name">Silk Slip Dress</div>
-            <div class="stl__item-bottom">
-              <span class="stl__item-price">$235</span>
-              <div class="stl__item-sws">
-                <span class="look-sw" style="background:#E8D5C4" title="Blush"></span>
-                <span class="look-sw" style="background:#1A1A1A" title="Black"></span>
-              </div>
-            </div>
-          </div>
-          <button class="stl__item-add" aria-label="Add to bag" onclick="stlAdd(this,'Silk Slip Dress',235)"><svg
-              width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round">
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg></button>
-        </div>
-        <div class="stl__item">
-          <span class="stl__item-num">02</span>
-          <img src="https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?w=200&auto=format&fit=crop&q=70"
-            alt="Cashmere Scarf" class="stl__item-img" loading="lazy" />
-          <div class="stl__item-info">
-            <div class="stl__item-cat">Accessories · Scarves</div>
-            <div class="stl__item-name">Cashmere Ribbed Scarf</div>
-            <div class="stl__item-bottom">
-              <span class="stl__item-price">$95</span>
-              <div class="stl__item-sws">
-                <span class="look-sw" style="background:#D4C5A9" title="Oat"></span>
-                <span class="look-sw" style="background:#8B9E8B" title="Sage"></span>
-              </div>
-            </div>
-          </div>
-          <button class="stl__item-add" aria-label="Add to bag" onclick="stlAdd(this,'Cashmere Ribbed Scarf',95)"><svg
-              width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round">
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg></button>
-        </div>
-        <div class="stl__item">
-          <span class="stl__item-num">03</span>
-          <img src="https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=200&auto=format&fit=crop&q=70"
-            alt="Crossbody Bag" class="stl__item-img" loading="lazy" />
-          <div class="stl__item-info">
-            <div class="stl__item-cat">Bags · Crossbody</div>
-            <div class="stl__item-name">Leather Crossbody Bag</div>
-            <div class="stl__item-bottom">
-              <span class="stl__item-price">$285</span>
-              <div class="stl__item-sws">
-                <span class="look-sw" style="background:#8B6914" title="Tan"></span>
-                <span class="look-sw" style="background:#1A1A1A" title="Black"></span>
-              </div>
-            </div>
-          </div>
-          <button class="stl__item-add" aria-label="Add to bag"
-            onclick="stlAdd(this,'Leather Crossbody Bag',285)"><svg width="13" height="13" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg></button>
-        </div>
-      </div>
-
-      <!-- Total -->
-      <div class="stl__total">
-        <div class="stl__total-meta">
-          <span class="stl__total-label">Complete Look · 3 items</span>
-          <span class="stl__total-ship">✓ Free shipping included</span>
-        </div>
-        <div class="stl__total-right">
-          <span class="stl__total-price" id="stl-total">$570</span>
-        </div>
-      </div>
-
-      <!-- Actions -->
-      <div class="stl__actions">
-        <button class="stl__add-all" onclick="stlAddAll()">Add Complete Look to Cart</button>
-      </div>
-
-    </div><!-- /stl__panel -->
-  </div>
-</section>
+    </div>
+  </section>
+)}
 
 <style>
   .stl {
@@ -728,6 +525,7 @@
     cursor: pointer;
     padding: 5px 11px;
     border-radius: 2px;
+    text-decoration: none;
     transition: background .18s ease;
   }
 
@@ -841,6 +639,11 @@
     color: rgba(255, 255, 255, .9);
   }
 
+  /* Look blocks */
+  .stl__look-block.hidden {
+    display: none;
+  }
+
   /* Product items */
   .stl__items {
     display: flex;
@@ -849,26 +652,27 @@
     margin-bottom: 24px;
   }
 
-  .stl__items.hidden {
-    display: none;
-  }
-
   .stl__item {
     display: grid;
     grid-template-columns: 18px 52px 1fr auto;
-    align-items: center;
+    align-items: start;
     gap: 12px;
     padding: 12px 14px;
     background: rgba(255, 255, 255, .04);
     border: 1px solid rgba(255, 255, 255, .07);
     border-radius: 6px;
-    cursor: default;
     transition: background .2s ease, border-color .2s ease;
   }
 
   .stl__item:hover {
     background: rgba(255, 255, 255, .07);
     border-color: rgba(255, 255, 255, .12);
+  }
+
+  /* Highlighted when the shopper tries to add without picking a size. */
+  .stl__item--need {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent) inset;
   }
 
   .stl__item-num {
@@ -878,6 +682,7 @@
     letter-spacing: .5px;
     color: rgba(255, 255, 255, .25);
     line-height: 1;
+    padding-top: 4px;
   }
 
   .stl__item-img {
@@ -906,21 +711,28 @@
   }
 
   .stl__item-name {
+    display: block;
     font-family: var(--fb);
     font-size: 13px;
     font-weight: 600;
     color: #fff;
     line-height: 1.3;
     margin-bottom: 6px;
+    text-decoration: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .stl__item-name:hover {
+    color: var(--accent);
   }
 
   .stl__item-bottom {
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-bottom: 8px;
   }
 
   .stl__item-price {
@@ -930,18 +742,90 @@
     color: rgba(255, 255, 255, .9);
   }
 
+  /* Inline option pickers */
+  .stl__opt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .stl__opt-label {
+    font-family: var(--fb);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .3);
+    flex-shrink: 0;
+  }
+
+  .stl__sizes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .stl__size {
+    min-width: 26px;
+    padding: 4px 7px;
+    font-family: var(--fb);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    color: rgba(255, 255, 255, .75);
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid rgba(255, 255, 255, .15);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all .16s ease;
+  }
+
+  .stl__size:hover {
+    border-color: rgba(255, 255, 255, .4);
+    color: #fff;
+  }
+
+  .stl__size.active {
+    background: #fff;
+    border-color: #fff;
+    color: var(--dark);
+  }
+
+  .stl__size.is-off {
+    opacity: .35;
+    cursor: not-allowed;
+    text-decoration: line-through;
+  }
+
   .stl__item-sws {
     display: flex;
-    gap: 3px;
+    gap: 4px;
   }
 
   .look-sw {
-    width: 10px;
-    height: 10px;
+    width: 14px;
+    height: 14px;
+    padding: 0;
     border-radius: 50%;
     border: 1px solid rgba(255, 255, 255, .18);
     display: block;
     flex-shrink: 0;
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+
+  .look-sw:hover {
+    transform: scale(1.12);
+  }
+
+  .look-sw.is-sel {
+    box-shadow: 0 0 0 2px var(--dark), 0 0 0 3px #fff;
+  }
+
+  .look-sw.is-off {
+    opacity: .35;
+    cursor: not-allowed;
   }
 
   .stl__item-add {
@@ -1050,86 +934,229 @@
     transform: translateY(0);
   }
 
-  .stl__lb-link {
-    font-family: var(--fb);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: .3px;
-    color: rgba(255, 255, 255, .45);
-    text-decoration: none;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: color .18s ease;
+  /* ── Responsive: stack the two panels below the desktop split ── */
+  @media (max-width: 980px) {
+    .stl__inner {
+      grid-template-columns: 1fr;
+      min-height: 0;
+    }
+
+    .stl__img-panel {
+      min-height: 0;
+      aspect-ratio: 4 / 5;
+    }
+
+    .stl__img-slot {
+      position: relative;
+      opacity: 1;
+      height: 100%;
+    }
+
+    .stl__img-slot:not(.active) {
+      display: none;
+    }
+
+    .stl__panel {
+      padding: 40px var(--gutter, 24px);
+    }
   }
 
-  .stl__lb-link:hover {
-    color: rgba(255, 255, 255, .85);
+  @media (max-width: 600px) {
+    .stl__panel {
+      padding: 32px 20px;
+    }
+
+    .stl__item-name {
+      white-space: normal;
+    }
+
+    .stl__title {
+      font-size: clamp(28px, 8vw, 40px);
+    }
   }
 </style>
 
 <script>
-  // ── Shop the Look — look switcher & add all ──
-  type Look = { label: string; total: string; items: [string, number][] };
+  // ── Shop the Look — inline variant selection + complete-look add ──
+  import { addItem, openCart } from '../../../stores/cart';
 
-  const stlLooks: Record<number, Look> = {
-    1: { label: 'Look 01 — SS 2026', total: '$570', items: [['Oversized Linen Shirt', 165], ['Relaxed Tailored Trousers', 185], ['Leather Crossbody Bag', 220]] },
-    2: { label: 'Look 02 — AW 2026', total: '$495', items: [['Merino Wool Crewneck', 165], ['Tailored Chino Trousers', 155], ['Premium Sunglasses', 175]] },
-    3: { label: 'Look 03 — Resort 2026', total: '$615', items: [['Silk Slip Dress', 235], ['Cashmere Ribbed Scarf', 95], ['Leather Crossbody Bag', 285]] }
-  };
+  type Variant = { id: string; opts: Record<string, string>; price: number; img: string | null; available: boolean };
 
-  function addToCart(name: string, price: number) {
-    const fn = (window as any).addToCart;
-    if (typeof fn === 'function') fn(name, price);
+  function money(n: number, cur: string): string {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: cur,
+        minimumFractionDigits: n % 1 === 0 ? 0 : 2,
+      }).format(n);
+    } catch {
+      return `${cur} ${n.toFixed(2)}`;
+    }
   }
 
-  function switchLook(num: number) {
-    // Images
-    document.querySelectorAll('.stl__img-slot').forEach(s => s.classList.remove('active'));
-    const slot = document.querySelector('.stl__img-slot[data-look="' + num + '"]');
-    if (slot) slot.classList.add('active');
-    // Switcher btns
-    document.querySelectorAll<HTMLElement>('.stl__sw-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.look == String(num));
-      b.setAttribute('aria-selected', b.dataset.look == String(num) ? 'true' : 'false');
+  function initLookbook() {
+    const root = document.querySelector<HTMLElement>('[data-stl]');
+    if (!root) return;
+
+    const findRow = (look: string, idx: string) =>
+      root.querySelector<HTMLElement>(`[data-stl-item][data-look="${look}"][data-idx="${idx}"]`);
+
+    // Swap the row thumbnail (and its matching pin popup image) to `url`.
+    function swapImg(row: HTMLElement, url?: string | null) {
+      if (!url) return;
+      const thumb = row.querySelector<HTMLImageElement>('.stl__item-img');
+      if (thumb) thumb.src = url;
+      const pinAdd = root!.querySelector<HTMLElement>(
+        `.stl__pin [data-stl-add][data-look="${row.dataset.look}"][data-idx="${row.dataset.idx}"]`,
+      );
+      const popImg = pinAdd?.closest('.stl__pin')?.querySelector<HTMLImageElement>('.stl__popup-img');
+      if (popImg) popImg.src = url;
+    }
+
+    // Resolve a row's current option selection → variant id + price + image.
+    function resolveRow(row: HTMLElement) {
+      const variants: Variant[] = JSON.parse(row.dataset.variants || '[]');
+      const sel: Record<string, string> = JSON.parse(row.dataset.selected || row.dataset.default || '{}');
+      const keys = Object.keys(sel);
+      // No options → keep the server-rendered default variant id.
+      if (keys.length && variants.length) {
+        const match = variants.find((v) => keys.every((k) => v.opts[k] === sel[k]));
+        row.dataset.variantId = match && match.available ? match.id : '';
+        if (match) {
+          row.dataset.price = String(match.price);
+          const pr = row.querySelector<HTMLElement>('[data-row-price]');
+          if (pr) pr.textContent = money(match.price, row.dataset.currency || 'USD');
+          // Variant image when set, else fall back to the product's featured image.
+          swapImg(row, match.img || row.dataset.img);
+        }
+      }
+      row.classList.remove('stl__item--need');
+      updateTotal(row.dataset.look || '');
+    }
+
+    function updateTotal(look: string) {
+      const rows = root!.querySelectorAll<HTMLElement>(`[data-stl-item][data-look="${look}"]`);
+      let sum = 0;
+      rows.forEach((r) => (sum += Number(r.dataset.price || 0)));
+      const el = root!.querySelector<HTMLElement>(`[data-stl-total][data-look="${look}"]`);
+      if (el) el.textContent = money(sum, el.dataset.currency || 'USD');
+    }
+
+    function selectVal(row: HTMLElement, name: string, val: string) {
+      const grp = row.querySelector(`[data-opt][data-opt-name="${name}"]`);
+      grp?.querySelectorAll<HTMLElement>('[data-val]').forEach((b) => {
+        const on = b.dataset.valName === val;
+        b.setAttribute('aria-pressed', String(on));
+        if (b.classList.contains('look-sw')) b.classList.toggle('is-sel', on);
+        else b.classList.toggle('active', on);
+      });
+      const sel: Record<string, string> = JSON.parse(row.dataset.selected || row.dataset.default || '{}');
+      sel[name] = val;
+      row.dataset.selected = JSON.stringify(sel);
+      resolveRow(row);
+    }
+
+    function flagNeed(row: HTMLElement) {
+      row.classList.add('stl__item--need');
+      setTimeout(() => row.classList.remove('stl__item--need'), 2400);
+    }
+
+    function feedbackAdd(row: HTMLElement) {
+      const btn = row.querySelector<HTMLElement>('[data-stl-add]');
+      if (!btn) return;
+      btn.classList.add('added');
+      setTimeout(() => btn.classList.remove('added'), 1800);
+    }
+
+    function switchLook(id: string) {
+      root!.querySelectorAll<HTMLElement>('[data-look-slot]').forEach((s) =>
+        s.classList.toggle('active', s.dataset.lookSlot === id),
+      );
+      root!.querySelectorAll<HTMLElement>('[data-look-block]').forEach((b) =>
+        b.classList.toggle('hidden', b.dataset.lookBlock !== id),
+      );
+      root!.querySelectorAll<HTMLElement>('[data-look-switch]').forEach((b) => {
+        const on = b.dataset.lookSwitch === id;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', String(on));
+      });
+    }
+
+    async function addAll(look: string, btn: HTMLElement) {
+      const rows = [...root!.querySelectorAll<HTMLElement>(`[data-stl-item][data-look="${look}"]`)];
+      const missing = rows.filter((r) => !r.dataset.variantId);
+      if (missing.length) {
+        missing.forEach(flagNeed);
+        const t = btn.textContent;
+        btn.textContent = 'Select all sizes';
+        setTimeout(() => (btn.textContent = t), 2200);
+        return;
+      }
+      btn.setAttribute('disabled', '');
+      // Add sequentially so the cart store commits every line (its seq guard
+      // would otherwise drop earlier concurrent replies).
+      for (const r of rows) await addItem(r.dataset.variantId!, 1);
+      openCart();
+      const t = btn.textContent;
+      btn.textContent = '✓ Added to Cart';
+      btn.style.background = '#4a7a1e';
+      setTimeout(() => {
+        btn.textContent = t;
+        btn.style.background = '';
+        btn.removeAttribute('disabled');
+      }, 2500);
+    }
+
+    // Delegated clicks
+    root.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+
+      const val = target.closest<HTMLElement>('[data-val]');
+      if (val && !(val as HTMLButtonElement).disabled) {
+        const row = val.closest<HTMLElement>('[data-stl-item]');
+        if (row) selectVal(row, val.dataset.optName!, val.dataset.valName!);
+        return;
+      }
+
+      const add = target.closest<HTMLElement>('[data-stl-add]');
+      if (add) {
+        const row = findRow(add.dataset.look!, add.dataset.idx!);
+        if (!row) return;
+        if (!row.dataset.variantId) {
+          flagNeed(row);
+          return;
+        }
+        addItem(row.dataset.variantId, 1).then(() => openCart());
+        feedbackAdd(row);
+        return;
+      }
+
+      const all = target.closest<HTMLElement>('[data-stl-addall]');
+      if (all) {
+        addAll(all.dataset.look!, all);
+        return;
+      }
+
+      const sw = target.closest<HTMLElement>('[data-look-switch]');
+      if (sw) switchLook(sw.dataset.lookSwitch!);
     });
-    // Items
-    document.querySelectorAll('.stl__items').forEach(el => el.classList.add('hidden'));
-    const items = document.getElementById('stl-items-' + num);
-    if (items) items.classList.remove('hidden');
-    // Badge label
-    const lbl = document.getElementById('stl-look-text');
-    if (lbl && stlLooks[num]) lbl.textContent = stlLooks[num].label;
-    // Total
-    const tot = document.getElementById('stl-total');
-    if (tot && stlLooks[num]) tot.textContent = stlLooks[num].total;
+
+    // Keyboard: pins are focusable; Enter/Space adds the first hotspot item.
+    root.querySelectorAll<HTMLElement>('.stl__pin').forEach((pin) => {
+      pin.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          pin.querySelector<HTMLElement>('[data-stl-add]')?.click();
+        }
+      });
+    });
+
+    // Seed each row's resolved variant + per-look totals.
+    root.querySelectorAll<HTMLElement>('[data-stl-item]').forEach((row) => {
+      row.dataset.selected = row.dataset.default || '{}';
+      resolveRow(row);
+    });
   }
 
-  function stlAdd(btn: HTMLElement, name: string, price: number) {
-    addToCart(name, price);
-    const svgCheck = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>';
-    const svgBag = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>';
-    btn.innerHTML = svgCheck;
-    btn.classList.add('added');
-    setTimeout(() => { btn.innerHTML = svgBag; btn.classList.remove('added'); }, 2200);
-  }
-
-  function stlAddAll() {
-    const activeLook = parseInt(document.querySelector<HTMLElement>('.stl__sw-btn.active')?.dataset.look || '1');
-    const look = stlLooks[activeLook];
-    if (!look) return;
-    look.items.forEach(([name, price]) => addToCart(name, price));
-    const btn = document.querySelector<HTMLElement>('.stl__add-all');
-    if (!btn) return;
-    const origText = btn.textContent;
-    btn.textContent = '✓ All Items Added';
-    btn.style.background = '#4a7a1e';
-    setTimeout(() => { btn.textContent = origText; btn.style.background = ''; }, 2500);
-  }
-
-  // Expose for inline onclick handlers in the markup above.
-  (window as any).switchLook = switchLook;
-  (window as any).stlAdd = stlAdd;
-  (window as any).stlAddAll = stlAddAll;
+  initLookbook();
 </script>

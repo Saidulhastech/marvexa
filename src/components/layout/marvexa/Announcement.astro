@@ -1,6 +1,6 @@
 ---
 // ============================================================
-//  Announcement bar (Maison) — fixed top ticker that rotates the
+//  Announcement bar (Marvexa) — fixed top ticker that rotates the
 //  `announcements` collection messages. Close button collapses the
 //  bar and drops the header to top:0 (toggles #siteHeader.ann-hidden).
 // ============================================================
@@ -69,9 +69,10 @@ const slides = (await getCollection('announcements')).sort((a, b) =>
     text-transform: uppercase;
     color: rgba(255, 255, 255, .68);
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 2px 10px;
     transform: translateY(100%);
     opacity: 0;
     transition: transform .5s cubic-bezier(.25, .46, .45, .94), opacity .45s ease;
@@ -109,6 +110,11 @@ const slides = (await getCollection('announcements')).sort((a, b) =>
     font-weight: 700;
   }
 
+  /* keep each clause whole — line only breaks at the separator */
+  .ann-msg :global(.np) {
+    white-space: nowrap;
+  }
+
   .ann-bar__close {
     position: absolute;
     right: 16px;
@@ -135,10 +141,18 @@ const slides = (await getCollection('announcements')).sort((a, b) =>
       display: none;
     }
 
+    /* long messages wrap to 2 lines — grow the bar to fit (header top matches) */
+    .ann-bar,
+    .ann-bar__wrap {
+      height: 56px;
+    }
+
     .ann-msg {
       font-size: 10px;
-      letter-spacing: 1px;
+      letter-spacing: .8px;
       padding: 0 16px;
+      line-height: 1.35;
+      white-space: normal;
     }
   }
 </style>

@@ -1,5 +1,5 @@
 // ============================================================
-//  OMNIX brand constants — used by the SEO head + chrome.
+//  MARVEXA brand constants — used by the SEO head + chrome.
 //  Section *content* (hero copy, testimonials, etc.) lives in
 //  content collections (src/content/*); this file holds only the
 //  stable brand identity referenced from code.
@@ -25,12 +25,12 @@ export const DEFAULT_LANGUAGE = "EN";
 export const MARKET_COUNTRY = DEFAULT_COUNTRY;
 
 export const BRAND = {
-  name: "Maison",
+  name: "Marvexa",
   /** Shown in the <title> default and OG site name. */
-  legalName: "Maison",
-  tagline: "Modern Fashion",
+  legalName: "Marvexa",
+  tagline: "Modern Fashion Headless Shopify Storefront",
   description:
-    "Maison — modern fashion. Clean, refined, everyday confidence. Quality materials, considered design, easy shopping.",
+    "Marvexa — modern fashion. Clean, refined, everyday confidence. Quality materials, considered design, easy shopping.",
   /**
    * Free-shipping threshold — drives the cart "Add $X more to unlock FREE
    * shipping" meter. Set to a number (e.g. 99) to show it; set to 0 (or null)
@@ -40,12 +40,13 @@ export const BRAND = {
    * (Settings → Shipping and delivery → "Free, over $99") or the cart promises
    * free shipping the customer never gets at checkout.
    */
-  freeShippingThreshold: 0 as number | null,
+  freeShippingThreshold: 99 as number | null,
   social: {
     instagram: "https://instagram.com",
     twitter: "https://twitter.com",
     youtube: "https://youtube.com",
     tiktok: "https://tiktok.com",
+    pinterest: "https://pinterest.com",
   },
 } as const;
 
@@ -90,7 +91,7 @@ export const CART_EXTRAS = {
   protection: {
     enabled: true,
     /** Product handle of the protection product (Shopify slug). */
-    handle: "omnix-protection",
+    handle: "order-protection",
     plans: [
       // `none` is the always-present free default — no variant, no optionValue.
       {
@@ -128,7 +129,7 @@ export const CART_EXTRAS = {
  * collections (title/count/image/link come from Shopify); the icon and
  * display order live here in code, keyed by collection handle. Array order
  * = card order. A `for-*` collection not listed still shows, appended last
- * with the default `bolt` icon. Icon names must exist in `ui/omnix/Icon.astro`.
+ * with the default `bolt` icon. Icon names must exist in `ui/marvexa/Icon.astro`.
  */
 export const LIFESTYLE_CARDS = [
   { handle: "for-gamers", icon: "bolt" as const },
