@@ -11,6 +11,9 @@ category: "Wardrobe Tips"
 featured: true
 ---
 
+import { Image } from 'astro:assets';
+import { resolveImage } from '~/lib/asset';
+
 ## Why Most Wardrobes Fail
 
 The modern wardrobe has a paradox problem. We own more clothes than any generation before us, yet the average person reaches for just 20% of what they own, 80% of the time. The remaining pieces sit untouched — survivors of impulse buys, trend cycles, and aspirational purchases that never quite found their moment.
@@ -42,7 +45,7 @@ Every piece you own should sit within this palette. Not because variety is bad, 
 Once your palette is set, the next step is identifying the foundation pieces — the items that appear most in your daily life and need to perform consistently. These aren't "basics" in the discount sense; they're the pieces that carry the most weight and therefore deserve the most investment.
 
 <div class="bd-fig">
-  <img src="/blog/bd-fig.webp" alt="Foundation wardrobe pieces laid out flat" loading="lazy" />
+  <Image src={resolveImage('bd-fig.webp')} alt="Foundation wardrobe pieces laid out flat" loading="lazy" />
   <div class="bd-fig-cap">The seven foundation pieces: tailored trouser, knit, white shirt, denim, blazer, simple tee, and a clean outerwear layer. Each connects to the others.</div>
 </div>
 
