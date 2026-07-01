@@ -80,9 +80,12 @@ try {
   const fetched = await Promise.all(
     flat.map((it) => (it.handle ? getProduct(it.handle, market).catch(() => null) : Promise.resolve(null))),
   );
-  // Best-seller pool for blank slots — never reuse a product pinned by handle.
+  // Best-seller pool for blank slots — never reuse a product pinned by handle,
+  // and skip sold-out products so an auto-filled hotspot is always purchasable
+  // (a sold-out slot can't join "Add Complete Look"). Pinned handles are the
+  // curator's call and are left as-is (addAll skips them gracefully).
   const pinnedHandles = new Set(flat.map((it) => it.handle).filter(Boolean) as string[]);
-  const pool = products.filter((p) => !pinnedHandles.has(p.handle));
+  const pool = products.filter((p) => !pinnedHandles.has(p.handle) && p.availableForSale !== false);
   let k = 0; // walks `fetched` in flatten order
   let ptr = 0; // walks the fallback pool
   looks = entries.map((e) => ({

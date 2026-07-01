@@ -1084,19 +1084,31 @@ const bagSvg =
 
     async function addAll(look: string, btn: HTMLElement) {
       const rows = [...root!.querySelectorAll<HTMLElement>(`[data-stl-item][data-look="${look}"]`)];
-      const missing = rows.filter((r) => !r.dataset.variantId);
-      if (missing.length) {
-        missing.forEach(flagNeed);
+      // Sold-out items render a "View" link (no add button) and never resolve a
+      // variant — skip them, don't treat them as an un-picked size.
+      const active = rows.filter((r) => r.querySelector('button[data-stl-add]'));
+      const needSize = active.filter((r) => !r.dataset.variantId);
+      if (needSize.length) {
+        needSize.forEach(flagNeed);
         const t = btn.textContent;
         btn.textContent = 'Select all sizes';
         setTimeout(() => (btn.textContent = t), 2200);
         return;
       }
+      const ids = active.map((r) => r.dataset.variantId!).filter(Boolean);
+      if (!ids.length) {
+        const t = btn.textContent;
+        btn.textContent = 'Nothing available';
+        setTimeout(() => (btn.textContent = t), 2200);
+        return;
+      }
       btn.setAttribute('disabled', '');
-      // Add sequentially so the cart store commits every line (its seq guard
-      // would otherwise drop earlier concurrent replies).
-      for (const r of rows) await addItem(r.dataset.variantId!, 1);
+      // Open the drawer up front (it shows a loading spinner while busy) so the
+      // shopper gets instant feedback instead of waiting for every line to POST.
+      // Then add sequentially — the store's seq guard would otherwise drop
+      // earlier concurrent replies. Suppress addItem's own auto-open.
       openCart();
+      for (const id of ids) await addItem(id, 1, { open: false });
       const t = btn.textContent;
       btn.textContent = '✓ Added to Cart';
       btn.style.background = '#4a7a1e';
