@@ -44,6 +44,11 @@ const FREE_SHIP = BRAND.freeShippingThreshold ?? 0;
       <p>Add something from the store — deals, new arrivals, or staff picks.</p>
       <a class="btn btn-primary btn-sm" href="/products">Start shopping</a>
     </div>
+    {/* Shown while the first line is being added (drawer opened optimistically). */}
+    <div class="cart-loading" id="cartLoading" style="display:none" aria-live="polite" aria-busy="true">
+      <span class="cart-spinner" aria-hidden="true"></span>
+      <p>Adding to your bag…</p>
+    </div>
     {/* Cart lines injected by the script below. */}
     <div id="cartLines"></div>
   </div>
@@ -275,6 +280,40 @@ const FREE_SHIP = BRAND.freeShippingThreshold ?? 0;
     font-size: 14px;
     color: var(--muted);
     max-width: 240px;
+  }
+
+  /* ── Loading state (first add, optimistic open) ──────────────────── */
+  .cart-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    gap: 16px;
+    text-align: center;
+    padding: 40px 24px;
+  }
+
+  .cart-loading p {
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .cart-spinner {
+    width: 30px;
+    height: 30px;
+    border: 2.5px solid var(--border);
+    border-top-color: var(--text);
+    border-radius: 50%;
+    animation: cart-spin .7s linear infinite;
+  }
+
+  @keyframes cart-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cart-spinner { animation-duration: 1.6s; }
   }
 
   /* ── Cart line (markup generated in the script) ──────────────────── */
@@ -632,6 +671,7 @@ const FREE_SHIP = BRAND.freeShippingThreshold ?? 0;
   const FREE_SHIP = Number(drawer?.dataset.freeShip ?? 0);
   const linesEl = document.getElementById('cartLines');
   const emptyEl = document.getElementById('cartEmpty');
+  const loadingEl = document.getElementById('cartLoading');
   const summaryWrap = document.getElementById('cartSummaryWrap');
   const chip = document.getElementById('cartChip');
   const headerBadge = document.getElementById('cartBadge');
@@ -682,11 +722,20 @@ const FREE_SHIP = BRAND.freeShippingThreshold ?? 0;
     applyBusyLines($busyLines.get());
   }
 
+  // Empty vs loading: while a mutation is in-flight and the cart has no lines
+  // yet (drawer opened optimistically on the first add), show a spinner instead
+  // of the "cart is empty" message — otherwise it flashes empty then fills.
+  function updateEmptyState(hasItems: boolean) {
+    const busy = $cartBusy.get();
+    if (emptyEl) emptyEl.style.display = !hasItems && !busy ? '' : 'none';
+    if (loadingEl) loadingEl.style.display = !hasItems && busy ? '' : 'none';
+  }
+
   function render(cart: Cart | null) {
     const count = cart?.totalQuantity ?? 0;
     const hasItems = count > 0;
 
-    if (emptyEl) emptyEl.style.display = hasItems ? 'none' : '';
+    updateEmptyState(hasItems);
     if (summaryWrap) summaryWrap.style.display = hasItems ? '' : 'none';
     if (chip) chip.textContent = count > 0 ? `${count} item${count > 1 ? 's' : ''}` : '';
     if (headerBadge) {
@@ -781,10 +830,12 @@ const FREE_SHIP = BRAND.freeShippingThreshold ?? 0;
     errorEl.style.display = msg ? '' : 'none';
   });
 
-  // Global busy → disable checkout while a mutation is mid-flight.
+  // Global busy → disable checkout while a mutation is mid-flight, and swap the
+  // empty message for the loading spinner when the cart is still empty.
   $cartBusy.subscribe((busy) => {
     const co = document.getElementById('cartCheckout') as HTMLButtonElement | null;
     if (co) co.disabled = busy;
+    updateEmptyState(($cart.get()?.totalQuantity ?? 0) > 0);
   });
 
   // ---- Focus trap + restore (cart opens via the store, not setOpen) --------

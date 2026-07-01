@@ -756,107 +756,6 @@ const popupImg = resolveImage('look-01.webp');
     border-color: var(--text);
   }
 
-  .wish-item__atc:disabled {
-    opacity: .5;
-    cursor: not-allowed;
-    background: var(--card);
-    color: var(--muted);
-    border-color: var(--border);
-  }
-
-  /* Inline variant pickers inside a wishlist row */
-  .wish-opts {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 8px;
-  }
-
-  .wish-opt {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .wish-opt__label {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: .5px;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .wish-sizes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-
-  .wish-size {
-    min-width: 24px;
-    padding: 3px 6px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: .3px;
-    color: var(--text);
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background .15s ease, color .15s ease, border-color .15s ease;
-  }
-
-  .wish-size:hover {
-    border-color: var(--text);
-  }
-
-  .wish-size.active {
-    background: var(--text);
-    color: #fff;
-    border-color: var(--text);
-  }
-
-  .wish-size.is-off {
-    opacity: .4;
-    cursor: not-allowed;
-    text-decoration: line-through;
-  }
-
-  .wish-sws {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-  }
-
-  .wish-sw {
-    width: 16px;
-    height: 16px;
-    padding: 0;
-    border-radius: 50%;
-    border: 1px solid rgba(0, 0, 0, .15);
-    cursor: pointer;
-    transition: transform .15s ease, box-shadow .15s ease;
-  }
-
-  .wish-sw:hover {
-    transform: scale(1.12);
-  }
-
-  .wish-sw.is-sel {
-    box-shadow: 0 0 0 2px var(--white), 0 0 0 3px var(--text);
-  }
-
-  .wish-sw.is-off {
-    opacity: .4;
-    cursor: not-allowed;
-  }
-
-  .wish-item--need {
-    outline: 1.5px solid var(--rust);
-    outline-offset: 3px;
-    border-radius: 6px;
-  }
-
   .wish-foot {
     padding: 16px 22px;
     border-top: 1px solid var(--border);
@@ -1499,10 +1398,10 @@ const popupImg = resolveImage('look-01.webp');
   function wishRowHTML(i: WishItem): string {
     const picker = wishPicker(i);
     const atc = picker
-      ? `<button class="wish-item__atc" data-wish-add="${esc(i.handle)}"${picker.variantId ? '' : ' disabled'}>Add to Bag</button>`
+      ? `<button class="wish-item__atc" data-wish-add="${esc(i.handle)}"${picker.variantId ? '' : ' disabled'}>Move to Bag</button>`
       : i.needsPicker && !i.variantId
         ? `<a class="wish-item__atc" href="${esc(i.href)}">Select Options</a>`
-        : `<button class="wish-item__atc" data-wish-add="${esc(i.handle)}">Add to Bag</button>`;
+        : `<button class="wish-item__atc" data-wish-add="${esc(i.handle)}">Move to Bag</button>`;
     return `
         <div class="wish-item" data-wish-row="${esc(i.handle)}"${
           picker
@@ -1608,15 +1507,16 @@ const popupImg = resolveImage('look-01.webp');
   // they route to their PDP — never silently pick a size for the shopper.
   // Returns true when actually added.
   function wishAddToBag(item: WishItem, row?: HTMLElement | null): boolean {
-    // Inline-picker row: add the resolved variant, or nudge to choose first.
+    // addItem's auto-open is suppressed — the caller closes the wishlist and
+    // opens the cart itself, so the two drawers never overlap.
     if (row && row.dataset.variants !== undefined) {
       const id = row.dataset.wishVariant;
-      if (id) { addItem(id, 1); return true; }
+      if (id) { addItem(id, 1, { open: false }); return true; }
       flagWishRow(row);
       return false;
     }
     if (item.variantId && !item.needsPicker) {
-      addItem(item.variantId, 1);
+      addItem(item.variantId, 1, { open: false });
       return true;
     }
     window.location.href = item.href;
@@ -1655,12 +1555,15 @@ const popupImg = resolveImage('look-01.webp');
       toast('Choose a size/colour on each item first');
       return;
     }
-    // Sequential — the store's seq guard would drop concurrent earlier replies.
-    for (const id of toAdd) await addItem(id, 1);
+    // Hand off cleanly: close the wishlist and open the cart (spinner) BEFORE the
+    // adds, so the two drawers never overlap. Suppress addItem's own auto-open —
+    // it would otherwise pop the cart on the first line while the wishlist is
+    // still visible. Sequential adds respect the store's seq guard.
     localStorage.setItem(WISH_KEY, JSON.stringify(remaining));
     renderWishlist();
     setOpen('wishlist', false);
-    window.setTimeout(openCart, 220);
+    openCart();
+    for (const id of toAdd) await addItem(id, 1, { open: false });
     toast(remaining.length ? `${toAdd.length} added — ${remaining.length} need options` : 'Moved all to bag');
   }
 
@@ -2032,7 +1935,8 @@ const popupImg = resolveImage('look-01.webp');
       renderWishlist();
       return;
     }
-    // Add a single saved item to the bag.
+    // Move a single saved item to the bag — added to cart, then dropped from the
+    // wishlist (same "move" semantics as Move All).
     const wishAdd = (e.target as HTMLElement).closest<HTMLElement>('[data-wish-add]');
     if (wishAdd) {
       e.preventDefault();
@@ -2041,9 +1945,12 @@ const popupImg = resolveImage('look-01.webp');
       if (!item) return;
       const row = wishAdd.closest<HTMLElement>('[data-wish-row]');
       if (wishAddToBag(item, row)) {
+        const rest = (readJSON(WISH_KEY) as WishItem[]).filter((x) => x.handle !== handle);
+        localStorage.setItem(WISH_KEY, JSON.stringify(rest));
+        renderWishlist();
         setOpen('wishlist', false);
         window.setTimeout(openCart, 220);
-        toast('Added to bag');
+        toast('Moved to bag');
       }
       return;
     }

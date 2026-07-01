@@ -57,6 +57,17 @@ html {
   /* clip (not hidden) so off-canvas fixed drawers can't create a
      horizontal scroll without making html a scroll container. */
   overflow-x: clip;
+  /* Reserve the scrollbar gutter so locking scroll (drawer/modal open)
+     doesn't shift the page sideways when the bar disappears. */
+  scrollbar-gutter: stable;
+}
+
+/* Drawer / modal open → lock background scroll. <html> is the viewport
+   scroller here (body only clips X), so the lock must land on <html>;
+   toggling overflow on <body> alone leaves the page scrollbar visible,
+   producing the double-scrollbar. The JS toggles `no-scroll` on <body>. */
+html:has(body.no-scroll) {
+  overflow: hidden;
 }
 
 body {
