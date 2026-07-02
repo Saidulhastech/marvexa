@@ -1,8 +1,31 @@
 // @ts-check
 import { defineConfig, envField, sessionDrivers } from "astro/config";
 import cloudflare from "@astrojs/cloudflare";
+import node from "@astrojs/node";
+import vercel from "@astrojs/vercel";
+import netlify from "@astrojs/netlify";
 import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
+
+// Choose adapter based on environment variable at build time
+function getAdapter() {
+  const target = process.env.ASTRO_ADAPTER;
+  if (target === "node") {
+    return node({
+      mode: "standalone",
+    });
+  }
+  if (target === "vercel") {
+    return vercel();
+  }
+  if (target === "netlify") {
+    return netlify();
+  }
+  // Default to Cloudflare (pre-configured adapter)
+  return cloudflare({
+    imageService: "passthrough",
+  });
+}
 
 // Headless Shopify storefront — server-rendered on Cloudflare Workers so the
 // private Storefront token stays on the server and cart cookies work.
@@ -12,15 +35,7 @@ export default defineConfig({
   // ⚠️ Replace with your real production domain before deploying.
   site: "https://marvexa.com",
   output: "server",
-  adapter: cloudflare({
-    // The adapter now runs on @cloudflare/vite-plugin, so in `astro dev`
-    // getSecret() and bindings resolve automatically from .dev.vars /
-    // wrangler config — no explicit platformProxy flag needed.
-    // Workers has no sharp/native image binary — don't optimize at runtime.
-    // Local images are pre-optimized in src/assets/images; remote Shopify
-    // images are already served from its CDN.
-    imageService: "passthrough",
-  }),
+  adapter: getAdapter(),
   integrations: [mdx(), sitemap()],
   // This app doesn't use Astro.session. Pick an in-memory driver so the
   // Cloudflare adapter doesn't force a KV "SESSION" binding at deploy time.
