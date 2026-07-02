@@ -56,3 +56,6 @@ playwright-report/
 Modern Style/
 maison-modern-html/
 SHOPIFY_STOREFRONT_API_2026-04_REFERENCE.md
+
+# AI agent configurations
+.agents/
