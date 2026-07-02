@@ -50,9 +50,8 @@ You can place a Vercel deploy button on your repository README for your users:
 #### Manual Deployment:
 1. Connect your GitHub repository to your **[Vercel Dashboard](https://vercel.com/)**.
 2. Vercel automatically detects the Astro framework.
-3. Under **Environment Variables**, add the environment variable `ASTRO_ADAPTER` with the value `vercel`.
-4. Add the rest of your Shopify credentials (see table below).
-5. Click **Deploy**.
+3. Add your Shopify environment variables (see table below). *(The Vercel environment is auto-detected, so you do not need to set `ASTRO_ADAPTER` manually).*
+4. Click **Deploy**.
 
 ---
 
@@ -68,9 +67,7 @@ Place a Netlify deploy button on your repository README:
 #### Manual Deployment:
 1. Import your project repository into **[Netlify](https://www.netlify.com/)**.
 2. Netlify will auto-detect Astro.
-3. Under **Site configuration** → **Environment variables**:
-   - Add `ASTRO_ADAPTER` with the value `netlify`.
-   - Add your Shopify environment variables (see table below).
+3. Under **Site configuration** → **Environment variables**, add your Shopify environment variables (see table below). *(Netlify is auto-detected, so you do not need to set `ASTRO_ADAPTER` manually).*
 4. Click **Deploy Site**.
 
 ---
@@ -102,7 +99,7 @@ Configure these variables in your hosting dashboard:
 
 | Name | Required | Description |
 | :--- | :--- | :--- |
-| `ASTRO_ADAPTER` | Optional | Specifies target platform (`cloudflare`, `vercel`, `netlify`, `node`). Defaults to `cloudflare` if empty. |
+| `ASTRO_ADAPTER` | Optional | Target platform (`cloudflare`, `vercel`, `netlify`, `node`). Auto-detected on Cloudflare Pages, Vercel, and Netlify. Only set manually (e.g. `node`) for self-hosted VPS/Docker. |
 | `SHOPIFY_SHOP_DOMAIN` | **Yes** | Your Shopify store domain (e.g. `my-store.myshopify.com`). |
 | `SHOPIFY_STOREFRONT_PRIVATE_TOKEN` | **Yes** | Your private Storefront API token. |
 | `SHOPIFY_API_VERSION` | Optional | Pinned API version (defaults to `2026-04`). |

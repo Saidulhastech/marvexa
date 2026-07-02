@@ -7,7 +7,7 @@ import netlify from "@astrojs/netlify";
 import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 
-// Choose adapter based on environment variable at build time
+// Choose adapter based on environment variable at build time (with auto-detection)
 function getAdapter() {
   const target = process.env.ASTRO_ADAPTER;
   if (target === "node") {
@@ -15,11 +15,16 @@ function getAdapter() {
       mode: "standalone",
     });
   }
-  if (target === "vercel") {
+  if (target === "vercel" || process.env.VERCEL === "1" || process.env.VERCEL === "true") {
     return vercel();
   }
-  if (target === "netlify") {
+  if (target === "netlify" || process.env.NETLIFY === "true") {
     return netlify();
+  }
+  if (target === "cloudflare" || process.env.CF_PAGES === "1") {
+    return cloudflare({
+      imageService: "passthrough",
+    });
   }
   // Default to Cloudflare (pre-configured adapter)
   return cloudflare({
