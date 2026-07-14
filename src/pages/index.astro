@@ -25,6 +25,7 @@ import Newsletter from '~/components/home/marvexa/Newsletter.astro';
 
 let products: ProductCard[] = [];
 let newestProducts: ProductCard[] = [];
+let catalogProducts: ProductCard[] = [];
 let collections: Collection[] = [];
 let loadError = false;
 
@@ -32,13 +33,20 @@ const market = Astro.locals.market;
 try {
   // Fetch products + real collections together so the category grid reflects
   // the actual storefront (no hardcoded category cards / fake counts).
-  const [page, newest, cols] = await Promise.all([
+  // catalogProducts is the full catalogue (not just best-sellers/newest) —
+  // Categories.astro tallies real per-category counts + top garment types
+  // from it, matched by productType (same source of truth as the /products
+  // sidebar filters), not from Shopify's own Collection membership, which
+  // is curated by hand and can be a partial subset.
+  const [page, newest, catalog, cols] = await Promise.all([
     getProducts({ pageSize: 12, sortKey: 'BEST_SELLING' }, market),
     getProducts({ pageSize: 12, sortKey: 'CREATED_AT', reverse: true }, market),
+    getProducts({ pageSize: 250 }, market),
     getAllCollections(),
   ]);
   products = page.items;
   newestProducts = newest.items;
+  catalogProducts = catalog.items;
   collections = cols;
 } catch (err) {
   console.error('[home] Shopify load failed:', (err as Error).message);
@@ -135,7 +143,7 @@ if (naCollection) {
       <>
         <Hero />
         <Marquee />
-        <Categories collections={collections} />
+        <Categories collections={collections} products={catalogProducts} />
         <NewArrivals products={newArrivals} total={naTotal} totalPlus={naTotalPlus} viewAllHref={naHref} />
         <Lookbook looks={looks} />
         <BestSellers products={bestSellers} ratingAvg={ratingAvg} reviewTotal={reviewTotal} />

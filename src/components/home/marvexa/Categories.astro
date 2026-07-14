@@ -1,11 +1,15 @@
 ---
-import type { Collection } from '~/lib/shopify/types';
+import type { Collection, ProductCard } from '~/lib/shopify/types';
 import { resolveImage } from '~/lib/asset';
 
 interface Props {
   collections: Collection[];
+  /** Full catalogue — tallies each card's real product count and top garment
+      types by productType, independent of (and more complete than) Shopify's
+      own hand-curated Collection membership. */
+  products: ProductCard[];
 }
-const { collections } = Astro.props;
+const { collections, products } = Astro.props;
 
 // Fallback editorial art (authored order) for collections without a Shopify
 // featured image — keeps the look when a collection has no image set.
@@ -15,8 +19,42 @@ const fallbacks = [
   resolveImage('cat-fallback-03.webp').src,
   resolveImage('cat-fallback-04.webp').src,
 ];
+
+// Each product title ends in its garment noun ("Structured Linen Blazer",
+// "Silk Slip Dress") — tally the last word across a category's real products
+// and take the top 3 by frequency for the "Dress · Blazer · Cardigan" line.
+// Fully derived from live data, no static per-category text to maintain.
+function topGarmentTypes(items: ProductCard[], max = 3): string {
+  const counts = new Map<string, number>();
+  for (const p of items) {
+    const word = p.title.trim().split(/\s+/).pop();
+    if (word) counts.set(word, (counts.get(word) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, max)
+    .map(([word]) => word)
+    .join(' · ');
+}
+
 // Real collections drive the grid (first 4) — no hardcoded categories/counts.
-const cards = collections.slice(0, 4);
+// Count/subtitle/link all come from the matching productType slice of the
+// live catalogue (same source of truth as the /products sidebar filters),
+// not from the collection's own (hand-curated, possibly partial) membership.
+const cards = collections
+  .map((c) => {
+    const matched = products.filter((p) => (p.productType ?? '').toLowerCase() === c.title.toLowerCase());
+    return {
+      ...c,
+      productCount: matched.length,
+      csub: topGarmentTypes(matched),
+      href: `/products?cat=${encodeURIComponent(c.title.toLowerCase())}`,
+    };
+  })
+  // Drop collections with no matching productType (e.g. a title typo) —
+  // showing "0 styles" would look broken, not just imprecise.
+  .filter((c) => c.productCount > 0)
+  .slice(0, 4);
 ---
 
 {cards.length > 0 && (
@@ -32,14 +70,13 @@ const cards = collections.slice(0, 4);
   <!-- Equal cards, one per real collection -->
   <div class="cat3__grid rv d1">
     {cards.map((c, i) => (
-      <a class="cat3__card" href={`/collections/${c.handle}`}>
+      <a class="cat3__card" href={c.href}>
         <div class="cat3__cimg" style={`background-image:url('${c.image?.url ?? fallbacks[i % fallbacks.length]}');`}></div>
         <div class="cat3__cshade"></div>
         <div class="cat3__cbody">
           <span class="cat3__cname">{c.title}</span>
-          {c.productCount != null && (
-            <span class="cat3__ccount">{c.productCount}{c.productCountPlus ? '+' : ''} {c.productCount === 1 ? 'style' : 'styles'}</span>
-          )}
+          <span class="cat3__ccount">{c.productCount} {c.productCount === 1 ? 'style' : 'styles'}</span>
+          {c.csub && <span class="cat3__csub">{c.csub}</span>}
           <span class="cat3__cbtn">Shop Now</span>
         </div>
       </a>
@@ -217,7 +254,18 @@ const cards = collections.slice(0, 4);
     font-weight: 500;
     color: rgba(255, 255, 255, .45);
     letter-spacing: .4px;
+    margin-bottom: 4px;
+  }
+
+  /* Top garment types in this category — always visible */
+  .cat3__csub {
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, .7);
+    letter-spacing: .3px;
     margin-bottom: 10px;
+    text-align: center;
   }
 
   /* Button — hidden by default, smooth reveal on hover */
