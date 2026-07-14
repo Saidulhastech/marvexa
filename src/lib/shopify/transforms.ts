@@ -13,6 +13,7 @@ import type {
   ProductCard,
   ProductVariant,
 } from './types';
+import { resolveSwatchColor } from '~/lib/colorSwatch';
 
 interface Edge<T> {
   cursor?: string;
@@ -57,39 +58,21 @@ type Raw = Record<string, any>;
 
 // "New" if recently published or explicitly tagged.
 const NEW_WINDOW_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
-// Fallback hex for common colour names when Shopify has no swatch value.
-const COLOR_MAP: Record<string, string> = {
-  black: '#111827', white: '#F3F4F6', silver: '#C0C5CE', gray: '#9CA3AF', grey: '#9CA3AF',
-  blue: '#2563EB', navy: '#1E3A8A', red: '#DC2626', green: '#16A34A', yellow: '#FACC15',
-  orange: '#EA580C', purple: '#7C3AED', pink: '#EC4899', gold: '#D4AF37', rose: '#F43F5E',
-  beige: '#E7DCC8', brown: '#92400E', graphite: '#374151', titanium: '#878681',
-};
 
 const COLOR_OPTION_NAMES = new Set(['color', 'colour']);
 
-/**
- * Resolve a colour swatch hex: an explicit Shopify swatch value wins; otherwise
- * fall back to COLOR_MAP by name (exact, then loose "bronze orange" → orange).
- * Returns null when nothing matches so callers can pick their own placeholder.
- */
-export function colorHex(name?: string | null, raw?: string | null): string | null {
-  if (raw) return raw;
-  const key = String(name ?? '').toLowerCase().trim();
-  if (COLOR_MAP[key]) return COLOR_MAP[key];
-  const hit = Object.keys(COLOR_MAP).find((k) => key.includes(k));
-  return hit ? COLOR_MAP[hit] : null;
+/** Resolve a colour swatch hex — real Shopify swatch value, else a stable per-name colour. */
+export function colorHex(name?: string | null, raw?: string | null): string {
+  return resolveSwatchColor(name, raw);
 }
 
 function deriveSwatches(p: Raw): { name: string; color: string }[] {
   const opt = (p.options ?? []).find((o: Raw) => COLOR_OPTION_NAMES.has(String(o?.name).toLowerCase()));
   if (!opt) return [];
-  return (opt.optionValues ?? [])
-    .map((v: Raw) => {
-      const color = colorHex(v?.name, v?.swatch?.color);
-      return color ? { name: v.name, color } : null;
-    })
-    .filter(Boolean)
-    .slice(0, 4) as { name: string; color: string }[];
+  return (opt.optionValues ?? []).map((v: Raw) => ({
+    name: v.name,
+    color: colorHex(v?.name, v?.swatch?.color),
+  }));
 }
 
 function deriveIsNew(p: Raw): boolean {

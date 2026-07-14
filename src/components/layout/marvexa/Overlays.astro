@@ -1295,6 +1295,7 @@ const popupImg = resolveImage('look-01.webp');
 
 <script>
   import { openCart, closeCart, addItem, $cartOpen } from '../../../stores/cart';
+  import { resolveSwatchColor } from '../../../lib/colorSwatch';
 
   type WishItem = { handle: string; name: string; price: string; img: string; href: string; variantId?: string; needsPicker?: boolean; variants?: string; options?: string; currency?: string };
 
@@ -1684,15 +1685,7 @@ const popupImg = resolveImage('look-01.webp');
   let qvCurrency = 'USD';
   let qvQty = 1;
 
-  const QV_NAMED_COLORS: Record<string, string> = {
-    black: '#111418', white: '#ffffff', gray: '#808080', grey: '#808080',
-    silver: '#d3d3d3', gold: '#c9a86a', 'rose gold': '#b76e79', blue: '#2563eb',
-    navy: '#1e293b', red: '#dc2626', green: '#16a34a', pink: '#ec4899',
-    purple: '#7c3aed', orange: '#ea580c', yellow: '#eab308', beige: '#e7d8c2',
-    brown: '#8b5a2b', bronze: '#8c6239',
-  };
-  const qvSwatchColor = (name: string, color: string | null) =>
-    color || QV_NAMED_COLORS[name.toLowerCase()] || '#cbd5e1';
+  const qvSwatchColor = (name: string, color: string | null) => resolveSwatchColor(name, color);
   const qvMoney = (n: number) =>
     new Intl.NumberFormat('en-US', {
       style: 'currency', currency: qvCurrency, minimumFractionDigits: Number.isInteger(n) ? 0 : 2,

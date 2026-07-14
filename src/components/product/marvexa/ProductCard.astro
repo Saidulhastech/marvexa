@@ -9,6 +9,7 @@
 import { Image } from 'astro:assets';
 import type { ProductCard as TProductCard } from '~/lib/shopify/types';
 import { formatMoney, percentOff, hasPriceRange } from '~/lib/money';
+import { resolveSwatchColor } from '~/lib/colorSwatch';
 import Icon from '~/components/ui/marvexa/Icon.astro';
 
 interface Props {
@@ -90,7 +91,10 @@ const optionData = needsPicker
       realOptions.map((o) => ({
         name: o.name,
         isColor: o === colorOpt,
-        values: o.optionValues.map((ov) => ({ name: ov.name, color: ov.swatch?.color ?? null })),
+        values: o.optionValues.map((ov) => ({
+          name: ov.name,
+          color: o === colorOpt ? resolveSwatchColor(ov.name, ov.swatch?.color) : null,
+        })),
       })),
     )
   : '';
