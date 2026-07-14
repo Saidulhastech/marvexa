@@ -10,6 +10,7 @@ import Layout from '~/layouts/Layout.astro';
 import ProductCard from '~/components/product/marvexa/ProductCard.astro';
 import Newsletter from '~/components/home/marvexa/Newsletter.astro';
 import { getProduct, getProductRecommendations } from '~/lib/shopify';
+import { getProductReviews } from '~/lib/judgeme';
 import { applyMarketCache } from '~/lib/market';
 import { formatMoney, percentOff } from '~/lib/money';
 import type { Image, Product, ProductCard as TProductCard } from '~/lib/shopify/types';
@@ -34,6 +35,12 @@ if (product) {
     recommendations = await getProductRecommendations(product.id, 8, market);
   } catch (err) {
     console.error('[product] recommendations failed:', (err as Error).message);
+  }
+  try {
+    const judgemeReviews = await getProductReviews(product.id);
+    if (judgemeReviews.length) product.reviews = judgemeReviews;
+  } catch (err) {
+    console.error('[product] judge.me reviews failed:', (err as Error).message);
   }
 }
 
@@ -143,7 +150,7 @@ const variantData = variants.map((v) => ({
 // controller refines this to the selected variant on load + every change.
 const seedPickup = variantData.find((v) => v.pickup.length)?.pickup[0] ?? null;
 const hasPickup = variantData.some((v) => v.pickup.length);
-const bootData = { currency, variants: variantData, singleVariant };
+const bootData = { currency, variants: variantData, singleVariant, productId: product?.id ?? '' };
 
 const firstImg = images[0]?.url ?? '';
 
@@ -212,8 +219,12 @@ const ratingDisplay = hasRating
     : '0.0';
 const ratingStars = Math.round(Number(ratingDisplay));
 
-// Star distribution → percentages [5★..1★]. Only when real reviews exist.
-const dist = product?.ratingDistribution ?? null;
+// Star distribution → percentages [5★..1★]. Prefer the real fetched Judge.me
+// reviews (accurate to what's actually rendered); fall back to the metafield
+// -derived distribution when there's aggregate rating but no review cards.
+const dist = hasReviews
+  ? [5, 4, 3, 2, 1].map((star) => reviews.filter((r) => Math.round(r.rating) === star).length)
+  : (product?.ratingDistribution ?? null);
 const distTotal = dist ? dist.reduce((a, b) => a + b, 0) : 0;
 const distRows = dist
   ? dist.map((count, i) => ({ star: 5 - i, count, pct: distTotal ? Math.round((count / distTotal) * 100) : 0 }))
@@ -577,17 +588,54 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
                               </div>
                               {r.title && <h4 class="pm-rev2-title">{r.title}</h4>}
                               {r.body && <p class="pm-rev2-text">{r.body}</p>}
-                              <div class="pm-rev2-verified"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Verified Purchase</div>
+                              {r.verified && <div class="pm-rev2-verified"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Verified Purchase</div>}
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <p class="pm-acc-note">{reviewCount} verified {reviewCount === 1 ? 'rating' : 'ratings'} &middot; {ratingDisplay} average. Written reviews appear here once a reviews app (Judge.me, Yotpo, Loox) is connected to this store.</p>
+                        <p class="pm-acc-note">{reviewCount} verified {reviewCount === 1 ? 'rating' : 'ratings'} &middot; {ratingDisplay} average. No written reviews for this product yet.</p>
                       )}
                     </>
                   ) : (
                     <p class="pm-acc-note">No reviews yet — be the first to review this product.</p>
                   )}
+
+                  {/* Write a review — submits to Judge.me via /api/reviews (server-side, private token stays server-only) */}
+                  <div class="pm-rf-block">
+                    <button type="button" class="pm-rf-toggle" id="pmRfToggle">Write a review</button>
+                    <form class="pm-rf" id="pmReviewForm" novalidate>
+                      <div class="pm-rf-field">
+                        <span class="pm-rf-label">Your rating</span>
+                        <div class="pm-rf-stars" id="pmRfStars" role="radiogroup" aria-label="Rating">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <button type="button" class="pm-rf-star" data-star={n} role="radio" aria-checked="false" aria-label={`${n} star${n === 1 ? '' : 's'}`}>
+                              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div class="pm-rf-row">
+                        <div class="pm-rf-field">
+                          <label class="pm-rf-label" for="pmRfName">Name</label>
+                          <input class="pm-rf-input" id="pmRfName" name="name" type="text" required maxlength="120" autocomplete="name" />
+                        </div>
+                        <div class="pm-rf-field">
+                          <label class="pm-rf-label" for="pmRfEmail">Email</label>
+                          <input class="pm-rf-input" id="pmRfEmail" name="email" type="email" required autocomplete="email" />
+                        </div>
+                      </div>
+                      <div class="pm-rf-field">
+                        <label class="pm-rf-label" for="pmRfTitle">Title <span class="pm-rf-optional">(optional)</span></label>
+                        <input class="pm-rf-input" id="pmRfTitle" name="title" type="text" maxlength="120" />
+                      </div>
+                      <div class="pm-rf-field">
+                        <label class="pm-rf-label" for="pmRfBody">Review</label>
+                        <textarea class="pm-rf-input pm-rf-textarea" id="pmRfBody" name="body" required maxlength="5000" rows="4"></textarea>
+                      </div>
+                      <p class="pm-rf-msg" id="pmRfMsg" role="status" aria-live="polite"></p>
+                      <button type="submit" class="pm-rf-submit" id="pmRfSubmit">Submit review</button>
+                    </form>
+                  </div>
                 </div>
               </div>
             </div>
@@ -695,7 +743,7 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
           interface Pickup { name: string; time: string | null; }
           interface VData { id: string; opts: Record<string, string>; price: number; compareAt: number | null; available: boolean; qty: number | null; img: string | null; pickup: Pickup[]; }
           const data = JSON.parse(boot.textContent || '{}') as {
-            currency: string; variants: VData[]; singleVariant: boolean;
+            currency: string; variants: VData[]; singleVariant: boolean; productId: string;
           };
           const $ = <T extends Element = HTMLElement>(s: string) => root.querySelector<T>(s);
           const $$ = <T extends Element = HTMLElement>(s: string) => Array.from(root.querySelectorAll<T>(s));
@@ -991,6 +1039,64 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
             const btn = $('#pmShareCopy');
             btn?.classList.add('is-copied');
             setTimeout(() => btn?.classList.remove('is-copied'), 1300);
+          });
+
+          // ---- Write a review — posts to /api/reviews (server proxies to Judge.me) ----
+          const rfBlock = $('#pmReviewForm')?.closest<HTMLElement>('.pm-rf-block');
+          const rfToggle = $<HTMLButtonElement>('#pmRfToggle');
+          const rfForm = $<HTMLFormElement>('#pmReviewForm');
+          const rfStars = $$('#pmRfStars .pm-rf-star');
+          const rfMsg = $('#pmRfMsg');
+          const rfSubmit = $<HTMLButtonElement>('#pmRfSubmit');
+          let rfRating = 0;
+
+          rfToggle?.addEventListener('click', () => rfBlock?.classList.toggle('is-open'));
+
+          function setRfRating(n: number) {
+            rfRating = n;
+            rfStars.forEach((s) => {
+              const on = Number(s.dataset.star) <= n;
+              s.classList.toggle('is-active', on);
+              s.setAttribute('aria-checked', String(Number(s.dataset.star) === n));
+            });
+          }
+          rfStars.forEach((s) => s.addEventListener('click', () => setRfRating(Number(s.dataset.star))));
+
+          rfForm?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!rfMsg) return;
+            rfMsg.textContent = '';
+            rfMsg.classList.remove('is-error', 'is-ok');
+
+            const name = $<HTMLInputElement>('#pmRfName')?.value.trim() ?? '';
+            const email = $<HTMLInputElement>('#pmRfEmail')?.value.trim() ?? '';
+            const title = $<HTMLInputElement>('#pmRfTitle')?.value.trim() ?? '';
+            const body = $<HTMLTextAreaElement>('#pmRfBody')?.value.trim() ?? '';
+
+            if (!rfRating) { rfMsg.textContent = 'Please select a rating.'; rfMsg.classList.add('is-error'); return; }
+            if (!name || !email || !body) { rfMsg.textContent = 'Name, email and review are required.'; rfMsg.classList.add('is-error'); return; }
+
+            if (rfSubmit) rfSubmit.disabled = true;
+            try {
+              const res = await fetch('/api/reviews', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ productId: data.productId, rating: rfRating, name, email, title, body }),
+              });
+              const json = await res.json().catch(() => ({ ok: false, error: 'Could not submit your review.' }));
+              if (!res.ok || !json.ok) throw new Error(json.error || 'Could not submit your review.');
+
+              rfMsg.textContent = 'Thanks! Your review has been submitted and will appear once approved.';
+              rfMsg.classList.add('is-ok');
+              rfForm.reset();
+              setRfRating(0);
+              setTimeout(() => rfBlock?.classList.remove('is-open'), 2200);
+            } catch (err) {
+              rfMsg.textContent = err instanceof Error ? err.message : 'Could not submit your review.';
+              rfMsg.classList.add('is-error');
+            } finally {
+              if (rfSubmit) rfSubmit.disabled = false;
+            }
           });
 
           // init

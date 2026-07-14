@@ -59,6 +59,12 @@ export default defineConfig({
       CUSTOMER_ACCOUNT_API_CLIENT_ID: envField.string({ context: "server", access: "secret", optional: true }),
       SHOPIFY_SHOP_ID: envField.string({ context: "server", access: "secret", optional: true }),
       CUSTOMER_ACCOUNT_API_VERSION: envField.string({ context: "server", access: "secret", optional: true }),
+      // Judge.me — server-only, used to fetch individual product reviews
+      // (aggregate rating/count come from Shopify metafields, see
+      // src/lib/shopify/graphql/products.ts). Optional: PDP reviews just
+      // stay metafield-only (no review cards) when unset.
+      JUDGEME_PRIVATE_TOKEN: envField.string({ context: "server", access: "secret", optional: true }),
+      JUDGEME_PUBLIC_TOKEN: envField.string({ context: "server", access: "secret", optional: true }),
     },
   },
   image: {

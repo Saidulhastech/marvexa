@@ -113,6 +113,8 @@ export interface ProductReview {
   title?: string;
   body?: string;
   date?: string;
+  /** True for a real verified-buyer review (Judge.me). Absent for other sources. */
+  verified?: boolean;
 }
 
 /** Lightweight product shape used in grids/cards. */
