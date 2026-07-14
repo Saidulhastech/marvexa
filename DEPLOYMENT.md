@@ -75,21 +75,57 @@ Place a Netlify deploy button on your repository README:
 ### Option 4: Self-Hosted / Node.js VPS / Docker
 If you want to deploy on a VPS (like DigitalOcean, Hetzner, AWS, etc.) using Node.js directly or inside a Docker container:
 
-1. Clone your repository onto your server.
-2. Install dependencies:
+1. **Clone your repository** onto your server.
+2. **Install dependencies**:
    ```bash
    npm install
    ```
-3. Set your environment variables in a `.env` file in the root directory (make sure to set `ASTRO_ADAPTER=node`).
-4. Build the application:
+3. **Configure environment variables**: Create a `.env` file in the root directory and ensure you set:
+   ```bash
+   ASTRO_ADAPTER=node
+   SHOPIFY_SHOP_DOMAIN=your-shop.myshopify.com
+   SHOPIFY_STOREFRONT_PRIVATE_TOKEN=shpat_...
+   ```
+4. **Build the application**:
    ```bash
    npm run build:node
    ```
-5. Start the standalone Node server:
-   ```bash
-   npm run start:node
+5. **Start the standalone Node server**:
+   - For basic testing:
+     ```bash
+     npm run start:node
+     ```
+   - **Using PM2** (Process Manager, recommended for production to keep the app running in the background and restart on reboot):
+     ```bash
+     # Install PM2 globally
+     npm install -g pm2
+
+     # Start the application
+     pm2 start dist/server/entry.mjs --name "marvexa-storefront"
+
+     # Save the PM2 list and configure to run on startup
+     pm2 save
+     pm2 startup
+     ```
+6. **Reverse Proxy (Nginx / Caddy)**:
+   By default, the server listens on port `4321` (you can change this by setting the `PORT` environment variable). You should reverse-proxy it behind Nginx or Caddy.
+
+   **Example Nginx configuration block:**
+   ```nginx
+   server {
+       listen 80;
+       server_name yourdomain.com;
+
+       location / {
+           proxy_pass http://localhost:4321;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
+           proxy_set_header Host $host;
+           proxy_cache_bypass $http_upgrade;
+       }
+   }
    ```
-   *By default, the server listens on port `4321`. You can reverse-proxy it behind Nginx or Caddy with SSL.*
 
 ---
 
