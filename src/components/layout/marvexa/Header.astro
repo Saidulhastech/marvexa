@@ -11,20 +11,16 @@
 // ============================================================
 import { BRAND } from '~/config/marvexa';
 import { resolveImage } from '~/lib/asset';
-import { getAllCollections, getProducts } from '~/lib/shopify';
-import type { Collection, ProductCard } from '~/lib/shopify/types';
+import { getProducts } from '~/lib/shopify';
+import type { ProductCard } from '~/lib/shopify/types';
 
 // Primary nav follows the Marvexa design: New Arrivals, Women + Men mega menus,
-// then Bags / Accessories / Sale. Top-level category links resolve to a real
-// Shopify collection when the store has one (matched by handle or title) and
-// fall back to the slug. Mega sub-links route to catalogue search so they
-// always land on a real results page even before those collections exist.
-let collections: Collection[] = [];
-try {
-  collections = await getAllCollections();
-} catch (err) {
-  console.error('[header] collections load failed:', (err as Error).message);
-}
+// then Bags / Accessories / Sale. Category links point at /products?cat=<real
+// productType, lowercased> — the same param the /products sidebar filter
+// engine reads (src/pages/products/index.astro), so they land on real,
+// correctly-filtered results instead of /collections/[handle] (no filter
+// support at all) or a ?q= search (never read anywhere on /products).
+const catHref = (label: string) => `/products?cat=${encodeURIComponent(label.toLowerCase())}`;
 
 // Real sale stats — scan the catalogue for genuine markdowns (compareAtPrice >
 // price) and take the deepest discount. Drives the mega "X% Off" badges: they
@@ -47,21 +43,6 @@ const saleBadge = saleStats.hasSale ? `${saleStats.maxPct}% Off` : undefined;
 const saleTag = saleStats.hasSale ? 'Sale' : undefined;
 const SALE_HREF = '/products?sale=1';
 
-const slugify = (s: string) =>
-  s.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-
-// Resolve a category label to a real collection handle, else its slug.
-const handleFor = (label: string) => {
-  const key = label.toLowerCase();
-  const m = collections.find(
-    (c) => (c.handle ?? '').toLowerCase() === key || (c.title ?? '').trim().toLowerCase() === key,
-  );
-  return m?.handle ?? slugify(label);
-};
-
-// Mega sub-link fallback target: search the catalogue by the label (always resolves).
-const searchFor = (label: string) => `/products?q=${encodeURIComponent(label)}`;
-
 type MegaLink = { label: string; href?: string; badge?: string; rust?: boolean };
 interface Mega {
   label: string;
@@ -71,20 +52,25 @@ interface Mega {
   imageLabel: string;
 }
 
+// Sub-link taxonomy (Dresses, Blazers & Jackets, …) has no matching real
+// productType in the catalogue — only Women/Men/Bags/Accessories exist — so
+// those fall back to the parent category filter (catHref) rather than a
+// fictional, unfiltered link. "Under $X" and the linen edits DO map to real
+// filter facets (price range / material tag) and get those instead.
 const MEGAS: Mega[] = [
   {
     label: 'Women',
-    href: `/collections/${handleFor('Women')}`,
+    href: catHref('Women'),
     columns: [
       {
         title: 'Clothing',
         links: [
-          { label: 'Dresses', badge: 'New' },
-          { label: 'Blazers & Jackets' },
-          { label: 'Tops & Shirts' },
-          { label: 'Trousers & Shorts' },
-          { label: 'Knitwear' },
-          { label: 'Skirts', badge: saleTag, rust: true },
+          { label: 'Dresses', href: catHref('Women'), badge: 'New' },
+          { label: 'Blazers & Jackets', href: catHref('Women') },
+          { label: 'Tops & Shirts', href: catHref('Women') },
+          { label: 'Trousers & Shorts', href: catHref('Women') },
+          { label: 'Knitwear', href: catHref('Women') },
+          { label: 'Skirts', href: catHref('Women'), badge: saleTag, rust: true },
         ],
       },
       {
@@ -92,8 +78,8 @@ const MEGAS: Mega[] = [
         links: [
           { label: 'New Arrivals', href: '/products?sort=newest' },
           { label: 'Best Sellers', href: '/products?sort=best-selling' },
-          { label: 'Organic Linen Edit' },
-          { label: 'Under $150' },
+          { label: 'Organic Linen Edit', href: '/products?mat=linen' },
+          { label: 'Under $150', href: '/products?max=150' },
           { label: 'Sale Items', href: SALE_HREF, badge: saleBadge, rust: true },
         ],
       },
@@ -103,17 +89,17 @@ const MEGAS: Mega[] = [
   },
   {
     label: 'Men',
-    href: `/collections/${handleFor('Men')}`,
+    href: catHref('Men'),
     columns: [
       {
         title: 'Clothing',
         links: [
-          { label: 'Shirts', badge: 'New' },
-          { label: 'Blazers & Jackets' },
-          { label: 'Trousers' },
-          { label: 'Shorts' },
-          { label: 'Knitwear' },
-          { label: 'T-Shirts', badge: saleTag, rust: true },
+          { label: 'Shirts', href: catHref('Men'), badge: 'New' },
+          { label: 'Blazers & Jackets', href: catHref('Men') },
+          { label: 'Trousers', href: catHref('Men') },
+          { label: 'Shorts', href: catHref('Men') },
+          { label: 'Knitwear', href: catHref('Men') },
+          { label: 'T-Shirts', href: catHref('Men'), badge: saleTag, rust: true },
         ],
       },
       {
@@ -121,8 +107,8 @@ const MEGAS: Mega[] = [
         links: [
           { label: 'New Arrivals', href: '/products?sort=newest' },
           { label: 'Best Sellers', href: '/products?sort=best-selling' },
-          { label: 'Linen Collection' },
-          { label: 'Under $120' },
+          { label: 'Linen Collection', href: '/products?mat=linen' },
+          { label: 'Under $120', href: '/products?max=120' },
           { label: 'Sale Items', href: SALE_HREF, badge: saleBadge, rust: true },
         ],
       },
@@ -135,7 +121,7 @@ const MEGAS: Mega[] = [
 // Plain top-level links after the megas. "Sale" points at the real on-sale view.
 const flatLinks = ['Bags', 'Accessories', 'Sale'].map((label) => {
   const sale = label.toLowerCase() === 'sale';
-  return { label, href: sale ? SALE_HREF : `/collections/${handleFor(label)}`, sale };
+  return { label, href: sale ? SALE_HREF : catHref(label), sale };
 });
 
 // Mobile menu mirrors the same top-level set (no mega panels on mobile).
@@ -176,7 +162,7 @@ const { solid = false } = Astro.props;
                 <div class="mega__col-title">{col.title}</div>
                 <div class="mega__links">
                   {col.links.map((l) => (
-                    <a href={l.href ?? searchFor(l.label)} class="mega__link">
+                    <a href={l.href ?? catHref(m.label)} class="mega__link">
                       {l.label}
                       {l.badge && <span class:list={['mega__link-badge', { rust: l.rust }]}>{l.badge}</span>}
                     </a>
