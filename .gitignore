@@ -52,6 +52,9 @@ $RECYCLE.BIN/
 test-results/
 playwright-report/
 
+# local-only scripts
+scripts/
+
 # local-only reference material (not part of the shipped app)
 Modern Style/
 maison-modern-html/
