@@ -71,7 +71,7 @@ Design direction: *Marvexa* — modern fashion editorial. **Plus Jakarta Sans** 
 **Account & platform**
 - **Account** — Shopify Customer Account API (OAuth 2.0 + PKCE) login / logout / order overview.
 - **Multi-currency** — active market resolved per-request (cookie → `cf-ipcountry` → default), threaded into catalogue prices and the cart's buyer identity so currency never drifts. See [Markets & multi-currency](#markets--multi-currency).
-- **Navigation** — sticky header driven by **live Shopify collections**, mega menu + mobile nav.
+- **Navigation** — sticky header with Women/Men mega menus + mobile nav. Menu structure (columns/labels) is hardcoded in `Header.astro`, **not** driven by Shopify collections; every link points at a real `/products` filter (`?cat=`, `?mat=`, `?max=`) computed from the live catalogue, and the "X% Off" sale badge shows the actual deepest live markdown (hidden when nothing's on sale). See [store setup #2](#shopify-store-setup) for what this means for adding new categories.
 - Custom 404, SEO meta + Open Graph + JSON-LD, sitemap, `robots.txt`, accessibility (skip link, focus-trapped drawers, WCAG AA contrast), reduced-motion support.
 
 ---
@@ -100,8 +100,10 @@ Server-only secrets (no `PUBLIC_` prefix → **never shipped to the browser**). 
 | `CUSTOMER_ACCOUNT_API_CLIENT_ID` | login only | Customer Account API client id |
 | `SHOPIFY_SHOP_ID` | login only | Numeric shop id for the Customer Account API |
 | `CUSTOMER_ACCOUNT_API_VERSION` | login only | Pinned Customer Account API version — `2025-01` |
+| `JUDGEME_PRIVATE_TOKEN` | reviews only | Judge.me API token — server-only, powers individual review cards on the PDP + review submission (Judge.me admin → **Settings → API**) |
+| `JUDGEME_PUBLIC_TOKEN` | not currently used | Reserved for a future client-side widget; safe to leave unset |
 
-**Where to get the Storefront token:** Shopify admin → install the **Headless** sales channel (or **Hydrogen**) → it exposes a **private** Storefront API token. Use the *private* one (not the public `X-Shopify-Storefront-Access-Token`), and **publish your products/collections to that channel** or the API won't return them.
+**Where to get the Storefront token:** Shopify admin → install the [**Headless**](https://apps.shopify.com/headless) sales channel (or **Hydrogen**) → it exposes a **private** Storefront API token. Use the *private* one (not the public `X-Shopify-Storefront-Access-Token`), and **publish your products/collections to that channel** or the API won't return them.
 
 > ⚠️ The **Customer Account API rejects `http` and `localhost`.** For local login, expose the dev server over a public HTTPS origin (e.g. a tunnel). The app derives the origin from `X-Forwarded-Proto`/`Host` (see `src/lib/shopify/customer/origin.ts`), so it works behind tunnels automatically. Storefront browsing/cart/checkout work fine on plain `localhost`; only login needs the tunnel.
 
@@ -115,12 +117,14 @@ This is what turns demo placeholders into a live store. Nothing here needs code 
 - **Publish** all products and collections to the same sales channel your Storefront token belongs to (Headless / Online Store). Unpublished items are invisible to the API.
 - The home page pulls **new arrivals** and **best-sellers** from your catalogue automatically; a **sale** item = a product with a compare-at price.
 
-### 2. Navigation (recommended)
-- The header is driven by your **live Shopify collections** — create and publish collections and they appear in the nav and mega menu. No content fallback file to maintain.
+### 2. Navigation
+- The mega-menu structure (Women/Men columns, sub-category labels) is **hardcoded** in `src/components/layout/marvexa/Header.astro` — creating a Shopify collection does **not** add it to the nav. Each link is generated as `/products?cat=<lowercased productType>` (or `?mat=`/`?max=` for the material/price shortcuts), matching the same real `productType` values the `/products` sidebar filters read.
+- To add a category to the mega menu, edit the `MEGAS` array in `Header.astro` — a label only works if a real product in your catalogue has a matching `productType`; otherwise the link filters to zero results.
+- The "X% Off" badges and the `/collections` index/pages **are** live: the mega menu's sale badge scans the real catalogue for the deepest `compareAtPrice` markdown, and `/collections`, `/collections/[handle]` are separate routes still driven entirely by your published Shopify collections (see [Pages](#pages)).
 
-### 3. "Shop by lifestyle" collections (optional)
-- Create collections with handles prefixed `for-` (e.g. `for-gamers`, `for-creators`, `for-athletes`, `for-music-lovers`, `for-remote-work`).
-- Title / product count / image / link come from Shopify; the icon + display order are set in `src/config/marvexa.ts` → `LIFESTYLE_CARDS`. An unlisted `for-*` collection still shows (appended last, default icon).
+### 3. "Shop by lifestyle" collections (scaffolded, not wired up)
+- The data layer already splits `for-*`-handle collections out from the rest (`getHomeCollectionGroups()` in `lib/shopify/services/collections.ts`), and `src/config/marvexa.ts` → `LIFESTYLE_CARDS` maps handle → icon/order for a future "Shop by lifestyle" grid.
+- **Nothing currently renders it** — no page or component calls `getHomeCollectionGroups()`. Creating `for-*` collections in Shopify has no visible effect on the storefront today. Wire it into a home component (mirroring how `Categories.astro` consumes the plain collections list) if you want to use it.
 
 ### 4. Product metafields (optional — enrich the PDP)
 All `reviews` or `custom` namespace metafields; absent ones are simply skipped.
@@ -136,6 +140,12 @@ All `reviews` or `custom` namespace metafields; absent ones are simply skipped.
 | `custom.reviews` (or `reviews.reviews`) | Individual review entries |
 
 The `reviews.rating` / `reviews.rating_count` fields are also written by review apps (Judge.me, Yotpo, Shopify Product Reviews) — install one and ratings appear with no extra work.
+
+**Individual review cards (optional, Judge.me only).** The star-rating summary above works with any review app via metafields, but the PDP's individual review cards are fetched live from Judge.me's own API — a separate integration:
+1. Install [Judge.me](https://apps.shopify.com/judgeme).
+2. Judge.me admin → **Settings → API** → copy the private token into `JUDGEME_PRIVATE_TOKEN`.
+3. Judge.me admin → turn on **"Enable product metafields"** so the aggregate rating/count sync to the `reviews.rating` / `reviews.rating_count` metafields above.
+Without `JUDGEME_PRIVATE_TOKEN` set, the PDP just skips the review cards (`judgemeConfigured()` returns false) — no error, no broken UI.
 
 ### 5. Cart-extra products (optional — see [Cart extras](#cart-extras-gift-wrap-notes-protection))
 - `gift-wrap` and `order-protection` products (paid extras). Created in admin, found by handle.
@@ -239,32 +249,35 @@ All under `pages/api/*`, `prerender = false`, same-origin only. They validate in
 | `GET  /api/cart` | Read current cart |
 | `GET  /api/search` | Header instant-search results |
 | `POST /api/market` | Switch the active market (sets the market cookie) |
+| `POST /api/reviews` | Submit a customer review to Judge.me (validates rating/email/body server-side) — requires `JUDGEME_PRIVATE_TOKEN` |
 
 ---
 
 ## Editable content (content collections)
 
-Editorial copy lives in `src/content/` — edit these files (no code) to change site text. Schemas are in `src/content.config.ts`. Images are bare filenames resolved from `src/assets/images` via `~/lib/asset` and optimized with Astro `<Image>`.
+Only **6** collections are wired up in `src/content.config.ts` — edit these files (no code) to change that content. Images are bare filenames resolved from `src/assets/images` via `~/lib/asset` and optimized with Astro `<Image>`.
 
 | File | Type | Drives |
 |---|---|---|
-| `announcements.yaml` | YAML list | Top announcement bar items |
-| `footer.yaml` | YAML | Footer columns, blurb, app badges, payments, legal |
-| `hero.yaml` | YAML | Home hero (lead card + rotating slides + companion card) |
-| `trust.yaml` | YAML list | Trust-bar items |
-| `proof.yaml` | YAML list | Best-sellers proof strip stats |
-| `promo.yaml` | YAML list | Promo banners |
-| `marquee.yaml` | YAML list | Scrolling marquee items |
-| `lookbook.yaml` | YAML | Lookbook image + product hotspots (each pins a Shopify `handle`, or falls back to best-sellers) |
-| `spotlight.yaml` | YAML | Product spotlight section |
-| `compare.yaml` | YAML list | "Compare top models" columns — `handle` pulls product live; specs/badge stay editorial |
-| `brands.yaml` | YAML list | Brand strip logos |
-| `newsletter.yaml` | YAML | Newsletter section copy |
-| `testimonials/*.md` | Markdown | Customer testimonials (quote, author, rating, avatar) |
+| `announcements.yaml` | YAML list | Top announcement bar items (`Announcement.astro`) |
+| `footer.yaml` | YAML | Footer columns, blurb, app badges, payments, legal (`getEntry('footer', 'main')`) |
+| `proof.yaml` | YAML list | Best-sellers proof strip stats (`BestSellers.astro`) |
+| `lookbook.yaml` | YAML list | Lookbook image + product hotspots — **hybrid**: layout/coords/label are editorial, each hotspot pins a real Shopify product by `handle` (or falls back to a best-seller) |
 | `blog/*.mdx` | MDX | Blog posts (title, excerpt, image, tags, date, author) |
-| `authors.yaml` | YAML | Blog authors, keyed by slug |
+| `authors.yaml` | YAML | Blog authors, keyed by slug, referenced by a post's `author` field |
 
-Note: lookbook hotspots and compare columns are **hybrid** — editorial layout, live Shopify product data (price/image/link) when you set a `handle`.
+**Everything else on the home page is hardcoded markup/data inside its own component, not a content collection** — edit the component directly to change it:
+
+| Section | Component | 
+|---|---|
+| Hero (headline, stats, slides) | `components/home/marvexa/Hero.astro` |
+| Scrolling marquee strip | `components/home/marvexa/Marquee.astro` |
+| Campaign banner | `components/home/marvexa/Campaign.astro` |
+| Style feed | `components/home/marvexa/StyleFeed.astro` |
+| Testimonials carousel | `components/home/marvexa/Testimonials.astro` |
+| Newsletter section copy | `components/home/marvexa/Newsletter.astro` |
+
+`/compare` (`pages/compare.astro`) has no YAML either — it's entirely client-driven from real Shopify product data (`localStorage` selection + live product fetch), no editorial config to maintain. There's no brand-logo strip or product-spotlight section in the current build.
 
 ---
 
@@ -464,9 +477,11 @@ Non-secret pins (`SHOPIFY_API_VERSION`, `CUSTOMER_ACCOUNT_API_VERSION`) live in 
 | Cart "add" fails / extras hidden | The product isn't published, is sold out, or the handle doesn't match the config |
 | Login redirect rejected | Customer Account API can't use `http`/`localhost` — use a public HTTPS origin; check the three registered URIs |
 | Currency drifts (cards vs cart) | Confirm the market is threaded — middleware sets `Astro.locals.market`; cart buyer identity follows it |
-| Header nav empty | Create and **publish** Shopify collections — the nav is driven by live collections |
+| `/collections` page empty | Create and **publish** Shopify collections — that index/detail route (not the header mega menu, which is hardcoded — see store setup #2) is driven by live collections |
+| Mega-menu category filters to zero results | The label's `catHref()` target doesn't match any real `productType` in your catalogue — edit `MEGAS` in `Header.astro` to use a productType that actually exists |
 | "Free shipping unlocked" but customer charged shipping | The cart meter is display-only — add a matching free-shipping rate in Shopify, or set `freeShippingThreshold` to `0`/`null` to hide the meter |
 | Ratings/specs missing on PDP | Add the matching product metafields (see [store setup](#shopify-store-setup)) |
+| Individual review cards missing on PDP | Set `JUDGEME_PRIVATE_TOKEN` and confirm the product exists in Judge.me (aggregate rating from metafields still shows without it) |
 | Pickup block missing on PDP | Enable Local Pickup for a location, stock the variant there, and publish the location to your channel (see store setup #6) |
 | Shopify edits take ~2 min to show | Edge cache (`s-maxage=120`) on default-market catalogue pages — lower it in `applyMarketCache` for fresher data |
 | `astro build` clears dist / worker error | `wrangler.toml` `main` must be `@astrojs/cloudflare/entrypoints/server` |

@@ -14,6 +14,7 @@ import { getProductReviews } from '~/lib/judgeme';
 import { applyMarketCache } from '~/lib/market';
 import { formatMoney, percentOff } from '~/lib/money';
 import type { Image, Product, ProductCard as TProductCard } from '~/lib/shopify/types';
+import { resolveSwatchColor } from '~/lib/colorSwatch';
 import '~/styles/product.css';
 
 const { handle } = Astro.params;
@@ -109,20 +110,14 @@ const isNew =
   (product?.tags ?? []).some((t) => t.toLowerCase() === 'new') ||
   (!!product?.createdAt && Date.now() - new Date(product.createdAt).getTime() < NEW_WINDOW_MS);
 
-// Colour-option detection + swatch colour resolution (real Shopify swatch,
-// else a named-colour fallback so the swatch still renders sensibly).
-const NAMED_COLORS: Record<string, string> = {
-  black: '#111418', white: '#ffffff', gray: '#808080', grey: '#808080',
-  silver: '#d3d3d3', gold: '#c9a86a', 'rose gold': '#b76e79', blue: '#2563eb',
-  navy: '#1e293b', red: '#dc2626', green: '#16a34a', pink: '#ec4899',
-  purple: '#7c3aed', orange: '#ea580c', yellow: '#eab308', beige: '#e7d8c2',
-  brown: '#8b5a2b', bronze: '#8c6239',
-};
+// Colour-option detection + swatch colour resolution — real Shopify swatch
+// hex when set, else the shared seed-table/hash fallback (same source of
+// truth as ProductCard/Overlays, so PDP never disagrees with the grid).
 function isColorOption(opt: { name: string; optionValues: { swatch?: { color?: string | null } | null }[] }) {
   return /colou?r|finish|shade/i.test(opt.name) || opt.optionValues.some((v) => v.swatch?.color);
 }
 function swatchColor(ov: { name: string; swatch?: { color?: string | null } | null }) {
-  return ov.swatch?.color || NAMED_COLORS[ov.name.toLowerCase()] || '#cbd5e1';
+  return resolveSwatchColor(ov.name, ov.swatch?.color);
 }
 
 // ---- Data for the client controller ----
