@@ -6,7 +6,7 @@ Zero UI framework — every page is server-rendered `.astro`; interactivity (car
 
 Design direction: *Marvexa* — modern fashion editorial. **Plus Jakarta Sans** display + **Inter** body, an electric-olive accent with a rust sale label, on a warm stone palette.
 
-> **No fake commerce data.** Products, collections, prices, variants, stock, search, cart, checkout, local pickup and customer login are all live Shopify. Only editorial/marketing copy is static (hero text, testimonials, blog, trust badges, About/Contact, shipping blurbs) — it lives in editable content files and `.astro` pages, so nothing dishonest ships by default.
+> **No fake commerce data.** Products, collections, prices, variants, stock, search, cart, checkout, local pickup, customer login, and the **blog** are all live Shopify. Only pure marketing copy is static (hero text, testimonials, trust badges, About/Contact, shipping blurbs) — it lives in editable content files and `.astro` pages, so nothing dishonest ships by default.
 
 ![Marvexa storefront preview](public/og-image.png)
 
@@ -65,7 +65,7 @@ Design direction: *Marvexa* — modern fashion editorial. **Plus Jakarta Sans** 
 - **Search** — full results page (sort + pagination) and header instant search.
 - **Wishlist** — header drawer + full `/wishlist` page (client-side, `localStorage` `marvexa_wishlist`).
 - **Compare** — `/compare` side-by-side, add-to-cart from the table (client-side `localStorage` `marvexa_compare`).
-- **Blog (Journal)** — MDX posts, author pages, tags, content collections.
+- **Blog (Journal)** — Shopify's native blog. Posts, tags, and author profiles (name/role/bio/avatar/twitter) are all managed in Shopify admin — see [Blog (Journal) setup](#8-blog-journal--shopifys-native-blog).
 - **Static pages** — About, Contact (demo form), plus Shopify CMS pages at `/pages/[handle]`.
 
 **Account & platform**
@@ -157,6 +157,37 @@ Without `JUDGEME_PRIVATE_TOKEN` set, the PDP just skips the review cards (`judge
 ### 7. Free-shipping rate (the meter is ON by default)
 - The cart free-shipping meter is **on** (`freeShippingThreshold: 99`). ⚠️ **The meter is display only — it does not create a shipping rate.** You **must** add a matching "Free, over $99" rate per zone in **Settings → Shipping and delivery**, or the cart promises a discount checkout never honours. To hide the meter for a store with no free shipping, set the threshold to `0` / `null` (see [config](#brand--feature-config-srcconfigmarvexats)).
 
+### 8. Blog (Journal) — Shopify's native blog
+The Journal (`/blog`, `/blog/[slug]`, `/blog/author/[slug]`, and the home page's latest-posts section) is **not** a content collection — it's driven entirely by Shopify's native **Blogs / Blog posts**, plus a **Metaobject** for author profiles. Everything below is admin-only, no code edits. Config lives in `src/config/marvexa.ts` → `BLOG` (blog handle + author metafield key).
+
+**One-time setup — build the Author profile system:**
+
+1. **Create the Author metaobject definition.**
+   Settings → **Custom data** → scroll to **Metaobject definitions** → **Add definition**.
+   - Name: `Author`
+   - Add fields: `Name` (Single line text), `Role` (Single line text), `Bio` (Multi-line text), `Twitter` (Single line text), `Avatar` (Image/File)
+   - Scroll to **Access** → toggle **Storefront API access** ON (required — without it the site can't read the data)
+   - Save
+
+2. **Create your author entries.**
+   Settings → Custom data → Metaobjects → **Author** → **Add entry**. Fill in Name/Role/Bio/Twitter/Avatar for each writer. Check the auto-generated **handle** (e.g. "Sophie Laurent" → `sophie-laurent`) — it becomes the URL `/blog/author/sophie-laurent`; edit it if it looks wrong. Repeat per author.
+
+3. **Link Author to Blog posts (a metafield, not the metaobject itself).**
+   Settings → Custom data → **Metafield definitions** → **Blog posts** row → **Add definition**.
+   - Name: `Author` (key auto-fills as `custom.author`, matching `BLOG.authorMetafield` in config)
+   - **Type** — click the type dropdown (not the "One/List" cardinality one next to it) → search **Metaobject** → select it → pick your **Author** definition
+   - Toggle **Storefront API access** ON
+   - **Save**, and confirm the **Blog posts** row now shows `1` (if it still shows `0`, the definition didn't save — repeat this step)
+
+**Per-post — attach an author (do this for every post):**
+
+4. Content → **Blog posts** → open a post → scroll down to the **Metafields** section (appears once step 3 is saved) → **Author** → pick an entry → **Save**.
+   > Don't confuse this with the **Organization → Author** field near the top of the post editor — that's Shopify's built-in staff-account author (shows your login name), unrelated to the metaobject-based author. The one you want is in **Metafields**, further down.
+
+**Ongoing — publishing a new post:**
+- Content → Blog posts → **Add blog post** → write it (title/content/excerpt/image/tags as usual) → set **Blog** to your configured blog (`BLOG.handle` in config, default `news`) → scroll to Metafields → set **Author** → publish.
+- Category pill, reading time, and the featured/hero slot on `/blog` are all derived automatically — no fields for them: category = the post's first tag, reading time = word count, and the hero slot = whichever post is newest.
+
 ---
 
 ## Project layout
@@ -220,9 +251,9 @@ public/                      robots.txt, favicons, og-image.png + static assets
 | `/search` | `pages/search.astro` | Shopify | Results, sort + pagination |
 | `/wishlist` | `pages/wishlist.astro` | client | localStorage `marvexa_wishlist` |
 | `/compare` | `pages/compare.astro` | Shopify + client | localStorage `marvexa_compare` |
-| `/blog` | `pages/blog/index.astro` | content | MDX posts (Journal) |
-| `/blog/[slug]` | `pages/blog/[slug].astro` | content | Post |
-| `/blog/author/[slug]` | `pages/blog/author/[slug].astro` | content | Author page |
+| `/blog` | `pages/blog/index.astro` | Shopify | Journal index — Shopify's native blog |
+| `/blog/[slug]` | `pages/blog/[slug].astro` | Shopify | Post |
+| `/blog/author/[slug]` | `pages/blog/author/[slug].astro` | Shopify | Author page (metaobject) |
 | `/about` | `pages/about.astro` | static | Brand story (editorial copy inline) |
 | `/contact` | `pages/contact.astro` | static | Demo contact form (client success view) |
 | `/pages/[handle]` | `pages/pages/[handle].astro` | Shopify | Shopify CMS pages |
@@ -255,7 +286,7 @@ All under `pages/api/*`, `prerender = false`, same-origin only. They validate in
 
 ## Editable content (content collections)
 
-Only **6** collections are wired up in `src/content.config.ts` — edit these files (no code) to change that content. Images are bare filenames resolved from `src/assets/images` via `~/lib/asset` and optimized with Astro `<Image>`.
+**5** collections are wired up in `src/content.config.ts` — edit these files (no code) to change that content. Images are bare filenames resolved from `src/assets/images` via `~/lib/asset` and optimized with Astro `<Image>`.
 
 | File | Type | Drives |
 |---|---|---|
@@ -263,8 +294,8 @@ Only **6** collections are wired up in `src/content.config.ts` — edit these fi
 | `footer.yaml` | YAML | Footer columns, blurb, app badges, payments, legal (`getEntry('footer', 'main')`) |
 | `proof.yaml` | YAML list | Best-sellers proof strip stats (`BestSellers.astro`) |
 | `lookbook.yaml` | YAML list | Lookbook image + product hotspots — **hybrid**: layout/coords/label are editorial, each hotspot pins a real Shopify product by `handle` (or falls back to a best-seller) |
-| `blog/*.mdx` | MDX | Blog posts (title, excerpt, image, tags, date, author) |
-| `authors.yaml` | YAML | Blog authors, keyed by slug, referenced by a post's `author` field |
+
+> **Blog is no longer a content collection.** `src/content/blog/*.mdx` and `src/content/authors.yaml` are legacy files from before the migration to Shopify's native blog — unused by any page, safe to delete. Manage posts/authors entirely in Shopify admin; see [Blog (Journal) setup](#8-blog-journal--shopifys-native-blog).
 
 **Everything else on the home page is hardcoded markup/data inside its own component, not a content collection** — edit the component directly to change it:
 
@@ -483,6 +514,8 @@ Non-secret pins (`SHOPIFY_API_VERSION`, `CUSTOMER_ACCOUNT_API_VERSION`) live in 
 | Ratings/specs missing on PDP | Add the matching product metafields (see [store setup](#shopify-store-setup)) |
 | Individual review cards missing on PDP | Set `JUDGEME_PRIVATE_TOKEN` and confirm the product exists in Judge.me (aggregate rating from metafields still shows without it) |
 | Pickup block missing on PDP | Enable Local Pickup for a location, stock the variant there, and publish the location to your channel (see store setup #6) |
+| Blog post shows your account name / no author photo | The post's **Author metafield** isn't set — that's separate from the built-in "Organization → Author" field. Open the post → Metafields → Author → pick an entry → Save. If no Metafields section appears at all, the `custom.author` metafield definition (Blog posts) was never saved — redo store setup #8 step 3 |
+| `/blog/author/[slug]` 404s | The URL slug must match the Author metaobject's **handle** exactly (auto-generated from its Name, editable in the entry) |
 | Shopify edits take ~2 min to show | Edge cache (`s-maxage=120`) on default-market catalogue pages — lower it in `applyMarketCache` for fresher data |
 | `astro build` clears dist / worker error | `wrangler.toml` `main` must be `@astrojs/cloudflare/entrypoints/server` |
 
