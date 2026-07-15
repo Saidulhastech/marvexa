@@ -8,8 +8,7 @@
 import Layout from '~/layouts/Layout.astro';
 import '~/styles/blog.css';
 import Newsletter from '~/components/home/marvexa/Newsletter.astro';
-import { getCollection, getEntry } from 'astro:content';
-import { resolveImage } from '~/lib/asset';
+import { getBlogArticles } from '~/lib/shopify';
 
 // Coloured category pill — per-category background/colour, matching the
 // original static design. Unknown categories fall back to the muted style.
@@ -21,23 +20,20 @@ const CAT_STYLE: Record<string, string> = {
 };
 const catStyle = (c?: string) => (c && CAT_STYLE[c]) || CAT_STYLE['Behind MARVEXA'];
 
-const fmt = (d: Date) =>
-  d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const fmt = (d: string) =>
+  new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 const initials = (name: string) =>
   name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
-const all = (await getCollection('blog')).sort(
-  (a, b) => b.data.date.getTime() - a.data.date.getTime(),
-);
-const featured = all.find((p) => p.data.featured) ?? all[0];
-const posts = all.filter((p) => p.id !== featured?.id);
+// getBlogArticles() is already newest-first. No `featured` flag in Shopify —
+// the latest post is the hero, same fallback the old collection used.
+const all = await getBlogArticles();
+const featured = all[0];
+const posts = all.filter((p) => p.handle !== featured?.handle);
 
-const featAuthor = featured?.data.author
-  ? await getEntry('authors', featured.data.author)
-  : undefined;
-const featAuthorName = featAuthor?.data.name ?? 'MARVEXA';
-const featAuthorRole = featAuthor?.data.role ?? 'The MARVEXA Journal';
-const featAuthorAvatar = featAuthor?.data.avatar;
+const featAuthorName = featured?.author?.name ?? 'MARVEXA';
+const featAuthorRole = featured?.author?.role ?? 'The MARVEXA Journal';
+const featAuthorAvatar = featured?.author?.avatar;
 ---
 
 <Layout
@@ -107,7 +103,7 @@ const featAuthorAvatar = featAuthor?.data.avatar;
           <div class="bl-feat-label">Featured Article</div>
           <div class="bl-feat-card">
             <div class="bl-feat-img-wrap">
-              <img src={resolveImage(featured.data.image).src} alt={featured.data.title} loading="eager" />
+              {featured.image && <img src={featured.image.url} alt={featured.image.altText || featured.title} loading="eager" />}
               <div class="bl-feat-img-overlay"></div>
             </div>
             <div class="bl-feat-content">
@@ -117,11 +113,11 @@ const featAuthorAvatar = featAuthor?.data.avatar;
                   <polygon
                     points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
-                {featured.data.category ?? 'Featured'} · Editor's Pick
+                {featured.category} · Editor's Pick
               </div>
-              <h2 class="bl-feat-title"><a href={`/blog/${featured.id}`}>{featured.data.title}</a></h2>
-              <p class="bl-feat-excerpt">{featured.data.excerpt}</p>
-              <a href={`/blog/${featured.id}`} class="bl-feat-cta">Read the full guide <svg width="14" height="14"
+              <h2 class="bl-feat-title"><a href={`/blog/${featured.handle}`}>{featured.title}</a></h2>
+              <p class="bl-feat-excerpt">{featured.excerpt}</p>
+              <a href={`/blog/${featured.handle}`} class="bl-feat-cta">Read the full guide <svg width="14" height="14"
                   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
                   stroke-linejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12" />
@@ -132,18 +128,18 @@ const featAuthorAvatar = featAuthor?.data.avatar;
                   <div class="bl-feat-author-av">{featAuthorAvatar ? <img src={featAuthorAvatar} alt={featAuthorName} /> : initials(featAuthorName)}</div>
                   <div>
                     <div class="bl-feat-author-name">
-                      {featured.data.author ? <a href={`/blog/author/${featured.data.author}`}>{featAuthorName}</a> : featAuthorName}
+                      {featured.author?.handle ? <a href={`/blog/author/${featured.author.handle}`}>{featAuthorName}</a> : featAuthorName}
                     </div>
                     <div class="bl-feat-author-role">{featAuthorRole}</div>
                   </div>
                 </div>
                 <div class="bl-feat-meta-right">
-                  {featured.data.readingTime && (
+                  {featured.readingTime && (
                     <span class="bl-feat-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10" />
                         <polyline points="12 6 12 12 16 14" />
-                      </svg> {featured.data.readingTime}</span>
+                      </svg> {featured.readingTime}</span>
                   )}
                   <span class="bl-meta-sep"></span>
                   <span class="bl-feat-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
@@ -152,7 +148,7 @@ const featAuthorAvatar = featAuthor?.data.avatar;
                       <line x1="16" y1="2" x2="16" y2="6" />
                       <line x1="8" y1="2" x2="8" y2="6" />
                       <line x1="3" y1="10" x2="21" y2="10" />
-                    </svg> {fmt(featured.data.date)}</span>
+                    </svg> {fmt(featured.publishedAt)}</span>
                 </div>
               </div>
             </div>
@@ -172,21 +168,21 @@ const featAuthorAvatar = featAuthor?.data.avatar;
           {
             posts.map((p) => (
               <article class="bl-card">
-                <a href={`/blog/${p.id}`} class="bl-card-img-wrap">
-                  <img src={resolveImage(p.data.image).src} alt={p.data.title} loading="lazy" class="bl-card-img" />
+                <a href={`/blog/${p.handle}`} class="bl-card-img-wrap">
+                  {p.image && <img src={p.image.url} alt={p.image.altText || p.title} loading="lazy" class="bl-card-img" />}
                   <div class="bl-card-img-overlay"></div>
                 </a>
                 <div class="bl-card-body">
-                  <div class="bl-card-meta-top"><span class="bl-cat" style={catStyle(p.data.category)}>{p.data.category}</span></div>
-                  <h3 class="bl-card-title"><a href={`/blog/${p.id}`}>{p.data.title}</a></h3>
-                  <p class="bl-card-excerpt">{p.data.excerpt}</p>
+                  <div class="bl-card-meta-top"><span class="bl-cat" style={catStyle(p.category)}>{p.category}</span></div>
+                  <h3 class="bl-card-title"><a href={`/blog/${p.handle}`}>{p.title}</a></h3>
+                  <p class="bl-card-excerpt">{p.excerpt}</p>
                   <div class="bl-card-meta-bot">
-                    {p.data.readingTime && (
+                    {p.readingTime && (
                       <span class="bl-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
                           stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                           <circle cx="12" cy="12" r="10" />
                           <polyline points="12 6 12 12 16 14" />
-                        </svg> {p.data.readingTime}</span>
+                        </svg> {p.readingTime}</span>
                     )}
                     <span class="bl-meta-sep"></span>
                     <span class="bl-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
@@ -195,7 +191,7 @@ const featAuthorAvatar = featAuthor?.data.avatar;
                         <line x1="16" y1="2" x2="16" y2="6" />
                         <line x1="8" y1="2" x2="8" y2="6" />
                         <line x1="3" y1="10" x2="21" y2="10" />
-                      </svg> {fmt(p.data.date)}</span>
+                      </svg> {fmt(p.publishedAt)}</span>
                   </div>
                 </div>
               </article>

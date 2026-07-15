@@ -3,6 +3,9 @@
 //  clean domain shapes defined in types.ts.
 // ============================================================
 import type {
+  BlogArticle,
+  BlogArticleSummary,
+  BlogAuthor,
   Cart,
   CartLine,
   Collection,
@@ -319,5 +322,108 @@ export function mapCart(c: Raw | null | undefined): Cart | null {
     discountCodes: c.discountCodes ?? [],
     discountAllocations: c.discountAllocations ?? [],
     lines: nodes(c.lines).map(mapCartLine),
+  };
+}
+
+// ── Blog ─────────────────────────────────────────────────────
+
+const WORDS_PER_MINUTE = 200;
+
+/** Word count from HTML → "N min read". Shopify has no reading-time field. */
+function readingTimeFromHtml(html?: string | null): string {
+  const words = (html ?? '')
+    .replace(/<[^>]+>/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+  const minutes = Math.max(1, Math.round(words / WORDS_PER_MINUTE));
+  return `${minutes} min read`;
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+/** Extract <h2> headings from article HTML, in document order, deduping slugs. */
+function extractHeadings(html: string): { slug: string; text: string }[] {
+  const headings: { slug: string; text: string }[] = [];
+  const seen = new Map<string, number>();
+  for (const match of html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi)) {
+    const text = match[1].replace(/<[^>]+>/g, '').trim();
+    if (!text) continue;
+    let slug = slugify(text);
+    const count = seen.get(slug) ?? 0;
+    seen.set(slug, count + 1);
+    if (count > 0) slug = `${slug}-${count}`;
+    headings.push({ slug, text });
+  }
+  return headings;
+}
+
+/** Inject `id="slug"` onto each <h2>, in the same document order as `headings`. */
+function withHeadingIds(html: string, headings: { slug: string; text: string }[]): string {
+  let i = 0;
+  return html.replace(/<h2([^>]*)>/gi, (full, attrs) => {
+    const h = headings[i++];
+    return h ? `<h2${attrs} id="${h.slug}">` : full;
+  });
+}
+
+/** `Metaobject.fields[]` → a `{key: {value, reference}}` lookup. */
+function metaobjectFieldMap(fields: Raw[] = []): Record<string, { value: string | null; reference?: Raw }> {
+  const map: Record<string, { value: string | null; reference?: Raw }> = {};
+  for (const f of fields) map[f.key] = { value: f.value ?? null, reference: f.reference };
+  return map;
+}
+
+/** Map an `author` Metaobject (from `metaobject(handle:)` or an article's metafield reference) to BlogAuthor. */
+export function mapAuthorMetaobject(mo: Raw | null | undefined): BlogAuthor | undefined {
+  if (!mo?.handle) return undefined;
+  const f = metaobjectFieldMap(mo.fields);
+  return {
+    handle: mo.handle,
+    name: f.name?.value ?? '',
+    role: f.role?.value ?? undefined,
+    bio: f.bio?.value ?? undefined,
+    twitter: f.twitter?.value ?? undefined,
+    avatar: f.avatar?.reference?.image?.url ?? undefined,
+  };
+}
+
+/** Prefer the linked `author` Metaobject; fall back to the article's native `authorV2` (name + bio only). */
+function resolveAuthor(a: Raw): BlogAuthor | undefined {
+  const fromMetaobject = mapAuthorMetaobject(a.authorProfile?.reference);
+  if (fromMetaobject) return fromMetaobject;
+  if (a.authorV2?.name) {
+    return { handle: '', name: a.authorV2.name, bio: a.authorV2.bio || undefined };
+  }
+  return undefined;
+}
+
+export function mapArticleSummary(a: Raw): BlogArticleSummary {
+  return {
+    id: a.id,
+    handle: a.handle,
+    title: a.title,
+    excerpt: a.excerpt ?? '',
+    image: a.image ?? null,
+    tags: a.tags ?? [],
+    category: a.tags?.[0] ?? 'Journal',
+    publishedAt: a.publishedAt,
+    readingTime: readingTimeFromHtml(a.contentHtml),
+    author: resolveAuthor(a),
+  };
+}
+
+export function mapArticleDetail(a: Raw): BlogArticle {
+  const headings = extractHeadings(a.contentHtml ?? '');
+  return {
+    ...mapArticleSummary(a),
+    contentHtml: withHeadingIds(a.contentHtml ?? '', headings),
+    headings,
   };
 }

@@ -312,6 +312,41 @@ export interface Localization {
   language: Language;
 }
 
+// ── Blog (Shopify's native blog/article objects) ────────────
+
+/** Resolved from the `author` Metaobject (or `authorV2` as fallback — see transforms.ts). */
+export interface BlogAuthor {
+  /** Metaobject handle — powers /blog/author/[slug]. Empty when only `authorV2` was available. */
+  handle: string;
+  name: string;
+  role?: string;
+  bio?: string;
+  twitter?: string;
+  avatar?: string;
+}
+
+export interface BlogArticleSummary {
+  id: string;
+  handle: string;
+  title: string;
+  excerpt: string;
+  image?: Image | null;
+  tags: string[];
+  /** First tag, used as the single category pill (Shopify has no dedicated category field). */
+  category: string;
+  publishedAt: string;
+  /** Derived from word count — Shopify has no reading-time field. */
+  readingTime: string;
+  author?: BlogAuthor;
+}
+
+export interface BlogArticle extends BlogArticleSummary {
+  /** Rich text body with `id` attributes injected on every <h2> for the TOC sidebar. */
+  contentHtml: string;
+  /** <h2> headings extracted from contentHtml, in document order. */
+  headings: { slug: string; text: string }[];
+}
+
 // ── Sort options surfaced in the UI ─────────────────────────
 
 export interface SortOption {

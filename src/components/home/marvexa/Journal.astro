@@ -5,36 +5,25 @@
 //  author + meta resolved from content collections.
 // ============================================================
 import { Image } from 'astro:assets';
-import { getCollection, getEntry } from 'astro:content';
-import { resolveImage } from '~/lib/asset';
+import { getBlogArticles } from '~/lib/shopify';
 
-const fmt = (d: Date) =>
-  d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const fmt = (d: string) =>
+  new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 const initial = (name: string) => (name.trim()[0] ?? 'M').toUpperCase();
 
-const latest = (await getCollection('blog'))
-  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime())
-  .slice(0, 3);
-
-const cards = await Promise.all(
-  latest.map(async (post) => {
-    const author = post.data.author
-      ? await getEntry('authors', post.data.author)
-      : undefined;
-    return {
-      href: `/blog/${post.id}`,
-      title: post.data.title,
-      excerpt: post.data.excerpt,
-      image: post.data.image,
-      tag: post.data.category ?? post.data.tags[0] ?? 'Journal',
-      date: fmt(post.data.date),
-      readingTime: post.data.readingTime,
-      authorName: author?.data.name ?? 'MARVEXA',
-      authorSlug: author ? post.data.author : undefined,
-      authorAvatar: author?.data.avatar,
-    };
-  }),
-);
+// getBlogArticles() is already newest-first (sortKey: PUBLISHED_AT, reverse: true).
+const cards = (await getBlogArticles()).slice(0, 3).map((post) => ({
+  href: `/blog/${post.handle}`,
+  title: post.title,
+  excerpt: post.excerpt,
+  image: post.image,
+  tag: post.category,
+  date: fmt(post.publishedAt),
+  readingTime: post.readingTime,
+  authorName: post.author?.name ?? 'MARVEXA',
+  authorSlug: post.author?.handle || undefined,
+  authorAvatar: post.author?.avatar,
+}));
 ---
 
 <section class="blog" aria-labelledby="blog-h">
@@ -59,8 +48,10 @@ const cards = await Promise.all(
       {cards.map((c) => (
         <article class="blog-card">
           <a href={c.href} class="blog-card__img-wrap" aria-label={c.title}>
-            <Image src={resolveImage(c.image)} alt={c.title} width={560} height={420}
-              class="blog-card__img" loading="lazy" />
+            {c.image && (
+              <Image src={c.image.url} alt={c.image.altText || c.title} width={560} height={420}
+                class="blog-card__img" loading="lazy" />
+            )}
             <div class="blog-card__img-overlay"></div>
             <span class="blog-card__tag">{c.tag}</span>
           </a>

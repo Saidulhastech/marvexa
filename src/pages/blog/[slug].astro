@@ -9,57 +9,47 @@
 import Layout from '~/layouts/Layout.astro';
 import '~/styles/blog-detail.css';
 import Newsletter from '~/components/home/marvexa/Newsletter.astro';
-import { getEntry, getCollection, render } from 'astro:content';
-import { resolveImage } from '~/lib/asset';
+import { getArticleByHandle, getBlogArticles } from '~/lib/shopify';
 import { BRAND } from '~/config/marvexa';
 
 const { slug } = Astro.params;
-const post = slug ? await getEntry('blog', slug) : undefined;
+const post = slug ? await getArticleByHandle(slug) : null;
 
 if (!post) {
   Astro.response.status = 404;
 }
 
-const fmt = (d: Date) =>
-  d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-const fmtShort = (d: Date) =>
-  d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+const fmt = (d: string) =>
+  new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+const fmtShort = (d: string) =>
+  new Date(d).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 const initials = (name: string) =>
   name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
-let Content: Awaited<ReturnType<typeof render>>['Content'] | undefined;
-let headings: Awaited<ReturnType<typeof render>>['headings'] = [];
-let related: Awaited<ReturnType<typeof getCollection<'blog'>>> = [];
-let author: Awaited<ReturnType<typeof getEntry<'authors', string>>> | undefined;
+const headings = post?.headings ?? [];
+const related = post
+  ? (await getBlogArticles()).filter((p) => p.handle !== post.handle).slice(0, 3)
+  : [];
+const author = post?.author;
 
-if (post) {
-  const rendered = await render(post);
-  Content = rendered.Content;
-  headings = rendered.headings.filter((h) => h.depth === 2);
-  author = post.data.author ? await getEntry('authors', post.data.author) : undefined;
-  related = (await getCollection('blog'))
-    .filter((p) => p.id !== post.id)
-    .sort((a, b) => b.data.date.getTime() - a.data.date.getTime())
-    .slice(0, 3);
-}
-
-const authorName = author?.data.name ?? 'MARVEXA';
-const authorRole = author?.data.role ?? '';
-const authorBio = author?.data.bio ?? '';
-const authorAvatar = author?.data.avatar;
+const authorName = author?.name ?? 'MARVEXA';
+const authorRole = author?.role ?? '';
+const authorBio = author?.bio ?? '';
+const authorAvatar = author?.avatar;
 
 const canonical = post ? new URL(Astro.url.pathname, Astro.url.origin).href : undefined;
-const heroImg = post ? resolveImage(post.data.image) : null;
-const ogImage = heroImg ? new URL(heroImg.src, Astro.site ?? Astro.url.origin).href : undefined;
+const ogImage = post?.image
+  ? new URL(post.image.url, Astro.site ?? Astro.url.origin).href
+  : undefined;
 const articleJsonLd = post
   ? {
       '@context': 'https://schema.org',
       '@type': 'Article',
-      headline: post.data.title,
-      description: post.data.excerpt,
+      headline: post.title,
+      description: post.excerpt,
       ...(ogImage ? { image: [ogImage] } : {}),
-      datePublished: post.data.date.toISOString(),
-      ...(author ? { author: { '@type': 'Person', name: author.data.name } } : {}),
+      datePublished: post.publishedAt,
+      ...(author ? { author: { '@type': 'Person', name: author.name } } : {}),
       publisher: { '@type': 'Organization', name: BRAND.legalName },
       mainEntityOfPage: canonical,
     }
@@ -67,10 +57,10 @@ const articleJsonLd = post
 ---
 
 {
-  post && Content ? (
+  post ? (
     <Layout
-      title={`${post.data.title} — MARVEXA Journal`}
-      description={post.data.excerpt}
+      title={`${post.title} — MARVEXA Journal`}
+      description={post.excerpt}
       type="article"
       image={ogImage}
       jsonLd={articleJsonLd}
@@ -93,16 +83,16 @@ const articleJsonLd = post
                 stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="9 18 15 12 9 6" />
               </svg>
-              <span style="color:var(--text);font-weight:600;">{post.data.category ?? 'Article'}</span>
+              <span style="color:var(--text);font-weight:600;">{post.category}</span>
             </nav>
-            <span class="bd-cat">{post.data.category ?? 'Journal'}{post.data.featured ? " · Editor's Pick" : ''}</span>
+            <span class="bd-cat">{post.category}</span>
             <div class="bd-meta-items">
-              {post.data.readingTime && (
+              {post.readingTime && (
                 <span class="bd-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10" />
                     <polyline points="12 6 12 12 16 14" />
-                  </svg> {post.data.readingTime}</span>
+                  </svg> {post.readingTime}</span>
               )}
               <span class="bd-meta-sep"></span>
               <span class="bd-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -111,34 +101,36 @@ const articleJsonLd = post
                   <line x1="16" y1="2" x2="16" y2="6" />
                   <line x1="8" y1="2" x2="8" y2="6" />
                   <line x1="3" y1="10" x2="21" y2="10" />
-                </svg> {fmt(post.data.date)}</span>
+                </svg> {fmt(post.publishedAt)}</span>
             </div>
           </div>
         </div>
 
         {/* TITLE ──────────────────────────── */}
         <div class="bd-title-wrap">
-          <h1 class="bd-title">{post.data.title}</h1>
-          <p class="bd-intro">{post.data.excerpt}</p>
+          <h1 class="bd-title">{post.title}</h1>
+          <p class="bd-intro">{post.excerpt}</p>
         </div>
 
         {/* HERO IMAGE ─────────────────────── */}
-        <div class="bd-wrap">
-          <div class="bd-hero-img">
-            <img src={resolveImage(post.data.image).src} alt={post.data.title} loading="eager" />
+        {post.image && (
+          <div class="bd-wrap">
+            <div class="bd-hero-img">
+              <img src={post.image.url} alt={post.image.altText || post.title} loading="eager" />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ARTICLE LAYOUT ─────────────────── */}
         <div class="bd-layout">
 
           {/* BODY */}
           <article class="bd-body">
-            <Content />
+            <Fragment set:html={post.contentHtml} />
 
-            {post.data.tags.length > 0 && (
+            {post.tags.length > 0 && (
               <div class="bd-tags">
-                {post.data.tags.map((t) => <a href="/blog" class="bd-tag">{t}</a>)}
+                {post.tags.map((t) => <a href="/blog" class="bd-tag">{t}</a>)}
               </div>
             )}
 
@@ -148,7 +140,7 @@ const articleJsonLd = post
                 <div>
                   <div class="bd-author-card-lbl">Written by</div>
                   <div class="bd-author-card-name">
-                    {post.data.author ? <a href={`/blog/author/${post.data.author}`}>{authorName}</a> : authorName}
+                    {author.handle ? <a href={`/blog/author/${author.handle}`}>{authorName}</a> : authorName}
                   </div>
                   {authorRole && <div class="bd-author-card-role">{authorRole}, MARVEXA</div>}
                   {authorBio && <p class="bd-author-card-bio">{authorBio}</p>}
@@ -175,7 +167,7 @@ const articleJsonLd = post
             <div class="bd-sidebar-share">
               <div class="bd-sidebar-share-title">Share this article</div>
               <div class="bd-sidebar-btns">
-                <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(canonical ?? '')}&text=${encodeURIComponent(post.data.title)}`}
+                <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(canonical ?? '')}&text=${encodeURIComponent(post.title)}`}
                   target="_blank" rel="noopener" class="bd-sb-btn"><svg width="14" height="14" viewBox="0 0 24 24"
                     fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                     <path
@@ -215,21 +207,21 @@ const articleJsonLd = post
               <div class="bd-related-grid">
                 {
                   related.map((p) => (
-                    <a href={`/blog/${p.id}`} class="bd-rel-card">
-                      <div class="bd-rel-img"><img src={resolveImage(p.data.image).src} alt={p.data.title} loading="lazy" /></div>
+                    <a href={`/blog/${p.handle}`} class="bd-rel-card">
+                      <div class="bd-rel-img">{p.image && <img src={p.image.url} alt={p.image.altText || p.title} loading="lazy" />}</div>
                       <div class="bd-rel-body">
-                        <span class="bd-rel-cat">{p.data.category}</span>
-                        <div class="bd-rel-title">{p.data.title}</div>
+                        <span class="bd-rel-cat">{p.category}</span>
+                        <div class="bd-rel-title">{p.title}</div>
                         <div class="bd-rel-meta">
-                          {p.data.readingTime && (
+                          {p.readingTime && (
                             <span class="bd-rel-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
                                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="10" />
                                 <polyline points="12 6 12 12 16 14" />
-                              </svg> {p.data.readingTime}</span>
+                              </svg> {p.readingTime}</span>
                           )}
                           <span class="bd-meta-sep" style="width:3px;height:3px;border-radius:50%;background:var(--border);"></span>
-                          <span class="bd-rel-meta-item">{fmtShort(p.data.date)}</span>
+                          <span class="bd-rel-meta-item">{fmtShort(p.publishedAt)}</span>
                         </div>
                       </div>
                     </a>

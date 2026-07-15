@@ -125,6 +125,18 @@ export const CART_EXTRAS = {
 } as const;
 
 /**
+ * The Journal — Shopify's native blog (Online Store → Blog posts), not a
+ * content collection. `handle` is the blog's handle in Admin. Author
+ * profiles (role/bio/avatar/twitter) resolve from an `author` Metaobject
+ * linked via this metafield on each article — see CLAUDE.md "Blog" section
+ * for the Admin setup (metaobject definition + metafield definition).
+ */
+export const BLOG = {
+  handle: "news",
+  authorMetafield: { namespace: "custom", key: "author" },
+} as const;
+
+/**
  * "Shop by lifestyle" presentation map. Cards are real Shopify `for-*`
  * collections (title/count/image/link come from Shopify); the icon and
  * display order live here in code, keyed by collection handle. Array order
