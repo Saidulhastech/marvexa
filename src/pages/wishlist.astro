@@ -41,8 +41,13 @@ const catalogue = Object.fromEntries(
     );
     const canQuickAdd =
       p.availableForSale && !!p.firstVariantId && p.firstVariantAvailable !== false;
-    // Picker only when more than one option must be chosen (e.g. Colour + Size).
-    const needsPicker = canQuickAdd && variants.length > 1 && realOptions.length >= 2;
+    // Picker only when more than one option must be chosen (e.g. Colour + Size)
+    // AND at least one variant is actually buyable — checked across ALL
+    // variants, not just the first (canQuickAdd alone only reflects the FIRST
+    // variant's stock, same bug as ProductCard — fixed here to match).
+    const anyVariantAvailable = variants.some((v) => v.availableForSale);
+    const needsPicker =
+      p.availableForSale && anyVariantAvailable && variants.length > 1 && realOptions.length >= 2;
     const colorOpt = realOptions.find(
       (o) => /colou?r|finish|shade/i.test(o.name) || o.optionValues.some((v) => v.swatch?.color),
     );
@@ -103,6 +108,7 @@ const catalogue = Object.fromEntries(
           formatMoney(p.priceRange.minVariantPrice),
         was: off > 0 ? formatMoney(p.compareAtPriceRange!.minVariantPrice) : '',
         off,
+        desc: p.description ?? '',
         rating: p.rating ?? 0,
         available: p.availableForSale,
         variantId: canQuickAdd && !needsPicker ? p.firstVariantId! : '',
@@ -154,7 +160,7 @@ const catalogue = Object.fromEntries(
   type Swatch = { name: string; color: string; img: string | null; available: boolean; variantId: string | null };
   type Row = {
     handle: string; title: string; image: string; href: string; brand: string; type: string;
-    price: string; was: string; off: number; rating: number; available: boolean;
+    price: string; was: string; off: number; desc: string; rating: number; available: boolean;
     variantId: string; currency: string;
     pick: boolean; pickVariants: string; pickOptions: string; swatches: Swatch[];
   };
@@ -206,7 +212,7 @@ const catalogue = Object.fromEntries(
     if (c) return c;
     return {
       handle: i.handle, title: i.name, image: i.img || '', href: i.href || `/products/${i.handle}`,
-      brand: '', type: '', price: i.price || '', was: '', off: 0, rating: 0, available: true,
+      brand: '', type: '', price: i.price || '', was: '', off: 0, desc: '', rating: 0, available: true,
       variantId: '', currency: '', pick: false, pickVariants: '', pickOptions: '', swatches: [],
     };
   }
@@ -250,6 +256,10 @@ const catalogue = Object.fromEntries(
         ` data-add data-pick` +
         ` data-handle="${esc(p.handle)}"` +
         ` data-name="${esc(p.title)}"` +
+        ` data-price="${esc(p.price)}"` +
+        ` data-was="${esc(p.was)}"` +
+        ` data-save="${p.off ? esc(`Save ${p.off}%`) : ''}"` +
+        ` data-desc="${esc(p.desc)}"` +
         ` data-img="${esc(p.image)}"` +
         ` data-brand="${esc(p.brand)}"` +
         ` data-href="${esc(p.href)}"` +

@@ -197,6 +197,10 @@ const eyebrow = product.productType?.trim() || product.vendor?.trim() || '';
             data-pick
             data-handle={product.handle}
             data-name={product.title}
+            data-price={formatMoney(price)}
+            data-was={compareAt && off > 0 ? formatMoney(compareAt) : ''}
+            data-save={off > 0 ? `Save ${off}%` : ''}
+            data-desc={product.description ?? ''}
             data-img={img?.url ?? ''}
             data-brand={product.vendor ?? ''}
             data-href={href}
