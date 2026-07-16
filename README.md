@@ -31,7 +31,7 @@ Design direction: *Marvexa* — modern fashion editorial. **Plus Jakarta Sans** 
 15. [Architecture](#architecture)
 16. [Performance & caching](#performance--caching)
 17. [Scripts](#scripts)
-18. [Deploy (Cloudflare Workers)](#deploy-cloudflare-workers)
+18. [Deploy (Cloudflare Workers)](#deploy-cloudflare-workers) — also see [DEPLOYMENT.md](DEPLOYMENT.md) for Vercel/Netlify/Node
 19. [Troubleshooting](#troubleshooting)
 20. [License](#license)
 
@@ -42,7 +42,7 @@ Design direction: *Marvexa* — modern fashion editorial. **Plus Jakarta Sans** 
 | Layer | Choice |
 |---|---|
 | Framework | Astro 7, `output: "server"` (SSR) |
-| Hosting | Cloudflare Workers via `@astrojs/cloudflare@^14` |
+| Hosting | Cloudflare Workers via `@astrojs/cloudflare@^14` (default) — also ships `@astrojs/node`, `@astrojs/vercel`, `@astrojs/netlify` for portability, see [Alternative deploy targets](#alternative-deploy-targets-node--vercel--netlify) |
 | State | `nanostores@^1.4` (cart store, shared across vanilla-JS islands) |
 | Styling | Plain CSS (`src/styles/*.css`) — **no Tailwind**, no CSS framework |
 | Interactivity | Vanilla JS in `<script>` blocks — **no React/Vue** |
@@ -50,7 +50,7 @@ Design direction: *Marvexa* — modern fashion editorial. **Plus Jakarta Sans** 
 | Commerce | Shopify Storefront API `2026-04` + Customer Account API `2025-01` |
 | Node | `>=22.12.0`, package manager **npm** |
 
-**Version compatibility — do not bump blindly.** `astro@7` ⇄ `@astrojs/cloudflare@^14` are mutually locked (the unified Worker entrypoint is version-tied). Also `@astrojs/mdx@^7`, `@astrojs/sitemap@^3`, `nanostores@^1`. No React or Tailwind in the tree — don't add them back. PKCE uses the Web Crypto API (`crypto.subtle`), so it runs on Workers without extra polyfills.
+**Version compatibility — do not bump blindly.** `astro@7` ⇄ `@astrojs/cloudflare@^14` are mutually locked (the unified Worker entrypoint is version-tied); the other installed adapters are pinned the same way (`@astrojs/node@^11`, `@astrojs/vercel@^11`, `@astrojs/netlify@^8` — bump alongside `astro`, not independently). Also `@astrojs/mdx@^7`, `@astrojs/sitemap@^3`, `nanostores@^1`. No React or Tailwind in the tree — don't add them back. PKCE uses the Web Crypto API (`crypto.subtle`), so it runs on any of the above adapters without extra polyfills.
 
 ---
 
@@ -431,8 +431,9 @@ A separate OAuth 2.0 + PKCE flow (`lib/shopify/customer/*`) with its own endpoin
    - **JavaScript origin:** `https://YOUR_HOST`
    - **Logout URI:** `https://YOUR_HOST`
 4. Copy the **Client ID** and numeric **Shop ID** into your env vars.
+5. **Request "Protected customer data access."** The **Permissions** checklist on that same Customer Account API page (`customer_read_customers`, `customer_read_orders`, etc.) is self-declared scopes — it is **not** the same as approval to actually read that data. Look for a separate "Customer data requests" / "Protected customer data access" section (same page, or your app's entry in the **Partner Dashboard → API access**) and request/enable it — this app reads customer name, email, and order history. Self-serve/instant on a dev store; can require Shopify review on a live store.
 
-The client auto-refreshes the access token, re-persists cookies, and sends the raw token as `Authorization` (**not** `Bearer <token>`). Routes: `pages/account/{login,authorize,logout}.ts`, page `pages/account/index.astro`.
+The client auto-refreshes the access token, re-persists cookies, and sends the raw token as `Authorization` (**not** `Bearer <token>`). Every authenticated GraphQL request also sends `Origin` (must match a registered **JavaScript origin**, checked on *every* call, not just login) and `User-Agent` (Shopify's edge returns an HTML "Access denied" 403 — not a GraphQL error — without one) — both required per [Shopify's Customer Account API docs](https://shopify.dev/docs/api/customer/latest). Routes: `pages/account/{login,authorize,logout}.ts`, page `pages/account/index.astro`, client `lib/shopify/customer/client.ts`.
 
 ---
 
@@ -544,6 +545,12 @@ Non-secret pins (`SHOPIFY_API_VERSION`, `CUSTOMER_ACCOUNT_API_VERSION`) live in 
 
 > ⚠️ `wrangler.toml` `main` **must** be `@astrojs/cloudflare/entrypoints/server` (the adapter's unified entry). Pointing it at the built `dist/_worker.js` path fails `astro build`, which clears `dist` during sync before the worker exists.
 
+### Alternative deploy targets (Node / Vercel / Netlify)
+
+Cloudflare Workers (above) is the default and the only target this README's Shopify setup / caching / secrets sections assume — but `astro.config.mjs` picks its adapter at build time (`ASTRO_ADAPTER` env var, or auto-detected from the platform's own `VERCEL`/`NETLIFY`/`CF_PAGES` build-time var), and `@astrojs/node`, `@astrojs/vercel`, `@astrojs/netlify` are installed alongside `@astrojs/cloudflare` — not just documented, actually wired up. Switching only changes *where the SSR server runs*; the Shopify data layer, cart cookies, and Customer Account API OAuth are plain `Request`/`Response`/Web Crypto with nothing Cloudflare-specific, so they work unmodified elsewhere.
+
+**Full walkthrough (Cloudflare Pages / Vercel / Netlify / self-hosted Node+PM2+Nginx) is in [DEPLOYMENT.md](DEPLOYMENT.md).** One caveat DEPLOYMENT.md doesn't cover: [Performance & caching](#performance--caching)'s `applyMarketCache` assumes a Cloudflare-style shared CDN honouring `s-maxage`/`stale-while-revalidate` — the `Cache-Control` headers are standard, but confirm your platform's CDN actually respects them before relying on the 2-minute edge-cache trade-off described there.
+
 ---
 
 ## Troubleshooting
@@ -553,6 +560,8 @@ Non-secret pins (`SHOPIFY_API_VERSION`, `CUSTOMER_ACCOUNT_API_VERSION`) live in 
 | Product grids empty | Products/collections not **published** to the channel your Storefront token uses |
 | Cart "add" fails / extras hidden | The product isn't published, is sold out, or the handle doesn't match the config |
 | Login redirect rejected | Customer Account API can't use `http`/`localhost` — use a public HTTPS origin; check the three registered URIs |
+| `/account` shows "Couldn't load your account: HTTP 403 Forbidden" (HTML "Access denied" body) | **Protected customer data access** isn't approved for this Customer Account API client — this is separate from the Permissions/scope checkboxes on the same admin page. See [Customer accounts (login) step 5](#customer-accounts-login). Rarely, this exact 403 also fires if Shopify has flagged the store itself as fraudulent — check for an Admin banner |
+| `/account` shows "Couldn't load your account: ...non-JSON response..." | Customer Account API returned something other than JSON (upstream error page, wrong `SHOPIFY_SHOP_ID`). The error message now includes the real HTTP status/body — check that first |
 | Currency drifts (cards vs cart) | Confirm the market is threaded — middleware sets `Astro.locals.market`; cart buyer identity follows it |
 | `/collections` page empty | Create and **publish** Shopify collections — that index/detail route (not the header mega menu, which is hardcoded — see store setup #5) is driven by live collections |
 | Mega-menu category filters to zero results | The label's `catHref()` target doesn't match any real `productType` in your catalogue — edit `MEGAS` in `Header.astro` to use a productType that actually exists |
