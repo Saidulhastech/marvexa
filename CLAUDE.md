@@ -50,7 +50,7 @@ The active market is resolved **once per request** in `src/middleware.ts` (`reso
 
 ### Cart
 
-The cart lives in the **real Shopify cart**; the browser only mutates it through same-origin `/api/cart/*` routes (`src/pages/api/cart/`), which call the server-side service with the private token. `src/lib/cart-server.ts` centralizes "ensure a cart exists", cookie sync (`cart-cookie.ts`), and self-healing when a stored cart id has expired. Cart "extras" (gift wrap, protection plan) resolve paid Shopify products **by handle** (configured in `src/config/marvexa.ts`) — no gid pasting.
+The cart lives in the **real Shopify cart**; the browser only mutates it through same-origin `/api/cart/*` routes (`src/pages/api/cart/`), which call the server-side service with the private token. `src/lib/cart-server.ts` centralizes "ensure a cart exists", cookie sync (`cart-cookie.ts`), and self-healing when a stored cart id has expired. Cart "extras" (gift wrap) resolve paid Shopify products **by handle** (configured in `src/config/marvexa.ts`) — no gid pasting.
 
 ### Client state — nanostores, NOT React
 

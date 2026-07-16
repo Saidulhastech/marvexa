@@ -7,12 +7,12 @@
 //  (stores/cart.ts) for line items, qty, remove, promo (real
 //  cartDiscountCodesUpdate), checkout, free-ship meter and totals.
 //  Order notes / gift message sync to the real cart (note + attribute);
-//  the protection toggle adds a real paid line when a variant is
-//  configured (CART_EXTRAS in src/config/marvexa.ts), else it's visual.
+//  paid gift wrap adds a real line when a variant is configured
+//  (CART_EXTRAS in src/config/marvexa.ts), else it's hidden.
 // ============================================================
 import Layout from '~/layouts/Layout.astro';
 import { getProducts } from '~/lib/shopify';
-import { BRAND } from '~/config/marvexa';
+import { BRAND, DELIVERY_ESTIMATE_DAYS, RETURNS_WINDOW_DAYS } from '~/config/marvexa';
 import { resolveCartExtras } from '~/lib/cart-extras';
 import { formatMoney } from '~/lib/money';
 import type { ProductCard as TProductCard } from '~/lib/shopify/types';
@@ -36,34 +36,16 @@ const FREE_SHIP = Number(BRAND.freeShippingThreshold) || 0;
 const FREE_SHIP_ON = FREE_SHIP > 0;
 
 // Resolve real extras. Gift message is attribute-only (always available).
-// Protection only shows when a real paid variant is configured.
 const EXTRAS = await resolveCartExtras(market);
-// All buyable paid tiers (Essential, Premium, …) — server-rendered as a
-// radio picker. The free "none" option is the always-present default.
-const protectionPlans = EXTRAS.protection.show
-  ? EXTRAS.protection.plans
-      .filter((p) => p.id !== 'none' && p.variantId)
-      .map((p) => ({
-        variantId: p.variantId,
-        name: p.name,
-        meta: p.meta,
-        best: p.best,
-        priceLabel: p.price ? formatMoney(p.price) : '',
-      }))
-  : [];
-const nonePlan = EXTRAS.protection.plans.find((p) => p.id === 'none');
-const noneMeta = nonePlan?.meta || 'Standard manufacturer warranty';
-const PROTECT_ON = protectionPlans.length > 0;
 
 // Paid gift wrap — real Shopify product/variant resolved by handle. Shows only
-// when buyable (else hidden, like protection). Reuses the existing resolver.
+// when buyable. Reuses the existing resolver.
 const giftWrap = EXTRAS.giftWrap;
 const GIFTWRAP_ON = giftWrap.show && !!giftWrap.variantId;
 const giftWrapPriceLabel = giftWrap.price ? formatMoney(giftWrap.price) : '';
 
 const extrasConfig = {
   giftMessage: { maxLength: EXTRAS.giftWrap.messageMaxLength ?? 200 },
-  protection: protectionPlans.map((p) => ({ variantId: p.variantId, name: p.name })),
   giftWrap: GIFTWRAP_ON ? { variantId: giftWrap.variantId, label: giftWrap.label } : null,
 };
 ---
@@ -73,6 +55,7 @@ const extrasConfig = {
     class="cart-pg"
     id="cartModern"
     data-free-ship={BRAND.freeShippingThreshold}
+    data-delivery-days={DELIVERY_ESTIMATE_DAYS}
     data-extras={JSON.stringify(extrasConfig)}
   >
 
@@ -99,7 +82,7 @@ const extrasConfig = {
                 <span class="cart-hd-perk-div"></span>
               </>
             )}
-            <span class="cart-hd-perk">
+            <span class="cart-hd-perk" title={`Free returns within ${RETURNS_WINDOW_DAYS} days`}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
               Free Returns
             </span>
@@ -152,6 +135,41 @@ const extrasConfig = {
           </div>
         )}
 
+      </div>
+    </div>
+
+    {/* ══ LOADING SKELETON — visible by default, hidden by the first render()
+         call once the real cart resolves. Mirrors the real grid's column
+         widths so nothing jumps when it swaps in. Fixes the blank flash on
+         first paint (cmEmpty/cmGrid are both display:none until JS runs). ══ */}
+    <div class="cart-layout cart-skeleton" id="cmSkeleton">
+      <div>
+        <div class="cart-items-hd">
+          <span>Product</span>
+          <span>Details</span>
+          <span>Total</span>
+        </div>
+        <div class="cart-items">
+          {[0, 1].map(() => (
+            <div class="cart-item cart-item--skeleton">
+              <div class="cart-item__img sk-block"></div>
+              <div class="cart-item__body">
+                <div class="sk-line" style="width:40%;"></div>
+                <div class="sk-line" style="width:75%;height:14px;"></div>
+                <div class="sk-line" style="width:55%;"></div>
+              </div>
+              <div class="cart-item__side">
+                <div class="sk-line" style="width:60px;margin-left:auto;"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div class="cart-summary">
+        <div class="cart-summary-hd"><div class="sk-line" style="width:50%;height:16px;"></div></div>
+        <div class="cart-summary-body">
+          <div class="sk-block" style="height:200px;border-radius:10px;"></div>
+        </div>
       </div>
     </div>
 
@@ -227,7 +245,7 @@ const extrasConfig = {
 
           <div class="cart-sum-delivery">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h5a1 1 0 0 1 1 1v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            <span>Est. delivery: <strong id="cartDelivery">2–5 business days</strong></span>
+            <span>Est. delivery by <strong id="cartDelivery">—</strong></span>
           </div>
 
           {/* Promo — real Shopify discount codes */}
@@ -237,37 +255,6 @@ const extrasConfig = {
           </div>
           <div class="cart-promo-applied" id="promoMsg" style="display:none;"></div>
           <div class="cart-promo-tags" id="promoTags"></div>
-
-          {/* Order protection — real paid tiers (radio picker) when configured */}
-          {PROTECT_ON && (
-            <div class="cart-protection-group" id="protectionGroup" role="radiogroup" aria-label="Order protection">
-              <p class="cart-protection-title">Add Order Protection</p>
-              <div class="cart-protection-list">
-                <div class="cart-protection active" data-plan="none" role="radio" tabindex="0" aria-checked="true">
-                  <div class="cart-protection-check">
-                    <svg class="cart-protection-tick" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                  </div>
-                  <div class="cart-protection-info">
-                    <p>No protection</p>
-                    <span>{noneMeta}</span>
-                  </div>
-                  <span class="cart-protection-price">Free</span>
-                </div>
-                {protectionPlans.map((p) => (
-                  <div class="cart-protection" data-plan={p.variantId} data-name={p.name} role="radio" tabindex="0" aria-checked="false">
-                    <div class="cart-protection-check">
-                      <svg class="cart-protection-tick" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                    </div>
-                    <div class="cart-protection-info">
-                      <p>{p.name}{p.best && <span class="cart-protection-best">Best value</span>}</p>
-                      <span>{p.meta}</span>
-                    </div>
-                    {p.priceLabel && <span class="cart-protection-price">{p.priceLabel}</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Checkout */}
           <button class="cart-checkout-btn" id="cmCheckout" type="button">
@@ -306,7 +293,7 @@ const extrasConfig = {
             </div>
             <div class="cart-trust-line">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
-              Free returns within 30 days
+              Free returns within {RETURNS_WINDOW_DAYS} days
             </div>
             <div class="cart-trust-line">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -345,7 +332,7 @@ const extrasConfig = {
   //  Cart page controller — binds the marvexa markup above to the
   //  framework-agnostic nanostore (stores/cart.ts). Line items are
   //  rendered into #cartItemsList; totals/free-ship/promo/checkout
-  //  mirror the cart drawer. Gift message → cart attribute; protection
+  //  mirror the cart drawer. Gift message → cart attribute; gift wrap
   //  toggle → real paid line when a variant is configured.
   // ============================================================
   import {
@@ -366,25 +353,24 @@ const extrasConfig = {
 
   const root = document.getElementById('cartModern');
   const FREE_SHIP = Number(root?.dataset.freeShip ?? 0);
+  const DELIVERY_DAYS = Number(root?.dataset.deliveryDays ?? 5);
+
+  // Real date, computed fresh client-side on every visit (not a fake countdown).
+  const deliveryEl = document.getElementById('cartDelivery');
+  if (deliveryEl) {
+    const d = new Date(Date.now() + DELIVERY_DAYS * 86400000);
+    deliveryEl.textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  }
 
   type Extras = {
     giftMessage: { maxLength: number };
-    protection: { variantId: string; name: string }[];
     giftWrap: { variantId: string; label: string } | null;
   };
   const EXTRAS: Extras = (() => {
-    try { return JSON.parse(root?.dataset.extras || '{}'); } catch { return { giftMessage: { maxLength: 200 }, protection: [], giftWrap: null }; }
+    try { return JSON.parse(root?.dataset.extras || '{}'); } catch { return { giftMessage: { maxLength: 200 }, giftWrap: null }; }
   })();
-  const PROTECT_PLANS = EXTRAS.protection ?? [];
-  const PROTECT_VIDS = new Set(PROTECT_PLANS.map((p) => p.variantId));
   const GIFTWRAP_VID = EXTRAS.giftWrap?.variantId || '';
   const GIFTWRAP_LABEL = EXTRAS.giftWrap?.label || '';
-  // Guards the protection picker against re-entrancy + lets render() skip
-  // re-highlighting mid-mutation. Declared here (above render) to dodge TDZ —
-  // render() runs synchronously on $cart.subscribe, before the protection
-  // block below would otherwise initialise these.
-  let protectBusy = false;
-  const protectionGroup = document.getElementById('protectionGroup');
 
   const $ = (id: string) => document.getElementById(id);
   const setText = (id: string, v: string) => { const el = $(id); if (el) el.textContent = v; };
@@ -410,8 +396,8 @@ const extrasConfig = {
   const trashSvg =
     '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
 
-  // Variant gids that are "extras" (protection tiers + gift wrap) — hidden from the visible item list.
-  const isExtraLine = (vid: string) => PROTECT_VIDS.has(vid) || (!!GIFTWRAP_VID && vid === GIFTWRAP_VID);
+  // Variant gids that are "extras" (gift wrap) — hidden from the visible item list.
+  const isExtraLine = (vid: string) => !!GIFTWRAP_VID && vid === GIFTWRAP_VID;
 
   function visibleLines(cart: Cart | null) {
     return (cart?.lines ?? []).filter((l) => !isExtraLine(l.merchandise.id));
@@ -554,6 +540,9 @@ const extrasConfig = {
   }
 
   function render(cart: Cart | null) {
+    // First real render — swap the loading skeleton out for good.
+    const sk = $('cmSkeleton');
+    if (sk) sk.style.display = 'none';
     const hasItems = visibleLines(cart).length > 0;
     // Keep the layout (and saved list) visible when only saved items remain.
     const empty = !hasItems && getSaved().length === 0;
@@ -566,10 +555,6 @@ const extrasConfig = {
     renderThumbs(cart);
     renderSummary(cart);
     renderSaved();
-    // Protection tiles are owned by the picker (hydrate-once + explicit select),
-    // NOT re-derived per render — doing so raced the store's async settle and
-    // caused a snap-back (the "click twice" bug). Only reset on a fully empty cart.
-    if (!protectBusy && (cart?.lines.length ?? 0) === 0) setProtectUI('');
     // Checkout needs at least one cart line (saved-only carts can't check out).
     ($('cmCheckout') as HTMLButtonElement | null)?.toggleAttribute('disabled', !hasItems);
   }
@@ -664,7 +649,7 @@ const extrasConfig = {
   const giftToggleBtn = $('giftToggleBtn');
   const giftMsg = $('giftMsg') as HTMLTextAreaElement | null;
   // Add/remove the paid wrap line, coalescing clicks during the in-flight
-  // mutation (same pattern as protection). No-op when no wrap product.
+  // mutation. No-op when no wrap product.
   let gwBusy = false;
   let gwPending: boolean | null = null;
   async function applyGiftWrap(on: boolean) {
@@ -707,81 +692,7 @@ const extrasConfig = {
     giftTimer = setTimeout(() => syncAttrs({ gift_message: giftMsg.value.trim() || null }), 600);
   });
 
-  // ---- Order protection (radio tiers → real paid line + attribute) ----
   const lineByVariant = (vid: string) => $cart.get()?.lines.find((l) => l.merchandise.id === vid) ?? null;
-  // Which protection variant (if any) is currently in the cart. '' = none.
-  function currentProtectionVid(cart: Cart | null): string {
-    for (const p of PROTECT_PLANS) {
-      if (cart?.lines.some((l) => l.merchandise.id === p.variantId)) return p.variantId;
-    }
-    return '';
-  }
-  // Highlight the active tile ('' → the "none" tile).
-  function setProtectUI(activeVid: string) {
-    protectionGroup?.querySelectorAll<HTMLElement>('.cart-protection').forEach((el) => {
-      const plan = el.dataset.plan === 'none' ? '' : el.dataset.plan || '';
-      const on = plan === activeVid;
-      el.classList.toggle('active', on);
-      el.setAttribute('aria-checked', String(on));
-    });
-  }
-  // Reconcile the cart to exactly one (or zero) protection lines.
-  async function applyProtection(targetVid: string) {
-    // Drop any protection line that isn't the chosen tier (tiers are mutually exclusive).
-    for (const p of PROTECT_PLANS) {
-      if (p.variantId === targetVid) continue;
-      const line = lineByVariant(p.variantId);
-      if (line) await removeItem(line.id);
-    }
-    if (targetVid) {
-      if (!lineByVariant(targetVid)) await addItem(targetVid, 1, { open: false });
-      const name = PROTECT_PLANS.find((p) => p.variantId === targetVid)?.name ?? null;
-      await syncAttrs({ protection_plan: name });
-    } else {
-      await syncAttrs({ protection_plan: null });
-    }
-  }
-  // The cart mutation is a multi-second round-trip. Highlight INSTANTLY on every
-  // click, record the desired tier, and let a single worker drain to the latest
-  // choice — so clicks during an in-flight mutation are coalesced, never dropped
-  // (the old "click twice" bug: a guarded early-return swallowed the 2nd click).
-  let pendingTarget: string | null = null;
-  function selectProtection(targetVid: string) {
-    setProtectUI(targetVid); // instant, optimistic — always
-    pendingTarget = targetVid;
-    if (protectBusy) return; // a worker is already draining; it'll pick this up
-    protectBusy = true;
-    (async () => {
-      try {
-        while (pendingTarget !== null) {
-          const want = pendingTarget;
-          pendingTarget = null;
-          await applyProtection(want);
-        }
-        // Reconcile the highlight with the SETTLED cart: if a mutation failed
-        // (addItem/removeItem swallow errors), snap back to reality — never show
-        // a tier as selected when its line isn't actually in the cart.
-        setProtectUI(currentProtectionVid($cart.get()));
-      } finally {
-        protectBusy = false;
-      }
-    })();
-  }
-  function planFromCard(el: Element | null): string | null {
-    const card = el?.closest<HTMLElement>('.cart-protection');
-    if (!card) return null;
-    return card.dataset.plan === 'none' ? '' : card.dataset.plan || '';
-  }
-  protectionGroup?.addEventListener('click', (e) => {
-    const vid = planFromCard(e.target as Element);
-    if (vid !== null) selectProtection(vid);
-  });
-  protectionGroup?.addEventListener('keydown', (e) => {
-    const ke = e as KeyboardEvent;
-    if (ke.key !== 'Enter' && ke.key !== ' ') return;
-    const vid = planFromCard(ke.target as Element);
-    if (vid !== null) { e.preventDefault(); selectProtection(vid); }
-  });
 
   // ---- Hydrate extras from the server cart (once) ----
   let hydrated = false;
@@ -796,7 +707,6 @@ const extrasConfig = {
       giftBody?.classList.add('open');
       setGiftSwitch(true);
     }
-    setProtectUI(currentProtectionVid(cart));
   }
   $cart.subscribe(hydrate);
 

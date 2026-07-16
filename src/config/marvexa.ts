@@ -63,24 +63,22 @@ export const BRAND = {
 } as const;
 
 /**
- * Cart "extras" — gift wrap, order notes, and the protection plan on the cart
- * page. All reach the REAL Shopify cart and require ZERO gid-pasting:
+ * Cart "extras" — gift wrap and order notes on the cart page. Both reach the
+ * REAL Shopify cart and require ZERO gid-pasting:
  *
  *  - Order notes  → cart `note`        (works out of the box, no product)
  *  - Gift message → cart `attribute`   (works out of the box, no product)
- *  - Gift wrap / protection are PAID, so they need real Shopify products. The
- *    storefront finds them by **handle** (set below) at render time — create a
- *    product with the matching handle and it lights up automatically; no code
- *    edit, no variant gid. Shopify derives the handle from the title, so
+ *  - Gift wrap is PAID, so it needs a real Shopify product. The storefront
+ *    finds it by **handle** (set below) at render time — create a product
+ *    with the matching handle and it lights up automatically; no code edit,
+ *    no variant gid. Shopify derives the handle from the title, so
  *    "Gift Wrap" → `gift-wrap`. Override the handle here if yours differs.
  *
- * SETUP for each paid product (do this in Shopify admin):
+ * SETUP for the paid product (do this in Shopify admin):
  *   1. Create the product; confirm its handle matches `handle` below.
  *   2. PUBLISH it to the sales channel your Storefront token uses (Headless /
  *      Online Store) — unpublished products can't be added to the cart.
  *   3. Set Inventory → "Don't track quantity" (so it never shows sold out).
- *   4. Protection: add an option (e.g. "Plan") whose VALUES exactly match each
- *      plan's `optionValue` below — that's how a plan maps to its variant.
  *
  * A feature with `enabled: false`, or whose product/variant can't be found in
  * the store, is simply HIDDEN on the cart page (no broken non-charging toggle).
@@ -99,40 +97,6 @@ export const CART_EXTRAS = {
   orderNotes: {
     enabled: true,
     maxLength: 500,
-  },
-  protection: {
-    enabled: true,
-    /** Product handle of the protection product (Shopify slug). */
-    handle: "order-protection",
-    plans: [
-      // `none` is the always-present free default — no variant, no optionValue.
-      {
-        id: "none",
-        name: "No protection",
-        meta: "Standard 2-year manufacturer warranty",
-        price: 0,
-        best: false,
-        optionValue: "",
-      },
-      // `optionValue` must equal the Shopify variant's option value exactly.
-      // `name` is the display label; `optionValue` is the Shopify variant value.
-      {
-        id: "essential",
-        name: "Essential — 2 years",
-        meta: "Accidental damage + battery replacement",
-        price: 49,
-        best: false,
-        optionValue: "Essential",
-      },
-      {
-        id: "premium",
-        name: "Premium — 3 years",
-        meta: "Damage, theft, failure + priority replacement",
-        price: 99,
-        best: true,
-        optionValue: "Premium",
-      },
-    ],
   },
 } as const;
 

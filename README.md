@@ -24,7 +24,7 @@ Design direction: *Marvexa* — modern fashion editorial. **Plus Jakarta Sans** 
 8. [API routes](#api-routes)
 9. [Editable content (content collections)](#editable-content-content-collections)
 10. [Brand & feature config (`src/config/marvexa.ts`)](#brand--feature-config-srcconfigmarvexats)
-11. [Cart extras (gift wrap, notes, protection)](#cart-extras-gift-wrap-notes-protection)
+11. [Cart extras (gift wrap, notes)](#cart-extras-gift-wrap-notes)
 12. [Markets & multi-currency](#markets--multi-currency)
 13. [Customer accounts (login)](#customer-accounts-login)
 14. [Customising the design](#customising-the-design)
@@ -61,7 +61,7 @@ Design direction: *Marvexa* — modern fashion editorial. **Plus Jakarta Sans** 
 - **Collections** — index + per-collection product listing with sort and bidirectional cursor pagination.
 - **All products** — full catalogue listing with sort, faceted filters (price/category/colour/size/availability derived from the **real** catalogue), and pagination.
 - **Product (PDP)** — image gallery, variant + colour-swatch selector, quantity, **Add to cart** + **Buy it now**, rich-text details, specs / highlights / materials & care / reviews (from metafields), real-time stock + low-stock labels, **real Shopify Local Pickup** availability per variant, recommendations, sticky add-to-cart bar.
-- **Cart** — slide-over drawer **and** a full cart page; free-shipping progress bar, quantity/remove, discount codes, **gift wrap / order notes / gift message / protection plan** extras, subtotal, **Checkout** → Shopify hosted checkout.
+- **Cart** — slide-over drawer **and** a full cart page; free-shipping progress bar, quantity/remove, discount codes, **gift wrap / order notes / gift message** extras, subtotal, **Checkout** → Shopify hosted checkout.
 - **Search** — full results page (sort + pagination) and header instant search.
 - **Wishlist** — header drawer + full `/wishlist` page (client-side, `localStorage` `marvexa_wishlist`).
 - **Compare** — `/compare` side-by-side, add-to-cart from the table (client-side `localStorage` `marvexa_compare`).
@@ -195,8 +195,8 @@ The PDP's "Size Guide" button/modal only appears on products that have a real Sh
 
 **Per-product override (optional):** Settings → Custom data → Metafield definitions → **Products** → Add definition → Name `Size Chart` (key auto-fills `custom.size_chart`) → Type → **Metaobject** → pick the **Size Chart** definition → Storefront API access ON. Then on any product → Metafields → Size Chart → pick an entry.
 
-### 9. Cart-extra products (optional — see [Cart extras](#cart-extras-gift-wrap-notes-protection))
-- `gift-wrap` and `order-protection` products (paid extras). Created in admin, found by handle.
+### 9. Cart-extra products (optional — see [Cart extras](#cart-extras-gift-wrap-notes))
+- `gift-wrap` product (paid extra). Created in admin, found by handle.
 
 ### 10. Local pickup (optional — PDP pickup block)
 - The PDP shows a **real** "Free pickup available at …" block driven by Shopify **Local Pickup** (`storeAvailability`), per selected variant.
@@ -370,7 +370,7 @@ Single source of truth for stable brand identity referenced from code (section *
 
 > **Free-shipping meter (`freeShippingThreshold`).** Drives the cart "Add $X more to unlock FREE shipping" bar **and** the PDP's "Free Shipping" trust badge (both read this one value, so they can never drift out of sync with each other). Set a number (default `99`) to show them, or `0` / `null` to **turn both off and hide them** for stores with no free shipping. ⚠️ **Display only — it does not create a shipping rate.** If you keep it on, you **must** add a matching free-shipping rate in Shopify (Settings → Shipping and delivery → "Free, over $99"), or the storefront promises free shipping the customer never gets at checkout.
 
-- `CART_EXTRAS` — gift wrap / order notes / protection config (see below).
+- `CART_EXTRAS` — gift wrap / order notes config (see below).
 - `LIFESTYLE_CARDS` — `for-*` collection handles → icon + order for the shop-by-lifestyle grid. Icon names must exist in `ui/marvexa/Icon.astro`.
 - `NEW_ARRIVALS_COLLECTION_HANDLE` — the Shopify Collection handle the home "New Arrivals" section reads (default `new-arrivals`). See [Shopify store setup #2](#2-new-arrivals-collection-optional--falls-back-automatically).
 - `BEST_SELLERS_COLLECTION_HANDLE` — the Shopify Collection handle the home "Best Sellers" section reads (default `best-sellers`). See [Shopify store setup #3](#3-best-sellers-collection-optional--falls-back-automatically).
@@ -381,18 +381,17 @@ Single source of truth for stable brand identity referenced from code (section *
 
 ---
 
-## Cart extras (gift wrap, notes, protection)
+## Cart extras (gift wrap, notes)
 
-Three optional add-ons on the cart page. **All write to the real Shopify cart** — nothing is fake. Configured in `src/config/marvexa.ts` → `CART_EXTRAS`.
+Two optional add-ons on the cart page. **Both write to the real Shopify cart** — nothing is fake. Configured in `src/config/marvexa.ts` → `CART_EXTRAS`.
 
 | Extra | What it does | Needs a product? |
 |---|---|---|
 | **Order notes** | Saves to cart `note` → admin order **Notes** | No — works out of the box |
 | **Gift message** | Saves to cart `attribute` → admin order **Additional details**. Lives in the Gift Wrap box | No (shows only when Gift Wrap does) |
 | **Gift wrap** (paid) | Adds a real product line so the customer is **charged** | Yes |
-| **Protection plan** (paid) | Adds the chosen plan as a real product line (charged) | Yes |
 
-> Money can only be charged through a real Shopify **product** — a storefront cart can't add arbitrary fees. So the two paid extras are backed by products you create. They're looked up **by handle**, so it works on any store with no code edit. A paid extra is **hidden automatically** when its product isn't found, isn't published, or is sold out.
+> Money can only be charged through a real Shopify **product** — a storefront cart can't add arbitrary fees. So the paid extra is backed by a product you create. It's looked up **by handle**, so it works on any store with no code edit. It's **hidden automatically** when the product isn't found, isn't published, or is sold out.
 
 ### Setup — Gift Wrap
 1. **Products → Add product.** Title `Gift Wrap` (handle becomes `gift-wrap`, matching the config).
@@ -401,18 +400,10 @@ Three optional add-ons on the cart page. **All write to the real Shopify cart** 
 4. **Shipping → uncheck "This is a physical product."**
 5. **Status: Active**, and **publish it to the channel your Storefront token uses.** ⚠️ Unpublished = can't add to cart.
 
-### Setup — Order Protection
-1. **Products → Add product.** Title `Order Protection` (handle `order-protection`).
-2. Add a variant **option** (e.g. `Plan`) with values matching the config **exactly**:
-   - `Essential`
-   - `Premium`
-3. Set each variant's price (e.g. `49`, `99`).
-4. Untrack inventory, not a physical product, **Active + published**.
-
 ### Customising
-In `CART_EXTRAS`: `enabled: false` hides an extra; `handle` overrides the product slug; `protection.plans[].optionValue` must equal the Shopify variant's option value exactly (that's the mapping); `label`/`desc`/`maxLength` are display only — **prices shown come from the live variant**, not config.
+In `CART_EXTRAS`: `enabled: false` hides an extra; `handle` overrides the product slug; `label`/`desc`/`maxLength` are display only — **prices shown come from the live variant**, not config.
 
-**Where data lands for the merchant:** order notes → order **Notes**; gift message → order **Additional details**; gift wrap / protection → ordinary paid line items.
+**Where data lands for the merchant:** order notes → order **Notes**; gift message → order **Additional details**; gift wrap → an ordinary paid line item.
 
 ---
 
