@@ -40,8 +40,13 @@ const realOptions = (product.options ?? []).filter(
   (o) => !(o.name === 'Title' && o.optionValues.every((v) => v.name === 'Default Title')),
 );
 // A product needs the picker only when more than one option must be chosen
-// (e.g. Colour + Size). A colour-only product is fully resolved by the swatch.
-const needsPicker = canQuickAdd && variants.length > 1 && realOptions.length >= 2;
+// (e.g. Colour + Size) AND at least one variant is actually buyable — checked
+// across ALL variants, not just the first. `canQuickAdd` alone isn't enough
+// here: it only reflects the FIRST variant's stock, so a product whose first
+// variant (e.g. one colour) happens to be sold out while others aren't would
+// otherwise show no picker at all, silently blocking a purchasable product.
+const anyVariantAvailable = variants.some((v) => v.availableForSale);
+const needsPicker = !soldOut && anyVariantAvailable && variants.length > 1 && realOptions.length >= 2;
 
 // Colour option detection mirrors the PDP (real swatch value or a colour-ish name).
 const colorOpt = realOptions.find(
@@ -183,32 +188,30 @@ const eyebrow = product.productType?.trim() || product.vendor?.trim() || '';
     </div>
     <div class="prod-actions">
       {
-        canQuickAdd ? (
-          needsPicker ? (
-            <button
-              class="prod-quick"
-              data-add
-              data-pick
-              data-handle={product.handle}
-              data-name={product.title}
-              data-img={img?.url ?? ''}
-              data-brand={product.vendor ?? ''}
-              data-href={href}
-              data-currency={currency}
-              data-variants={pickerData}
-              data-options={optionData}
-            >
-              Select Options
-            </button>
-          ) : (
-            <button class="prod-quick" data-add data-variant-id={product.firstVariantId}>
-              Add to Bag
-            </button>
-          )
+        soldOut ? (
+          <a class="prod-quick" href={href}>View Product</a>
+        ) : needsPicker ? (
+          <button
+            class="prod-quick"
+            data-add
+            data-pick
+            data-handle={product.handle}
+            data-name={product.title}
+            data-img={img?.url ?? ''}
+            data-brand={product.vendor ?? ''}
+            data-href={href}
+            data-currency={currency}
+            data-variants={pickerData}
+            data-options={optionData}
+          >
+            Select Options
+          </button>
+        ) : canQuickAdd ? (
+          <button class="prod-quick" data-add data-variant-id={product.firstVariantId}>
+            Add to Bag
+          </button>
         ) : (
-          <a class="prod-quick" href={href}>
-            {soldOut ? 'View Product' : 'Add to Bag'}
-          </a>
+          <a class="prod-quick" href={href}>Add to Bag</a>
         )
       }
     </div>
