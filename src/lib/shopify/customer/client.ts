@@ -79,10 +79,15 @@ export function createCustomerClient(cookies: AstroCookies, origin: string): Cus
         clearTokens(cookies);
         throw new NotAuthenticatedError('Customer Account API returned 401');
       }
-
-      const json = (await res.json()) as GraphQLResponse<T>;
       if (!res.ok) {
         throw new Error(`Customer Account API HTTP ${res.status} ${res.statusText}`);
+      }
+
+      let json: GraphQLResponse<T>;
+      try {
+        json = (await res.json()) as GraphQLResponse<T>;
+      } catch {
+        throw new Error(`Customer Account API returned a non-JSON response (HTTP ${res.status})`);
       }
       if (json.errors?.length) {
         throw new Error(json.errors.map((e) => e.message).join('; '));
