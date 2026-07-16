@@ -73,6 +73,23 @@ export const PRODUCT_BY_HANDLE_QUERY = /* GraphQL */ `
       ratingCountMetafield: metafield(namespace: "reviews", key: "rating_count") {
         value
       }
+      # How many customers saved this product — merchant-set (custom.saves_count).
+      savesCountMetafield: metafield(namespace: "custom", key: "saves_count") {
+        value
+      }
+      # Optional per-product size chart override (Metaobject reference, type
+      # "size_chart") — takes priority over the productType-level fallback
+      # from SIZE_CHARTS_QUERY below.
+      sizeChartMetafield: metafield(namespace: "custom", key: "size_chart") {
+        reference {
+          ... on Metaobject {
+            fields {
+              key
+              value
+            }
+          }
+        }
+      }
       # Optional structured specs + highlights (custom metafields, JSON list).
       specsMetafield: metafield(namespace: "custom", key: "specifications") {
         value
@@ -91,6 +108,15 @@ export const PRODUCT_BY_HANDLE_QUERY = /* GraphQL */ `
       shippingReturnsMetafield: metafield(namespace: "custom", key: "shipping_returns") {
         value
         type
+      }
+      returnsPolicyMetafield: metafield(namespace: "custom", key: "returns_policy") {
+        value
+        type
+      }
+      # Per-product delivery-estimate override (days from order date) — falls
+      # back to DELIVERY_ESTIMATE_DAYS in config when unset.
+      processingDaysMetafield: metafield(namespace: "custom", key: "processing_days") {
+        value
       }
       # Optional individual reviews (JSON list) — populated by a reviews app.
       reviewsMetafield: metafield(namespace: "custom", key: "reviews") {
@@ -160,6 +186,25 @@ export const PRODUCT_BY_HANDLE_QUERY = /* GraphQL */ `
       seo {
         title
         description
+      }
+    }
+  }
+`;
+
+/**
+ * Every `size_chart` Metaobject entry — the productType-level fallback when a
+ * product has no direct `custom.size_chart` reference. Small, curated set
+ * (one entry per garment category), fetched in one call.
+ */
+export const SIZE_CHARTS_QUERY = /* GraphQL */ `
+  query SizeCharts($first: Int = 50) {
+    metaobjects(type: "size_chart", first: $first) {
+      nodes {
+        handle
+        fields {
+          key
+          value
+        }
       }
     }
   }

@@ -24,6 +24,18 @@ export const DEFAULT_LANGUAGE = "EN";
 /** @deprecated Use DEFAULT_COUNTRY / per-request `Astro.locals.market`. */
 export const MARKET_COUNTRY = DEFAULT_COUNTRY;
 
+/**
+ * Default "Order today for delivery by [date]" estimate on the PDP — days
+ * from today, real `Date` math computed client-side on every page load (not
+ * a fake countdown). Override per product via the `custom.processing_days`
+ * metafield (see README "Product metafields"); products without it fall
+ * back to this default.
+ */
+export const DELIVERY_ESTIMATE_DAYS = 5;
+
+/** Return window shown on the PDP trust badge ("Free Returns — N-day window"). Purely display — set your actual Shopify return policy separately in Settings → Policies. */
+export const RETURNS_WINDOW_DAYS = 30;
+
 export const BRAND = {
   name: "Marvexa",
   /** Shown in the <title> default and OG site name. */
@@ -135,6 +147,47 @@ export const BLOG = {
   handle: "news",
   authorMetafield: { namespace: "custom", key: "author" },
 } as const;
+
+/**
+ * Home "Best Sellers" section — a real Shopify Collection, curated in Admin
+ * (manual hand-picks, or automated with a "Total sold" descending rule) so
+ * merchants control the row without a code deploy. Create a collection with
+ * this exact handle; if it's missing or empty, `src/pages/index.astro` falls
+ * back to the top 3 products from a `sortKey: BEST_SELLING` catalogue query.
+ */
+export const BEST_SELLERS_COLLECTION_HANDLE = "best-sellers";
+
+/**
+ * Home "New Arrivals" section — a real Shopify Collection, curated in Admin
+ * (manual order, or automated e.g. sorted "Date, new to old") so merchants
+ * control the row without a code deploy. Also drives the section footer's
+ * "View All" link + total count. Create a collection with this exact handle;
+ * if it's missing or empty, `src/pages/index.astro` falls back to the newest
+ * products from a `sortKey: CREATED_AT` catalogue query.
+ */
+export const NEW_ARRIVALS_COLLECTION_HANDLE = "new-arrivals";
+
+/**
+ * Home "Shop the Look" section — one real Shopify Collection per look.
+ * Collection title = look label, collection image = the editorial look
+ * photo, member products (in the collection's Admin sort order) = the
+ * outfit pieces. Array order here = display order on the homepage. A
+ * missing/empty collection is skipped (that look just doesn't render).
+ *
+ * Shopify has no per-product x/y coordinate on a collection, so hotspot pin
+ * placement can't be curated in Admin — each collection's Nth product maps
+ * to the Nth entry in `LOOKBOOK_HOTSPOT_SLOTS` below instead (same 3 pin
+ * positions reused for every look). Add more handles/slots if a look needs
+ * more than 3 pinned products.
+ */
+export const LOOKBOOK_COLLECTION_HANDLES = ["lookbook1", "lookbook2", "lookbook3"];
+
+/** Fixed hotspot pin positions (top/left % over the look photo, cardLeft = popup card opens to the left). Edit to reposition all looks at once. */
+export const LOOKBOOK_HOTSPOT_SLOTS = [
+  { top: "30%", left: "38%", cardLeft: false },
+  { top: "62%", left: "32%", cardLeft: false },
+  { top: "72%", left: "78%", cardLeft: true },
+] as const;
 
 /**
  * "Shop by lifestyle" presentation map. Cards are real Shopify `for-*`

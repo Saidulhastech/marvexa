@@ -1,12 +1,13 @@
 ---
 // ============================================================
 //  Shop the Look (Marvexa) — curated outfit looks, LIVE Shopify data.
-//  Each look's hotspots resolve to real products (pinned by handle or
-//  filled from best-sellers in src/pages/index.astro). Name / price /
-//  image and the inline size + colour variant pickers all come from
-//  Shopify. "Add Complete Look" adds every selected variant in one go.
-//  Editorial bits (look photo, label, pin coordinates) live in
-//  src/content/lookbook.yaml.
+//  Each look is a real Shopify Collection (see LOOKBOOK_COLLECTION_HANDLES
+//  in src/config/marvexa.ts): collection title = label, collection image =
+//  look photo, member products = the outfit pieces. Name / price / image
+//  and the inline size + colour variant pickers all come from Shopify.
+//  "Add Complete Look" adds every selected variant in one go. Hotspot pin
+//  coordinates are fixed presets (LOOKBOOK_HOTSPOT_SLOTS), resolved in
+//  src/pages/index.astro.
 // ============================================================
 import { Image } from 'astro:assets';
 import { formatMoney } from '~/lib/money';

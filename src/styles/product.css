@@ -69,6 +69,10 @@
 .pm-rating-score { font-family: var(--fb); font-size: 13px; font-weight: 700; color: var(--text); }
 .pm-rating-ct { font-family: var(--fb); font-size: 13px; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .pm-rating-ct:hover { color: var(--text); }
+.pm-saves-wrap { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; }
+.pm-rating-sep { width: 1px; height: 14px; background: var(--border); }
+.pm-saves { display: inline-flex; align-items: center; gap: 6px; font-family: var(--fb); font-size: 13px; color: var(--muted); }
+.pm-saves-icon { width: 14px; height: 14px; color: var(--rust); flex-shrink: 0; }
 
 .pm-priceblock { margin-top: 20px; }
 .pm-pricerow { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }

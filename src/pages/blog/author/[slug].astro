@@ -25,6 +25,27 @@ const CAT_STYLE: Record<string, string> = {
   'Behind MARVEXA': 'background:rgba(80,80,80,.1);color:var(--muted);',
 };
 const catStyle = (c?: string) => (c && CAT_STYLE[c]) || CAT_STYLE['Behind MARVEXA'];
+
+// Social icon per known platform (matched by field key, case-insensitive); anything
+// else — a new field added in Shopify — falls back to a generic link glyph, so a
+// merchant can add e.g. "Instagram" or "LinkedIn" in Shopify with zero code changes.
+const SOCIAL_ICONS: Record<string, string> = {
+  twitter:
+    '<path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/>',
+  facebook: '<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>',
+  instagram:
+    '<rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>',
+  linkedin:
+    '<path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>',
+  youtube:
+    '<path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>',
+  pinterest:
+    '<circle cx="12" cy="12" r="10"/><path d="M8 21l4-9M12 15c1.5 0 4-1 4-4.5A4.5 4.5 0 0 0 11.5 6c-3 0-5 2-5 5 0 1.2.5 2 1 2.5"/>',
+  tiktok:
+    '<path d="M9 12a4 4 0 1 0 4 4V4c.5 2 2.5 4 5 4"/>',
+};
+const linkGlyph = '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>';
+const socialIcon = (key: string) => SOCIAL_ICONS[key.toLowerCase()] ?? linkGlyph;
 const fmt = (d: string) =>
   new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 const initials = (name: string) =>
@@ -54,47 +75,49 @@ const topics = [...new Set(posts.flatMap((p) => p.tags))].slice(0, 6);
                   <polyline points="9 18 15 12 9 6" />
                 </svg><span class="cart-bc-cur">{author.name}</span></nav>
               <div class="cart-hd-perks">
-                {author.twitter && (
-                  <a class="cart-hd-perk" href={`https://twitter.com/${author.twitter.replace('@', '')}`}
+                {author.socialLinks.map((s) => (
+                  <a class="cart-hd-perk" href={s.url}
                     target="_blank" rel="noopener" style="text-decoration:none;">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <path
-                        d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z" />
-                    </svg> {author.twitter}</a>
-                )}
+                      stroke-linecap="round" stroke-linejoin="round" set:html={socialIcon(s.key)} />
+                    {s.label}</a>
+                ))}
               </div>
             </div>
-            <div class="cart-hd-hero">
-              <div class="cart-hd-hero-left">
-                <div class="au-id-row">
-                  {author.avatar ? (
-                    <img class="au-avatar" src={author.avatar} alt={author.name} />
-                  ) : (
-                    <div class="au-avatar au-avatar--fallback">{initials(author.name)}</div>
+            <div class="cart-hd-hero au-hero">
+              <div class="au-profile-card">
+                <div class="au-profile-left">
+                  <div class="au-id-row">
+                    {author.avatar ? (
+                      <img class="au-avatar" src={author.avatar} alt={author.name} />
+                    ) : (
+                      <div class="au-avatar au-avatar--fallback">{initials(author.name)}</div>
+                    )}
+                    <div>
+                      <div class="cart-hd-eyebrow">Author</div>
+                      <h1 class="cart-hd-title">{author.name}</h1>
+                      {author.role && <p class="cart-hd-sub">{author.role}</p>}
+                    </div>
+                  </div>
+                  {author.bio && <p class="au-bio">{author.bio}</p>}
+                  {topics.length > 0 && (
+                    <div class="au-topics">
+                      <span class="au-topics-label">Writes about</span>
+                      {topics.map((t) => <span class="au-topic-pill">{t}</span>)}
+                    </div>
                   )}
-                  <div>
-                    <div class="cart-hd-eyebrow">Author</div>
-                    <h1 class="cart-hd-title">{author.name}</h1>
-                    {author.role && <p class="cart-hd-sub">{author.role}</p>}
-                  </div>
                 </div>
-                {author.bio && <p class="au-bio">{author.bio}</p>}
-                {topics.length > 0 && (
-                  <div class="au-topics">
-                    {topics.map((t) => <span class="bl-cat" style="background:var(--bg2);color:var(--muted);">{t}</span>)}
+                <div class="au-profile-divider" aria-hidden="true"></div>
+                <div class="au-profile-stats">
+                  <div class="au-stat">
+                    <div class="au-stat-num">{posts.length}</div>
+                    <div class="au-stat-lbl">Article{posts.length === 1 ? '' : 's'}</div>
                   </div>
-                )}
-              </div>
-              <div class="cart-hd-stats">
-                <div class="cart-hd-stat">
-                  <div class="cart-hd-stat-num">{posts.length}</div>
-                  <div class="cart-hd-stat-lbl">Article{posts.length === 1 ? '' : 's'}</div>
-                </div>
-                <div class="cart-hd-stat-div"></div>
-                <div class="cart-hd-stat">
-                  <div class="cart-hd-stat-num">{topics.length}</div>
-                  <div class="cart-hd-stat-lbl">Topic{topics.length === 1 ? '' : 's'}</div>
+                  <div class="au-stat-div"></div>
+                  <div class="au-stat">
+                    <div class="au-stat-num">{topics.length}</div>
+                    <div class="au-stat-lbl">Topic{topics.length === 1 ? '' : 's'}</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -176,26 +199,73 @@ const topics = [...new Set(posts.flatMap((p) => p.tags))].slice(0, 6);
 }
 
 <style>
-  /* Author identity — avatar + name row inside the shared header. */
-  .au-id-row { display: flex; align-items: center; gap: 18px; }
+  /* Author identity — avatar + name row. */
+  .au-id-row { display: flex; align-items: center; gap: 20px; }
   .au-avatar {
-    width: 72px; height: 72px; border-radius: 50%; object-fit: cover;
-    border: 2px solid var(--border); flex-shrink: 0;
+    width: 80px; height: 80px; border-radius: 50%; object-fit: cover;
+    border: 3px solid var(--bg); box-shadow: 0 0 0 1px var(--border), 0 6px 18px rgba(0, 0, 0, .08);
+    flex-shrink: 0;
   }
   .au-avatar--fallback {
     display: flex; align-items: center; justify-content: center;
     background: var(--card); object-fit: initial;
-    font-family: var(--fh); font-size: 24px; font-weight: 700; color: var(--text);
+    font-family: var(--fh); font-size: 25px; font-weight: 700; color: var(--text);
   }
+
+  /* One unified profile card — identity, bio, topics and stats all live in the
+     same bounded surface so the header reads as a single composed block
+     instead of separate floating pieces with dead space between them. */
+  .au-hero { align-items: stretch; }
+  .au-profile-card {
+    display: flex; align-items: center; gap: 40px;
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 20px; padding: 34px 40px;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, .05);
+  }
+  .au-profile-left { flex: 1; min-width: 0; }
   .au-bio {
-    margin: 20px 0 0; max-width: 560px;
+    margin: 18px 0 0; max-width: 58ch;
     font-family: var(--fb); font-size: 14px; line-height: 1.7; color: var(--muted);
   }
-  .au-topics { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .au-topics { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 16px; }
+  .au-topics-label {
+    font-family: var(--fb); font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--muted); margin-right: 2px;
+  }
+  .au-topic-pill {
+    display: inline-block; font-family: var(--fb); font-size: 10px; font-weight: 700;
+    letter-spacing: .6px; text-transform: uppercase; color: var(--accent);
+    background: rgba(122, 143, 58, .1); border: 1px solid rgba(122, 143, 58, .22);
+    border-radius: 100px; padding: 5px 13px; transition: background var(--ease), border-color var(--ease);
+  }
+  .au-topic-pill:hover { background: var(--accent); color: var(--white); border-color: var(--accent); }
+
+  /* Divider + stats — sits inside the same card, right-aligned, instead of a
+     separate box floating off in empty space. */
+  .au-profile-divider { width: 1px; align-self: stretch; background: var(--border); flex-shrink: 0; }
+  .au-profile-stats { display: flex; align-items: center; gap: 30px; flex-shrink: 0; }
+  .au-stat { text-align: center; }
+  .au-stat-num {
+    font-family: var(--fh); font-size: 30px; font-weight: 700;
+    letter-spacing: -1px; color: var(--text); line-height: 1;
+  }
+  .au-stat-lbl {
+    font-family: var(--fb); font-size: 10px; font-weight: 500; letter-spacing: .4px;
+    text-transform: uppercase; color: var(--muted); margin-top: 5px;
+  }
+  .au-stat-div { width: 1px; height: 32px; background: var(--border); }
+
   .au-empty { color: var(--muted); padding: 32px 0; font-family: var(--fb); }
+
+  @media (max-width: 860px) {
+    .au-profile-card { flex-direction: column; align-items: stretch; gap: 24px; padding: 28px 28px 26px; }
+    .au-profile-divider { width: auto; height: 1px; align-self: stretch; }
+    .au-profile-stats { align-self: stretch; justify-content: space-around; }
+  }
 
   @media (max-width: 600px) {
     .au-id-row { gap: 14px; }
-    .au-avatar { width: 56px; height: 56px; }
+    .au-profile-card { padding: 22px 20px; border-radius: 16px; }
+    .au-avatar { width: 60px; height: 60px; }
   }
 </style>

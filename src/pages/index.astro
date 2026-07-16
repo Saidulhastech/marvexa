@@ -5,11 +5,21 @@
 //  presentational sections. The Shopify data layer (getProducts) is
 //  used as-is — never modified.
 // ============================================================
-import { getCollection } from 'astro:content';
 import Layout from '~/layouts/Layout.astro';
-import { getProducts, getProduct, getAllCollections, getCollectionCount } from '~/lib/shopify';
+import {
+  getProducts,
+  getAllCollections,
+  getCollectionCount,
+  getCollection as getShopifyCollection,
+} from '~/lib/shopify';
 import { applyMarketCache } from '~/lib/market';
-import type { ProductCard, Collection, Product } from '~/lib/shopify/types';
+import {
+  BEST_SELLERS_COLLECTION_HANDLE,
+  NEW_ARRIVALS_COLLECTION_HANDLE,
+  LOOKBOOK_COLLECTION_HANDLES,
+  LOOKBOOK_HOTSPOT_SLOTS,
+} from '~/config/marvexa';
+import type { ProductCard, Collection } from '~/lib/shopify/types';
 
 import Hero from '~/components/home/marvexa/Hero.astro';
 import Marquee from '~/components/home/marvexa/Marquee.astro';
@@ -60,11 +70,25 @@ if (!loadError) {
   applyMarketCache(Astro.response.headers, market);
 }
 
-// Best Sellers = genuine BEST_SELLING top 3. New Arrivals = newest products,
+// Best Sellers = the real `best-sellers` Shopify Collection (merchant-curated
+// in Admin). Falls back to top BEST_SELLING catalogue products if the
+// collection doesn't exist yet or is empty. New Arrivals = newest products,
 // minus any that are also in the best-sellers row so nothing shows twice.
-const bestSellers = products.slice(0, 3);
+let bestSellers = products.slice(0, 3);
+if (!loadError) {
+  try {
+    const bsCollection = await getShopifyCollection(
+      { handle: BEST_SELLERS_COLLECTION_HANDLE, pageSize: 3, sortKey: 'BEST_SELLING' },
+      market,
+    );
+    if (bsCollection?.products.items.length) {
+      bestSellers = bsCollection.products.items;
+    }
+  } catch (err) {
+    console.error('[home] Best Sellers collection load failed:', (err as Error).message);
+  }
+}
 const bestSellerIds = new Set(bestSellers.map((p) => p.id));
-const newArrivals = newestProducts.filter((p) => !bestSellerIds.has(p.id)).slice(0, 8);
 
 // Aggregate review data for the Best-Sellers proof strip (real, not hardcoded).
 const ratedProducts = products.filter((p) => p.rating != null);
@@ -73,59 +97,58 @@ const ratingAvg = ratedProducts.length
   : null;
 const reviewTotal = products.reduce((sum, p) => sum + (p.ratingCount ?? 0), 0) || null;
 
-// ── Shop the Look — resolve each look's hotspots to real Shopify products ──
-// Pinned slots (handle set) fetch by handle; blank slots fall back to best-
-// sellers filled in order with no repeats. Editorial coords/labels/photo come
-// from the lookbook YAML; product name/price/image/variants are live Shopify.
-type LookProduct = ProductCard | Product;
-interface ResolvedLookItem { top: string; left: string; cardLeft: boolean; product: LookProduct | null }
+// ── Shop the Look — one real Shopify Collection per look (config: marvexa.ts).
+// Products + their Admin sort order are live Shopify; hotspot pin positions
+// are fixed presets (LOOKBOOK_HOTSPOT_SLOTS) applied by product order, since
+// a collection has no per-product x/y field. A missing/empty collection is
+// skipped, not shown broken.
+interface ResolvedLookItem { top: string; left: string; cardLeft: boolean; product: ProductCard | null }
 interface ResolvedLook { id: string; label: string; image: string; items: ResolvedLookItem[] }
 let looks: ResolvedLook[] = [];
 try {
-  const entries = (await getCollection('lookbook')).sort((a, b) => a.data.order - b.data.order);
-  const flat = entries.flatMap((e) => e.data.items);
-  // Fetch every pinned handle concurrently (null for blank slots).
   const fetched = await Promise.all(
-    flat.map((it) => (it.handle ? getProduct(it.handle, market).catch(() => null) : Promise.resolve(null))),
+    LOOKBOOK_COLLECTION_HANDLES.map((handle) =>
+      getShopifyCollection({ handle, pageSize: LOOKBOOK_HOTSPOT_SLOTS.length }, market).catch(() => null),
+    ),
   );
-  // Best-seller pool for blank slots — never reuse a product pinned by handle,
-  // and skip sold-out products so an auto-filled hotspot is always purchasable
-  // (a sold-out slot can't join "Add Complete Look"). Pinned handles are the
-  // curator's call and are left as-is (addAll skips them gracefully).
-  const pinnedHandles = new Set(flat.map((it) => it.handle).filter(Boolean) as string[]);
-  const pool = products.filter((p) => !pinnedHandles.has(p.handle) && p.availableForSale !== false);
-  let k = 0; // walks `fetched` in flatten order
-  let ptr = 0; // walks the fallback pool
-  looks = entries.map((e) => ({
-    id: e.id,
-    label: e.data.label,
-    image: e.data.image,
-    items: e.data.items.map((it) => {
-      const product = fetched[k++] ?? pool[ptr++] ?? null;
-      return { top: it.top, left: it.left, cardLeft: it.cardLeft, product };
-    }),
-  }));
+  looks = fetched
+    .filter((c): c is NonNullable<typeof c> => !!c && c.products.items.length > 0)
+    .map((c) => ({
+      id: c.handle,
+      label: c.title,
+      image: c.image?.url ?? '',
+      items: c.products.items.map((product, i) => ({ ...LOOKBOOK_HOTSPOT_SLOTS[i], product })),
+    }));
 } catch (err) {
   console.error('[home] Lookbook load failed:', (err as Error).message);
 }
 
-// Real "New Arrivals" collection (if the store has one) drives the footer's
-// total count + "View All" link; otherwise fall back to the full shop.
-const naCollection = collections.find(
-  (c) => /new[\s-]?arrival/i.test(c.handle) || /new\s*arrival/i.test(c.title),
-);
-const naHref = naCollection ? `/collections/${naCollection.handle}` : '/products';
+// New Arrivals = the real `new-arrivals` Shopify Collection (merchant-curated
+// order in Admin — respects whatever sort the collection itself uses). Falls
+// back to the newest-created catalogue products, minus anything already shown
+// in Best Sellers, if the collection doesn't exist yet or is empty. Also
+// drives the section footer's total count + "View All" link.
+let newArrivals = newestProducts.filter((p) => !bestSellerIds.has(p.id)).slice(0, 8);
+let naHref = '/products';
 let naTotal: number | undefined;
 let naTotalPlus = false;
-if (naCollection) {
+if (!loadError) {
   try {
-    const c = await getCollectionCount(naCollection.handle);
-    if (c) {
-      naTotal = c.count;
-      naTotalPlus = c.plus;
+    const naCollection = await getShopifyCollection(
+      { handle: NEW_ARRIVALS_COLLECTION_HANDLE, pageSize: 12 },
+      market,
+    );
+    if (naCollection?.products.items.length) {
+      newArrivals = naCollection.products.items.filter((p) => !bestSellerIds.has(p.id)).slice(0, 8);
+      naHref = `/collections/${NEW_ARRIVALS_COLLECTION_HANDLE}`;
+      const c = await getCollectionCount(NEW_ARRIVALS_COLLECTION_HANDLE);
+      if (c) {
+        naTotal = c.count;
+        naTotalPlus = c.plus;
+      }
     }
-  } catch {
-    /* footer still shows "Showing N new styles" without a total */
+  } catch (err) {
+    console.error('[home] New Arrivals collection load failed:', (err as Error).message);
   }
 }
 ---

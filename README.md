@@ -65,13 +65,13 @@ Design direction: *Marvexa* — modern fashion editorial. **Plus Jakarta Sans** 
 - **Search** — full results page (sort + pagination) and header instant search.
 - **Wishlist** — header drawer + full `/wishlist` page (client-side, `localStorage` `marvexa_wishlist`).
 - **Compare** — `/compare` side-by-side, add-to-cart from the table (client-side `localStorage` `marvexa_compare`).
-- **Blog (Journal)** — Shopify's native blog. Posts, tags, and author profiles (name/role/bio/avatar/twitter) are all managed in Shopify admin — see [Blog (Journal) setup](#8-blog-journal--shopifys-native-blog).
+- **Blog (Journal)** — Shopify's native blog. Posts, tags, and author profiles (name/role/bio/avatar/twitter) are all managed in Shopify admin — see [Blog (Journal) setup](#12-blog-journal--shopifys-native-blog).
 - **Static pages** — About, Contact (demo form), plus Shopify CMS pages at `/pages/[handle]`.
 
 **Account & platform**
 - **Account** — Shopify Customer Account API (OAuth 2.0 + PKCE) login / logout / order overview.
 - **Multi-currency** — active market resolved per-request (cookie → `cf-ipcountry` → default), threaded into catalogue prices and the cart's buyer identity so currency never drifts. See [Markets & multi-currency](#markets--multi-currency).
-- **Navigation** — sticky header with Women/Men mega menus + mobile nav. Menu structure (columns/labels) is hardcoded in `Header.astro`, **not** driven by Shopify collections; every link points at a real `/products` filter (`?cat=`, `?mat=`, `?max=`) computed from the live catalogue, and the "X% Off" sale badge shows the actual deepest live markdown (hidden when nothing's on sale). See [store setup #2](#shopify-store-setup) for what this means for adding new categories.
+- **Navigation** — sticky header with Women/Men mega menus + mobile nav. Menu structure (columns/labels) is hardcoded in `Header.astro`, **not** driven by Shopify collections; every link points at a real `/products` filter (`?cat=`, `?mat=`, `?max=`) computed from the live catalogue, and the "X% Off" sale badge shows the actual deepest live markdown (hidden when nothing's on sale). See [store setup #5](#shopify-store-setup) for what this means for adding new categories.
 - Custom 404, SEO meta + Open Graph + JSON-LD, sitemap, `robots.txt`, accessibility (skip link, focus-trapped drawers, WCAG AA contrast), reduced-motion support.
 
 ---
@@ -114,30 +114,52 @@ Server-only secrets (no `PUBLIC_` prefix → **never shipped to the browser**). 
 This is what turns demo placeholders into a live store. Nothing here needs code edits — it's all data you create in the Shopify admin. The template looks features up **by handle / tag / metafield**, so each lights up automatically when the matching data exists, and **hides itself cleanly when it doesn't** (no broken toggles).
 
 ### 1. Products & collections (required)
-- **Publish** all products and collections to the same sales channel your Storefront token belongs to (Headless / Online Store). Unpublished items are invisible to the API.
-- The home page pulls **new arrivals** and **best-sellers** from your catalogue automatically; a **sale** item = a product with a compare-at price.
+- **Publish** all products and collections to the same sales channel your Storefront token belongs to (Headless / Online Store). Unpublished items are invisible to the API — this is the #1 cause of "I created it in admin but it's not showing" (see "Shop the Look collections" below, a common trip-up).
+- A **sale** item = a product with a compare-at price.
 
-### 2. Navigation
+### 2. New Arrivals collection (optional — falls back automatically)
+- The home page's "New Arrivals" section reads a real Shopify **Collection** with handle **`new-arrivals`** (`NEW_ARRIVALS_COLLECTION_HANDLE` in `src/config/marvexa.ts`), up to 8 products (fewer if any overlap with Best Sellers, which are excluded so nothing shows twice).
+- Sort it however you like in admin — **Manual** for hand-picked order, or **Automated** (e.g. "Date, new to old") to self-update. The storefront just reads the collection's own order.
+- Also drives the section footer's total count + "View All" link (→ `/collections/new-arrivals`).
+- If the collection doesn't exist yet, is empty, or isn't published to your Storefront channel, the section **falls back automatically** to the newest-created products from a live `sortKey: CREATED_AT` catalogue query, and "View All" points at `/products` instead — never a broken/empty section.
+
+### 3. Best Sellers collection (optional — falls back automatically)
+- The home page's "Best Sellers" section reads a real Shopify **Collection** with handle **`best-sellers`** (`BEST_SELLERS_COLLECTION_HANDLE` in `src/config/marvexa.ts`), top 3 products.
+- Two ways to run it: a **Manual** collection you hand-pick and drag-order, or an **Automated** one with a "Total sold" descending rule that self-updates. Either works — the storefront just reads whatever's in it (respects the collection's own sort/manual order).
+- If the collection doesn't exist yet, is empty, or isn't published to your Storefront channel, the section **falls back automatically** to the top 3 products from a live `sortKey: BEST_SELLING` catalogue query — never a broken/empty section.
+
+### 4. Shop the Look collections (optional — falls back to nothing shown)
+- The home page's "Shop the Look" section is **3 real Shopify Collections**, one per look: handles **`lookbook1`**, **`lookbook2`**, **`lookbook3`** (`LOOKBOOK_COLLECTION_HANDLES` in `src/config/marvexa.ts`). Add more handles there if you want a 4th+ look.
+- Per collection: **Title** → the look's on-page label, **Collection image** → the editorial look photo, **member products** (up to 3, in the collection's own manual sort order) → the outfit pieces shown as hotspot pins on the photo.
+- **Publish every one of the 3 collections** to your Storefront sales channel — a collection that exists in admin but isn't published returns nothing to the API and that look is silently skipped (this bites people: creating the collection isn't enough, it must be *published*).
+- Shopify has no per-product x/y coordinate on a collection, so hotspot pin position on the photo is a **fixed preset** in code (`LOOKBOOK_HOTSPOT_SLOTS`, same config file) applied by product order — 1st product → pin 1, 2nd → pin 2, 3rd → pin 3, same 3 positions reused for every look. Edit that constant to reposition pins for your photos.
+- A missing/empty/unpublished look collection is simply skipped — the other looks still render.
+
+### 5. Navigation
 - The mega-menu structure (Women/Men columns, sub-category labels) is **hardcoded** in `src/components/layout/marvexa/Header.astro` — creating a Shopify collection does **not** add it to the nav. Each link is generated as `/products?cat=<lowercased productType>` (or `?mat=`/`?max=` for the material/price shortcuts), matching the same real `productType` values the `/products` sidebar filters read.
 - To add a category to the mega menu, edit the `MEGAS` array in `Header.astro` — a label only works if a real product in your catalogue has a matching `productType`; otherwise the link filters to zero results.
 - The "X% Off" badges and the `/collections` index/pages **are** live: the mega menu's sale badge scans the real catalogue for the deepest `compareAtPrice` markdown, and `/collections`, `/collections/[handle]` are separate routes still driven entirely by your published Shopify collections (see [Pages](#pages)).
 
-### 3. "Shop by lifestyle" collections (scaffolded, not wired up)
+### 6. "Shop by lifestyle" collections (scaffolded, not wired up)
 - The data layer already splits `for-*`-handle collections out from the rest (`getHomeCollectionGroups()` in `lib/shopify/services/collections.ts`), and `src/config/marvexa.ts` → `LIFESTYLE_CARDS` maps handle → icon/order for a future "Shop by lifestyle" grid.
 - **Nothing currently renders it** — no page or component calls `getHomeCollectionGroups()`. Creating `for-*` collections in Shopify has no visible effect on the storefront today. Wire it into a home component (mirroring how `Categories.astro` consumes the plain collections list) if you want to use it.
 
-### 4. Product metafields (optional — enrich the PDP)
-All `reviews` or `custom` namespace metafields; absent ones are simply skipped.
+### 7. Product metafields (optional — enrich the PDP)
+All `reviews` or `custom` namespace metafields; absent ones are simply skipped. Every "List of Single line text" field below follows the same setup: Settings → Custom data → Metafield definitions → **Products** → Add definition → Name it (key auto-fills, must match the table exactly) → Type **Single line text** → switch the cardinality dropdown next to the type (labeled "One") to **List** → toggle **Storefront API access** ON → Save. Then per product → Metafields → add one row per bullet.
 
-| Metafield | Powers |
-|---|---|
-| `reviews.rating` | Star rating on cards + PDP |
-| `reviews.rating_count` | Review count |
-| `custom.specifications` | PDP spec table (label/value rows) |
-| `custom.highlights` | PDP highlight bullets |
-| `custom.materials_care` | PDP "Materials & care" panel |
-| `custom.shipping_returns` | PDP "Shipping & returns" panel |
-| `custom.reviews` (or `reviews.reviews`) | Individual review entries |
+| Metafield | Type | Powers | Fallback when unset |
+|---|---|---|---|
+| `reviews.rating` | Decimal | Star rating on cards + PDP | Hidden |
+| `reviews.rating_count` | Integer | Review count | Hidden |
+| `custom.specifications` | JSON *(or List of Single line text `Label: Value`)* | PDP spec table (label/value rows) | Falls back to real Vendor/Type/SKU fields only — never fabricated. Card hides entirely if none of that exists either |
+| `custom.highlights` | List of Single line text | PDP Product Description bullet list | **Hidden** — no fallback (tags are filter facets, not customer copy, so they're deliberately never shown here) |
+| `custom.materials_care` | List of Single line text | PDP "Materials & Care" accordion | Generic boilerplate text (same on every product until you set this) |
+| `custom.shipping_returns` | List of Single line text | PDP "Shipping & Returns" **accordion** (left column, under Materials & Care) | Generic boilerplate text |
+| `custom.returns_policy` | List of Single line text | PDP "Returns Policy" **sidebar card** (right column — a separate block from the Shipping & Returns accordion, same idea, different spot on the page) | Generic boilerplate text |
+| `custom.reviews` (or `reviews.reviews`) | JSON | Individual review entries | Hidden |
+| `custom.saves_count` | Integer | "N people saved this" next to the rating row. Merchant-set (no live wishlist tracking backend) | Hidden |
+| `custom.size_chart` | Metaobject reference (type `size_chart`) | Pins an exact size chart to this one product, overriding the productType-level match | Falls back to the productType match, then the static universal chart — see [Size Guide setup #8](#8-size-guide-optional--falls-back-to-a-static-chart) |
+| `custom.processing_days` | Integer | Per-product override for the "Order today for delivery by [date]" estimate | Falls back to `DELIVERY_ESTIMATE_DAYS` in [config](#brand--feature-config-srcconfigmarvexats) (default `5`) |
 
 The `reviews.rating` / `reviews.rating_count` fields are also written by review apps (Judge.me, Yotpo, Shopify Product Reviews) — install one and ratings appear with no extra work.
 
@@ -147,17 +169,43 @@ The `reviews.rating` / `reviews.rating_count` fields are also written by review 
 3. Judge.me admin → turn on **"Enable product metafields"** so the aggregate rating/count sync to the `reviews.rating` / `reviews.rating_count` metafields above.
 Without `JUDGEME_PRIVATE_TOKEN` set, the PDP just skips the review cards (`judgemeConfigured()` returns false) — no error, no broken UI.
 
-### 5. Cart-extra products (optional — see [Cart extras](#cart-extras-gift-wrap-notes-protection))
+> **"You may also like" needs zero setup.** It's Shopify's native `productRecommendations` API — algorithmic (based on sales data / collection / tags / product type), no collection to create, no metafield. Section just hides if Shopify returns none.
+
+### 8. Size Guide (optional — falls back to a static chart)
+The PDP's "Size Guide" button/modal only appears on products that have a real Shopify size option (no fake button on sizeless products — `hasSizeOption` in `pages/products/[handle].astro`). Its table content resolves in priority order:
+
+1. **The product's own `custom.size_chart` metafield** (see the metafields table above) — an exact override for that one product.
+2. **A `size_chart` Metaobject whose `product_type` matches the product's Shopify Type field** (Organization → Type on the product — not the standardized "Category" field, and not tags).
+3. **A static universal chart baked into the page** (XS–XXL, Bust/Waist/Hip/Shoulder) — always available, so Size Guide never breaks even with zero setup.
+
+**One-time setup — create the `Size Chart` Metaobject definition:**
+1. Settings → **Custom data** → Metaobject definitions → **Add definition**.
+   - Name: `Size Chart` (type auto-fills `size_chart` — must stay exactly that)
+   - Fields: `title` (Single line text, required — internal label only), `product_type` (Single line text, **not** required), `note` (Single line text, **not** required), `rows` (**JSON**, required)
+   - Toggle **Storefronts API access** ON — required, or the storefront can't read entries.
+   - Save.
+2. Add an entry per garment category. `rows` is a JSON array of row objects — the **first row's keys become the table's columns**, so different charts can use different columns (e.g. Waist/Hip/Inseam for trousers vs Bust/Waist/Hip/Shoulder for tops):
+   ```json
+   [
+     {"Size":"XS","Waist":"64–68","Hip":"88–92","Inseam":"76"},
+     {"Size":"S","Waist":"68–72","Hip":"92–96","Inseam":"77"}
+   ]
+   ```
+3. Set `product_type` to **exactly** match a real product's **Type** field (Product → Organization → Type — check the actual value in your catalogue, it's often broader than expected, e.g. `Women`/`Men` rather than a specific garment name). Leave it blank if this chart is only ever reached via a product's direct `custom.size_chart` link.
+
+**Per-product override (optional):** Settings → Custom data → Metafield definitions → **Products** → Add definition → Name `Size Chart` (key auto-fills `custom.size_chart`) → Type → **Metaobject** → pick the **Size Chart** definition → Storefront API access ON. Then on any product → Metafields → Size Chart → pick an entry.
+
+### 9. Cart-extra products (optional — see [Cart extras](#cart-extras-gift-wrap-notes-protection))
 - `gift-wrap` and `order-protection` products (paid extras). Created in admin, found by handle.
 
-### 6. Local pickup (optional — PDP pickup block)
+### 10. Local pickup (optional — PDP pickup block)
 - The PDP shows a **real** "Free pickup available at …" block driven by Shopify **Local Pickup** (`storeAvailability`), per selected variant.
 - Enable at **Settings → Shipping and delivery → Local pickup** for a location, set the prep time (e.g. "Usually ready in 24 hours"), and keep the variant stocked at that location. The block hides automatically when no location offers pickup for the selected variant; "Check other stores" appears only with 2+ locations.
 
-### 7. Free-shipping rate (the meter is ON by default)
+### 11. Free-shipping rate (the meter is ON by default)
 - The cart free-shipping meter is **on** (`freeShippingThreshold: 99`). ⚠️ **The meter is display only — it does not create a shipping rate.** You **must** add a matching "Free, over $99" rate per zone in **Settings → Shipping and delivery**, or the cart promises a discount checkout never honours. To hide the meter for a store with no free shipping, set the threshold to `0` / `null` (see [config](#brand--feature-config-srcconfigmarvexats)).
 
-### 8. Blog (Journal) — Shopify's native blog
+### 12. Blog (Journal) — Shopify's native blog
 The Journal (`/blog`, `/blog/[slug]`, `/blog/author/[slug]`, and the home page's latest-posts section) is **not** a content collection — it's driven entirely by Shopify's native **Blogs / Blog posts**, plus a **Metaobject** for author profiles. Everything below is admin-only, no code edits. Config lives in `src/config/marvexa.ts` → `BLOG` (blog handle + author metafield key).
 
 **One-time setup — build the Author profile system:**
@@ -286,16 +334,15 @@ All under `pages/api/*`, `prerender = false`, same-origin only. They validate in
 
 ## Editable content (content collections)
 
-**5** collections are wired up in `src/content.config.ts` — edit these files (no code) to change that content. Images are bare filenames resolved from `src/assets/images` via `~/lib/asset` and optimized with Astro `<Image>`.
+**4** collections are wired up in `src/content.config.ts` — edit these files (no code) to change that content. Images are bare filenames resolved from `src/assets/images` via `~/lib/asset` and optimized with Astro `<Image>`.
 
 | File | Type | Drives |
 |---|---|---|
 | `announcements.yaml` | YAML list | Top announcement bar items (`Announcement.astro`) |
 | `footer.yaml` | YAML | Footer columns, blurb, app badges, payments, legal (`getEntry('footer', 'main')`) |
 | `proof.yaml` | YAML list | Best-sellers proof strip stats (`BestSellers.astro`) |
-| `lookbook.yaml` | YAML list | Lookbook image + product hotspots — **hybrid**: layout/coords/label are editorial, each hotspot pins a real Shopify product by `handle` (or falls back to a best-seller) |
 
-> **Blog is no longer a content collection.** `src/content/blog/*.mdx` and `src/content/authors.yaml` are legacy files from before the migration to Shopify's native blog — unused by any page, safe to delete. Manage posts/authors entirely in Shopify admin; see [Blog (Journal) setup](#8-blog-journal--shopifys-native-blog).
+> **Blog is no longer a content collection.** `src/content/blog/*.mdx` and `src/content/authors.yaml` are legacy files from before the migration to Shopify's native blog — unused by any page, safe to delete. Manage posts/authors entirely in Shopify admin; see [Blog (Journal) setup](#12-blog-journal--shopifys-native-blog).
 
 **Everything else on the home page is hardcoded markup/data inside its own component, not a content collection** — edit the component directly to change it:
 
@@ -310,6 +357,8 @@ All under `pages/api/*`, `prerender = false`, same-origin only. They validate in
 
 `/compare` (`pages/compare.astro`) has no YAML either — it's entirely client-driven from real Shopify product data (`localStorage` selection + live product fetch), no editorial config to maintain. There's no brand-logo strip or product-spotlight section in the current build.
 
+**New Arrivals, Best Sellers, and Shop the Look are also not content collections** — all three are real Shopify Collections, resolved server-side in `pages/index.astro`. See [Shopify store setup #2](#2-new-arrivals-collection-optional--falls-back-automatically), [#3](#3-best-sellers-collection-optional--falls-back-automatically), and [#4](#4-shop-the-look-collections-optional--falls-back-to-nothing-shown) for the admin setup, and the config bullets below for the handles/constants.
+
 ---
 
 ## Brand & feature config (`src/config/marvexa.ts`)
@@ -319,10 +368,16 @@ Single source of truth for stable brand identity referenced from code (section *
 - `DEFAULT_COUNTRY` / `DEFAULT_LANGUAGE` — the **fallback** market (default `'US'` / `'EN'`). The active market is resolved per-request (cookie → `cf-ipcountry` → these defaults) in `src/middleware.ts`; see [Markets & multi-currency](#markets--multi-currency).
 - `BRAND` — name, legal name, tagline, description, `freeShippingThreshold`, social links.
 
-> **Free-shipping meter (`freeShippingThreshold`).** Drives the cart "Add $X more to unlock FREE shipping" bar. Set a number (default `99`) to show it, or `0` / `null` to **turn it off and hide it** for stores with no free shipping. ⚠️ **The meter is display only — it does not create a shipping rate.** If you keep it on, you **must** add a matching free-shipping rate in Shopify (Settings → Shipping and delivery → "Free, over $99"), or the cart promises free shipping the customer never gets at checkout.
+> **Free-shipping meter (`freeShippingThreshold`).** Drives the cart "Add $X more to unlock FREE shipping" bar **and** the PDP's "Free Shipping" trust badge (both read this one value, so they can never drift out of sync with each other). Set a number (default `99`) to show them, or `0` / `null` to **turn both off and hide them** for stores with no free shipping. ⚠️ **Display only — it does not create a shipping rate.** If you keep it on, you **must** add a matching free-shipping rate in Shopify (Settings → Shipping and delivery → "Free, over $99"), or the storefront promises free shipping the customer never gets at checkout.
 
 - `CART_EXTRAS` — gift wrap / order notes / protection config (see below).
 - `LIFESTYLE_CARDS` — `for-*` collection handles → icon + order for the shop-by-lifestyle grid. Icon names must exist in `ui/marvexa/Icon.astro`.
+- `NEW_ARRIVALS_COLLECTION_HANDLE` — the Shopify Collection handle the home "New Arrivals" section reads (default `new-arrivals`). See [Shopify store setup #2](#2-new-arrivals-collection-optional--falls-back-automatically).
+- `BEST_SELLERS_COLLECTION_HANDLE` — the Shopify Collection handle the home "Best Sellers" section reads (default `best-sellers`). See [Shopify store setup #3](#3-best-sellers-collection-optional--falls-back-automatically).
+- `LOOKBOOK_COLLECTION_HANDLES` — ordered array of Collection handles for "Shop the Look" (default `["lookbook1","lookbook2","lookbook3"]`); array order = display order. Add a handle to add a 4th+ look.
+- `LOOKBOOK_HOTSPOT_SLOTS` — fixed `{ top, left, cardLeft }` pin positions applied by product order within each look collection (1st product → slot 1, etc.), since Shopify collections have no per-product x/y field. See [Shopify store setup #4](#4-shop-the-look-collections-optional--falls-back-to-nothing-shown).
+- `DELIVERY_ESTIMATE_DAYS` — default days added to today for the PDP's "Order today for delivery by [date]" line (default `5`). Real `Date` math, computed fresh client-side on every page load — not a fake countdown. Override per product with the `custom.processing_days` metafield (see [Product metafields #7](#7-product-metafields-optional--enrich-the-pdp)); products without it use this default.
+- `RETURNS_WINDOW_DAYS` — days shown on the PDP's "Free Returns — N-day window" trust badge (default `30`). Display only — set your actual return policy separately in **Settings → Policies**.
 
 ---
 
@@ -508,13 +563,20 @@ Non-secret pins (`SHOPIFY_API_VERSION`, `CUSTOMER_ACCOUNT_API_VERSION`) live in 
 | Cart "add" fails / extras hidden | The product isn't published, is sold out, or the handle doesn't match the config |
 | Login redirect rejected | Customer Account API can't use `http`/`localhost` — use a public HTTPS origin; check the three registered URIs |
 | Currency drifts (cards vs cart) | Confirm the market is threaded — middleware sets `Astro.locals.market`; cart buyer identity follows it |
-| `/collections` page empty | Create and **publish** Shopify collections — that index/detail route (not the header mega menu, which is hardcoded — see store setup #2) is driven by live collections |
+| `/collections` page empty | Create and **publish** Shopify collections — that index/detail route (not the header mega menu, which is hardcoded — see store setup #5) is driven by live collections |
 | Mega-menu category filters to zero results | The label's `catHref()` target doesn't match any real `productType` in your catalogue — edit `MEGAS` in `Header.astro` to use a productType that actually exists |
+| New Arrivals section shows generic newest-created picks, not your curated collection | The `new-arrivals` collection is missing, empty, or **not published** to your Storefront channel — the section falls back to a live `CREATED_AT`-sorted query silently, and "View All" points at `/products`. Check publishing (store setup #2) |
+| Best Sellers section shows generic catalogue picks, not your curated collection | The `best-sellers` collection is missing, empty, or **not published** to your Storefront channel — the section falls back to a live `BEST_SELLING`-sorted query silently. Check publishing (store setup #3) |
+| Shop the Look: one look shows, others don't | Each `lookbook1`/`lookbook2`/`lookbook3` collection must be **individually published** to your Storefront channel — creating it in admin isn't enough. Open the collection → Publishing → check the channel your Storefront token uses (store setup #4) |
 | "Free shipping unlocked" but customer charged shipping | The cart meter is display-only — add a matching free-shipping rate in Shopify, or set `freeShippingThreshold` to `0`/`null` to hide the meter |
 | Ratings/specs missing on PDP | Add the matching product metafields (see [store setup](#shopify-store-setup)) |
 | Individual review cards missing on PDP | Set `JUDGEME_PRIVATE_TOKEN` and confirm the product exists in Judge.me (aggregate rating from metafields still shows without it) |
-| Pickup block missing on PDP | Enable Local Pickup for a location, stock the variant there, and publish the location to your channel (see store setup #6) |
-| Blog post shows your account name / no author photo | The post's **Author metafield** isn't set — that's separate from the built-in "Organization → Author" field. Open the post → Metafields → Author → pick an entry → Save. If no Metafields section appears at all, the `custom.author` metafield definition (Blog posts) was never saved — redo store setup #8 step 3 |
+| Materials & Care / Shipping & Returns / Returns Policy show the same generic text on every product | That's the fallback boilerplate — the matching `custom.*` metafield isn't set on that product yet (store setup #7). Not a bug, just unconfigured |
+| PDP metafield text saved but not showing on the storefront | The metafield definition's **Storefront API access** toggle is OFF, or the field type isn't **Single line text + List** cardinality — a single "One" value won't render as bullets |
+| Product Description shows raw tags (e.g. "Clothing", "Unisex") instead of real highlights | Fixed — highlights no longer fall back to tags. Set `custom.highlights` for real bullets, or leave it unset to hide the list entirely |
+| Pickup block missing on PDP | Enable Local Pickup for a location, stock the variant there, and publish the location to your channel (see store setup #10) |
+| Size Guide shows the static universal chart, not my Metaobject data | The product's Shopify **Type** field doesn't match any `size_chart` entry's `product_type` — check Type under Product → Organization (not the standardized "Category" field, and not tags). Also confirm the Metaobject definition has **Storefronts API access** ON |
+| Blog post shows your account name / no author photo | The post's **Author metafield** isn't set — that's separate from the built-in "Organization → Author" field. Open the post → Metafields → Author → pick an entry → Save. If no Metafields section appears at all, the `custom.author` metafield definition (Blog posts) was never saved — redo store setup #12 step 3 |
 | `/blog/author/[slug]` 404s | The URL slug must match the Author metaobject's **handle** exactly (auto-generated from its Name, editable in the entry) |
 | Shopify edits take ~2 min to show | Edge cache (`s-maxage=120`) on default-market catalogue pages — lower it in `applyMarketCache` for fresher data |
 | `astro build` clears dist / worker error | `wrangler.toml` `main` must be `@astrojs/cloudflare/entrypoints/server` |

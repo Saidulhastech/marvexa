@@ -9,12 +9,13 @@
 import Layout from '~/layouts/Layout.astro';
 import ProductCard from '~/components/product/marvexa/ProductCard.astro';
 import Newsletter from '~/components/home/marvexa/Newsletter.astro';
-import { getProduct, getProductRecommendations } from '~/lib/shopify';
+import { getProduct, getProductRecommendations, getSizeCharts } from '~/lib/shopify';
 import { getProductReviews } from '~/lib/judgeme';
 import { applyMarketCache } from '~/lib/market';
 import { formatMoney, percentOff } from '~/lib/money';
-import type { Image, Product, ProductCard as TProductCard } from '~/lib/shopify/types';
+import type { Image, Product, ProductCard as TProductCard, SizeChart } from '~/lib/shopify/types';
 import { resolveSwatchColor } from '~/lib/colorSwatch';
+import { BRAND, DELIVERY_ESTIMATE_DAYS, RETURNS_WINDOW_DAYS } from '~/config/marvexa';
 import '~/styles/product.css';
 
 const { handle } = Astro.params;
@@ -42,6 +43,22 @@ if (product) {
     if (judgemeReviews.length) product.reviews = judgemeReviews;
   } catch (err) {
     console.error('[product] judge.me reviews failed:', (err as Error).message);
+  }
+}
+
+// Size chart — the product's own `custom.size_chart` reference wins; else the
+// productType-level fallback (a `size_chart` Metaobject whose `product_type`
+// field matches); else `sizeChart` stays null and the static universal chart
+// below renders instead. Only fetched for products that actually have a size
+// option, so sizeless PDPs skip the extra request.
+let sizeChart: SizeChart | null = product?.sizeChart ?? null;
+if (product && !sizeChart && product.options.some((o) => /size/i.test(o.name))) {
+  try {
+    const charts = await getSizeCharts();
+    sizeChart =
+      charts.find((c) => c.productType.toLowerCase() === (product!.productType ?? '').toLowerCase()) ?? null;
+  } catch (err) {
+    console.error('[product] size chart lookup failed:', (err as Error).message);
   }
 }
 
@@ -145,13 +162,15 @@ const variantData = variants.map((v) => ({
 // controller refines this to the selected variant on load + every change.
 const seedPickup = variantData.find((v) => v.pickup.length)?.pickup[0] ?? null;
 const hasPickup = variantData.some((v) => v.pickup.length);
-const bootData = { currency, variants: variantData, singleVariant, productId: product?.id ?? '' };
+const deliveryEstimateDays = product?.processingDays ?? DELIVERY_ESTIMATE_DAYS;
+const bootData = { currency, variants: variantData, singleVariant, productId: product?.id ?? '', deliveryEstimateDays };
 
 const firstImg = images[0]?.url ?? '';
 
 // ---- Real rating / stock / sku ----
 const rating = product?.rating ?? null;
 const ratingCount = product?.ratingCount ?? null;
+const savesCount = product?.savesCount ?? null;
 const hasRating = rating != null && rating > 0;
 const ratingRounded = hasRating ? Math.round(rating!) : 0;
 const dSku = defaultVariant?.sku ?? null;
@@ -163,8 +182,9 @@ const dStockLabel = !dAvailable
     ? `Only ${dQty} left — order soon`
     : 'In stock — ships today';
 
-// Highlights: real metafield → product tags fallback → none.
-const highlights = (product?.highlights?.length ? product.highlights : (product?.tags ?? [])).slice(0, 4);
+// Highlights: real `custom.highlights` metafield only — hidden when unset
+// (tags are internal filter facets, not customer-facing copy; no fallback).
+const highlights = (product?.highlights ?? []).slice(0, 4);
 
 // Materials & Care + Shipping & Returns: real `custom.*` metafield bullets when
 // the merchant set them, else generic boilerplate so the template still reads
@@ -186,6 +206,16 @@ const SHIPPING_RETURNS_FALLBACK = [
 ];
 const materialsCare = product?.materialsCare?.length ? product.materialsCare : MATERIALS_CARE_FALLBACK;
 const shippingReturns = product?.shippingReturns?.length ? product.shippingReturns : SHIPPING_RETURNS_FALLBACK;
+
+// Returns Policy sidebar card — real `custom.returns_policy` metafield bullets
+// when set, else the same generic fallback so the sidebar still reads complete.
+const RETURNS_POLICY_FALLBACK = [
+  'Free returns within 30 days',
+  'Must be unworn with tags attached',
+  'Exchanges processed in 3 days',
+  'Refund to original payment method',
+];
+const returnsPolicy = product?.returnsPolicy?.length ? product.returnsPolicy : RETURNS_POLICY_FALLBACK;
 
 // Real spec rows from the custom.specifications metafield (if present).
 const metaSpecs = product?.specs ?? [];
@@ -337,15 +367,28 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
 
               <h1 class="pm-title">{product.title}</h1>
 
-              {hasRating ? (
+              {(hasRating || savesCount) ? (
                 <div class="pm-ratingrow">
-                  <span class="pm-stars" aria-label={`Rated ${rating} out of 5`}>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <svg viewBox="0 0 24 24" fill="currentColor" style={i < ratingRounded ? '' : 'opacity:.3'}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    ))}
-                  </span>
-                  <span class="pm-rating-score">{rating!.toFixed(1)}</span>
-                  {ratingCount ? <a class="pm-rating-ct" href="#pmReviewsAcc" data-gototab="reviews">{ratingCount} Reviews</a> : null}
+                  {hasRating ? (
+                    <>
+                      <span class="pm-stars" aria-label={`Rated ${rating} out of 5`}>
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <svg viewBox="0 0 24 24" fill="currentColor" style={i < ratingRounded ? '' : 'opacity:.3'}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        ))}
+                      </span>
+                      <span class="pm-rating-score">{rating!.toFixed(1)}</span>
+                      {ratingCount ? <a class="pm-rating-ct" href="#pmReviewsAcc" data-gototab="reviews">{ratingCount} Reviews</a> : null}
+                    </>
+                  ) : null}
+                  {savesCount ? (
+                    <span class="pm-saves-wrap">
+                      {hasRating ? <span class="pm-rating-sep" aria-hidden="true"></span> : null}
+                      <span class="pm-saves">
+                        <svg class="pm-saves-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-10.2-9C.2 9.1.9 5.4 4 3.9c2.3-1.1 4.9-.3 6 1.6.1.2.3.2.4 0 1.1-1.9 3.7-2.7 6-1.6 3.1 1.5 3.8 5.2 2.2 8.1C19.5 16.4 12 21 12 21z"/></svg>
+                        {savesCount.toLocaleString()} people saved this
+                      </span>
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -456,15 +499,17 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
 
               {/* Trust strip (3-up, matches the HTML design) */}
               <div class="pm-trust">
-                <div class="pm-trust-item">
-                  <span class="pm-trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h5a1 1 0 0 1 1 1v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
-                  <span class="pm-trust-lbl">Free Shipping</span>
-                  <span class="pm-trust-sub">On orders $99+</span>
-                </div>
+                {BRAND.freeShippingThreshold ? (
+                  <div class="pm-trust-item">
+                    <span class="pm-trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h5a1 1 0 0 1 1 1v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
+                    <span class="pm-trust-lbl">Free Shipping</span>
+                    <span class="pm-trust-sub">On orders {money(BRAND.freeShippingThreshold)}+</span>
+                  </div>
+                ) : null}
                 <div class="pm-trust-item">
                   <span class="pm-trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg></span>
                   <span class="pm-trust-lbl">Free Returns</span>
-                  <span class="pm-trust-sub">30-day window</span>
+                  <span class="pm-trust-sub">{RETURNS_WINDOW_DAYS}-day window</span>
                 </div>
                 <div class="pm-trust-item">
                   <span class="pm-trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
@@ -651,7 +696,7 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
                 <div class="pm-dcard-hd">Returns Policy</div>
                 <div class="pm-dcard-body">
                   <div class="pm-dret-list">
-                    {['Free returns within 30 days', 'Must be unworn with tags attached', 'Exchanges processed in 3 days', 'Refund to original payment method'].map((t) => (
+                    {returnsPolicy.map((t) => (
                       <div class="pm-dret-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>{t}</div>
                     ))}
                   </div>
@@ -711,20 +756,35 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
               <h3 id="pmSgTitle">Size Guide</h3>
               <button class="pm-sg-close" id="pmSgClose" type="button" aria-label="Close size guide">✕</button>
             </div>
-            <p class="pm-sg-note">All measurements in centimeters. For a relaxed fit, choose your usual size.</p>
-            <table class="pm-sg-table">
-              <thead>
-                <tr><th>Size</th><th>Bust</th><th>Waist</th><th>Hip</th><th>Shoulder</th></tr>
-              </thead>
-              <tbody>
-                <tr><td>XS</td><td>82–86</td><td>64–68</td><td>88–92</td><td>38</td></tr>
-                <tr><td>S</td><td>86–90</td><td>68–72</td><td>92–96</td><td>39.5</td></tr>
-                <tr><td>M</td><td>90–94</td><td>72–76</td><td>96–100</td><td>41</td></tr>
-                <tr><td>L</td><td>94–98</td><td>76–80</td><td>100–104</td><td>42.5</td></tr>
-                <tr><td>XL</td><td>98–104</td><td>80–86</td><td>104–110</td><td>44</td></tr>
-                <tr><td>XXL</td><td>104–110</td><td>86–92</td><td>110–116</td><td>46</td></tr>
-              </tbody>
-            </table>
+            <p class="pm-sg-note">
+              {sizeChart?.note ?? 'All measurements in centimeters. For a relaxed fit, choose your usual size.'}
+            </p>
+            {sizeChart ? (
+              <table class="pm-sg-table">
+                <thead>
+                  <tr>{sizeChart.columns.map((col) => <th>{col}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {sizeChart.rows.map((row) => (
+                    <tr>{sizeChart!.columns.map((col) => <td>{row[col] ?? ''}</td>)}</tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <table class="pm-sg-table">
+                <thead>
+                  <tr><th>Size</th><th>Bust</th><th>Waist</th><th>Hip</th><th>Shoulder</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>XS</td><td>82–86</td><td>64–68</td><td>88–92</td><td>38</td></tr>
+                  <tr><td>S</td><td>86–90</td><td>68–72</td><td>92–96</td><td>39.5</td></tr>
+                  <tr><td>M</td><td>90–94</td><td>72–76</td><td>96–100</td><td>41</td></tr>
+                  <tr><td>L</td><td>94–98</td><td>76–80</td><td>100–104</td><td>42.5</td></tr>
+                  <tr><td>XL</td><td>98–104</td><td>80–86</td><td>104–110</td><td>44</td></tr>
+                  <tr><td>XXL</td><td>104–110</td><td>86–92</td><td>110–116</td><td>46</td></tr>
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
@@ -738,7 +798,7 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
           interface Pickup { name: string; time: string | null; }
           interface VData { id: string; opts: Record<string, string>; price: number; compareAt: number | null; available: boolean; qty: number | null; img: string | null; pickup: Pickup[]; }
           const data = JSON.parse(boot.textContent || '{}') as {
-            currency: string; variants: VData[]; singleVariant: boolean; productId: string;
+            currency: string; variants: VData[]; singleVariant: boolean; productId: string; deliveryEstimateDays: number;
           };
           const $ = <T extends Element = HTMLElement>(s: string) => root.querySelector<T>(s);
           const $$ = <T extends Element = HTMLElement>(s: string) => Array.from(root.querySelectorAll<T>(s));
@@ -1023,7 +1083,7 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
           // ---- Delivery estimate (real date, computed fresh client-side) ----
           const ddEl = $('#pmDeliveryDate');
           if (ddEl) {
-            const d = new Date(Date.now() + 5 * 86400000); // ~5 days out
+            const d = new Date(Date.now() + data.deliveryEstimateDays * 86400000);
             ddEl.textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
           }
 

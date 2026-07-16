@@ -7,10 +7,11 @@ import {
   PRODUCTS_QUERY,
   PRODUCT_BY_HANDLE_QUERY,
   PRODUCT_RECOMMENDATIONS_QUERY,
+  SIZE_CHARTS_QUERY,
 } from '../graphql/products';
 import { cursorVars } from '../pagination';
-import { mapProduct, mapProductCard, paginate } from '../transforms';
-import type { Paginated, Product, ProductCard } from '../types';
+import { mapProduct, mapProductCard, mapSizeChartEntry, paginate } from '../transforms';
+import type { Paginated, Product, ProductCard, SizeChartEntry } from '../types';
 
 export interface ProductListParams {
   pageSize?: number;
@@ -47,6 +48,17 @@ export async function getProduct(handle: string, market?: Market): Promise<Produ
     { inContext: market },
   );
   return data.product ? mapProduct(data.product) : null;
+}
+
+/**
+ * Every `size_chart` Metaobject — the productType-level fallback for products
+ * with no direct `custom.size_chart` reference (see `Product.sizeChart`).
+ */
+export async function getSizeCharts(): Promise<SizeChartEntry[]> {
+  const data = await shopifyFetch<{ metaobjects: { nodes: any[] } | null }>(SIZE_CHARTS_QUERY, {});
+  return (data.metaobjects?.nodes ?? [])
+    .map(mapSizeChartEntry)
+    .filter((c): c is SizeChartEntry => c != null);
 }
 
 /** Related products for a PDP. */

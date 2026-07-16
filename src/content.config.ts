@@ -40,32 +40,6 @@ const proof = defineCollection({
   schema: z.object({ icon: z.string().default('check'), stat: z.string(), label: z.string() }),
 });
 
-// Lookbook ("Shop the Look") — curated outfit looks. Each YAML list entry is
-// ONE look: an editorial model photo + label + a few positioned hotspots. Every
-// hotspot is a REAL Shopify product — name / price / image / variants (size +
-// colour) are pulled LIVE. Only the look photo, label, order and pin coordinates
-// are editorial. `handle` pins a specific product; omit it and the slot falls
-// back to a best-seller (filled in order, no repeats) so the section works
-// out-of-the-box before any handles are curated.
-const lookbook = defineCollection({
-  loader: file('src/content/lookbook.yaml'),
-  schema: z.object({
-    label: z.string(),
-    image: z.string(), // local filename (resolveImage) or a full http(s) URL
-    order: z.number().default(0),
-    items: z
-      .array(
-        z.object({
-          top: z.string(),
-          left: z.string(),
-          handle: z.string().optional(),
-          cardLeft: z.boolean().default(false),
-        }),
-      )
-      .default([]),
-  }),
-});
-
 const blog = defineCollection({
   loader: glob({ pattern: '**/*.mdx', base: 'src/content/blog' }),
   schema: z.object({
@@ -103,7 +77,6 @@ export const collections = {
   announcements,
   footer,
   proof,
-  lookbook,
   blog,
   authors,
 };

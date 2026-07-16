@@ -15,6 +15,9 @@ import type {
   Product,
   ProductCard,
   ProductVariant,
+  SizeChart,
+  SizeChartEntry,
+  SizeChartRow,
 } from './types';
 import { resolveSwatchColor } from '~/lib/colorSwatch';
 
@@ -239,6 +242,43 @@ export function mapVariant(v: Raw): ProductVariant {
   };
 }
 
+/**
+ * Parse a `size_chart` Metaobject's fields into a SizeChart. `rows` is a JSON
+ * array of row objects (e.g. `[{"Size":"XS","Bust":"82–86",...}, ...]`) —
+ * column order follows the first row's own key order, so a chart can add or
+ * rename columns (Waist/Inseam vs Bust/Shoulder) with no code change.
+ */
+function mapSizeChartMetaobject(mo: Raw | null | undefined): SizeChart | null {
+  if (!mo) return null;
+  const f = metaobjectFieldMap(mo.fields);
+  let rows: SizeChartRow[] = [];
+  try {
+    const parsed = JSON.parse(f.rows?.value ?? '[]');
+    if (Array.isArray(parsed)) {
+      rows = parsed
+        .filter((r) => r && typeof r === 'object')
+        .map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, String(v)])));
+    }
+  } catch {
+    rows = [];
+  }
+  if (!rows.length) return null;
+  return {
+    title: f.title?.value ?? undefined,
+    note: f.note?.value ?? undefined,
+    columns: Object.keys(rows[0]),
+    rows,
+  };
+}
+
+/** A `size_chart` Metaobject list entry (from `SIZE_CHARTS_QUERY`), with its `product_type` matcher for the productType-level fallback. */
+export function mapSizeChartEntry(mo: Raw): SizeChartEntry | null {
+  const chart = mapSizeChartMetaobject(mo);
+  if (!chart) return null;
+  const f = metaobjectFieldMap(mo.fields);
+  return { ...chart, productType: f.product_type?.value ?? '' };
+}
+
 export function mapProduct(p: Raw): Product {
   return {
     id: p.id,
@@ -261,10 +301,14 @@ export function mapProduct(p: Raw): Product {
     totalInventory: typeof p.totalInventory === 'number' ? p.totalInventory : null,
     rating: parseRating(p.ratingMetafield?.value),
     ratingCount: parseIntOrNull(p.ratingCountMetafield?.value),
+    savesCount: parseIntOrNull(p.savesCountMetafield?.value),
+    sizeChart: mapSizeChartMetaobject(p.sizeChartMetafield?.reference),
     specs: parseSpecs(p.specsMetafield?.value),
     highlights: parseStringList(p.highlightsMetafield?.value),
     materialsCare: parseStringList(p.materialsCareMetafield?.value),
     shippingReturns: parseStringList(p.shippingReturnsMetafield?.value),
+    returnsPolicy: parseStringList(p.returnsPolicyMetafield?.value),
+    processingDays: parseIntOrNull(p.processingDaysMetafield?.value),
     // Parse the reviews metafield once, reuse for both the list and the
     // star-distribution (was parsed twice per product).
     ...(() => {
@@ -380,16 +424,26 @@ function metaobjectFieldMap(fields: Raw[] = []): Record<string, { value: string 
   return map;
 }
 
+// Reserved Author metaobject fields — everything else is treated as a social link.
+const AUTHOR_RESERVED_KEYS = new Set(['name', 'role', 'bio', 'avatar']);
+
+function humanizeFieldKey(key: string): string {
+  return key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /** Map an `author` Metaobject (from `metaobject(handle:)` or an article's metafield reference) to BlogAuthor. */
 export function mapAuthorMetaobject(mo: Raw | null | undefined): BlogAuthor | undefined {
   if (!mo?.handle) return undefined;
   const f = metaobjectFieldMap(mo.fields);
+  const socialLinks = (mo.fields ?? [])
+    .filter((field: Raw) => !AUTHOR_RESERVED_KEYS.has(field.key) && field.value)
+    .map((field: Raw) => ({ key: field.key, label: humanizeFieldKey(field.key), url: field.value as string }));
   return {
     handle: mo.handle,
     name: f.name?.value ?? '',
     role: f.role?.value ?? undefined,
     bio: f.bio?.value ?? undefined,
-    twitter: f.twitter?.value ?? undefined,
+    socialLinks,
     avatar: f.avatar?.reference?.image?.url ?? undefined,
   };
 }
@@ -399,7 +453,7 @@ function resolveAuthor(a: Raw): BlogAuthor | undefined {
   const fromMetaobject = mapAuthorMetaobject(a.authorProfile?.reference);
   if (fromMetaobject) return fromMetaobject;
   if (a.authorV2?.name) {
-    return { handle: '', name: a.authorV2.name, bio: a.authorV2.bio || undefined };
+    return { handle: '', name: a.authorV2.name, bio: a.authorV2.bio || undefined, socialLinks: [] };
   }
   return undefined;
 }

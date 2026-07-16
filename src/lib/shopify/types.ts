@@ -93,6 +93,10 @@ export interface Product {
   rating?: number | null;
   /** Review count from `reviews.rating_count`; null when none. */
   ratingCount?: number | null;
+  /** "N people saved this" from `custom.saves_count`; null when unset (hidden). */
+  savesCount?: number | null;
+  /** Size chart pinned directly to this product via `custom.size_chart` (Metaobject reference); null when unset — see `getSizeCharts()` for the productType-level fallback. */
+  sizeChart?: SizeChart | null;
   /** Structured spec rows from `custom.specifications` (JSON list); [] when none. */
   specs?: { label: string; value: string }[];
   /** Highlight bullets from `custom.highlights` (JSON list); [] when none. */
@@ -101,6 +105,10 @@ export interface Product {
   materialsCare?: string[];
   /** Shipping & Returns bullets from `custom.shipping_returns` (JSON list); [] when none. */
   shippingReturns?: string[];
+  /** Returns Policy sidebar bullets from `custom.returns_policy` (JSON list); [] when none. */
+  returnsPolicy?: string[];
+  /** Delivery-estimate override (days from order date) from `custom.processing_days`; null when unset — falls back to `DELIVERY_ESTIMATE_DAYS` in config. */
+  processingDays?: number | null;
   /** Individual reviews from a review metafield; [] when none available. */
   reviews?: ProductReview[];
   /** Star distribution [5★..1★] counts, derived from `reviews`; null when none. */
@@ -312,6 +320,24 @@ export interface Localization {
   language: Language;
 }
 
+// ── Size charts (a `size_chart` Metaobject, per-product or per-productType) ──
+
+/** One size-chart row; keys are whatever columns the chart defines (e.g. Size/Bust/Waist). */
+export type SizeChartRow = Record<string, string>;
+
+/** A resolved size chart — column order comes from the first row's field order. */
+export interface SizeChart {
+  title?: string;
+  note?: string;
+  columns: string[];
+  rows: SizeChartRow[];
+}
+
+/** A `size_chart` Metaobject with its `product_type` matcher — used for the productType-level fallback list (see `getSizeCharts()`). Empty `productType` = only reachable via a product's direct `custom.size_chart` reference. */
+export interface SizeChartEntry extends SizeChart {
+  productType: string;
+}
+
 // ── Blog (Shopify's native blog/article objects) ────────────
 
 /** Resolved from the `author` Metaobject (or `authorV2` as fallback — see transforms.ts). */
@@ -321,8 +347,9 @@ export interface BlogAuthor {
   name: string;
   role?: string;
   bio?: string;
-  twitter?: string;
   avatar?: string;
+  /** Every other text field on the Author metaobject (twitter, facebook, instagram, …) — add a field in Shopify and it shows up here automatically, no code change. */
+  socialLinks: { key: string; label: string; url: string }[];
 }
 
 export interface BlogArticleSummary {
