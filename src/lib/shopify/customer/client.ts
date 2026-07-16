@@ -70,6 +70,10 @@ export function createCustomerClient(cookies: AstroCookies, origin: string): Cus
           'Content-Type': 'application/json',
           // Customer Account API expects the raw token — NOT "Bearer <token>".
           Authorization: accessToken,
+          // Public clients must send Origin on every authenticated call (not just
+          // the token exchange) — Shopify validates it against the registered
+          // JavaScript origin and 403s the request without it.
+          Origin: origin,
         },
         body: JSON.stringify({ query, variables }),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
