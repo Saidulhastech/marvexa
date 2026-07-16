@@ -74,6 +74,10 @@ export function createCustomerClient(cookies: AstroCookies, origin: string): Cus
           // the token exchange) — Shopify validates it against the registered
           // JavaScript origin and 403s the request without it.
           Origin: origin,
+          // Shopify's Customer Account API docs: a request with no User-Agent
+          // returns 403 Forbidden ("Access denied") before it even reaches the
+          // GraphQL layer. Confirmed against shopify.dev/docs/api/customer/latest.
+          'User-Agent': 'Astro Shopify Customer Account',
         },
         body: JSON.stringify({ query, variables }),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
