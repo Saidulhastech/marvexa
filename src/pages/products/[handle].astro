@@ -825,6 +825,9 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
           const total = slides.length;
           let cur = 0;
           let zoomActive = false;
+          // Compare image URLs without query params so a CDN transform/version
+          // diff (?v=…, ?width=…) doesn't defeat the match.
+          const bareUrl = (u?: string | null) => (u ? u.split('?')[0] : '');
           function goTo(i: number) {
             if (!total) return;
             cur = (i + total) % total;
@@ -838,9 +841,33 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
               if (im) { im.style.transition = ''; im.style.transform = ''; im.style.transformOrigin = 'center center'; }
             });
           }
+          // Clicking a thumbnail must also sync the swatch/option pickers to
+          // whichever variant owns that image — otherwise the gallery and the
+          // selected colour drift apart (image changes, swatch doesn't).
+          function selectSlide(idx: number) {
+            goTo(idx);
+            if (data.singleVariant) return;
+            const target = bareUrl(slides[idx]?.querySelector('img')?.getAttribute('src'));
+            if (!target) return;
+            const match =
+              variants.find((v) => bareUrl(v.img) === target && Object.keys(selected).every((k) => v.opts[k] === selected[k])) ??
+              variants.find((v) => bareUrl(v.img) === target);
+            if (!match) return;
+            Object.entries(match.opts).forEach(([name, value]) => {
+              if (selected[name] === value) return;
+              selected[name] = value;
+              const group = root!.querySelector(`[data-opts="${name}"]`);
+              group?.querySelectorAll('.pm-option, .pm-swatch').forEach((o) => {
+                o.classList.toggle('is-active', (o as HTMLElement).dataset.value === value);
+              });
+              const curEl = root!.querySelector(`[data-cur="${name}"]`);
+              if (curEl) curEl.textContent = value;
+            });
+            render();
+          }
           $('#pmThumbs')?.addEventListener('click', (e) => {
             const t = (e.target as HTMLElement).closest<HTMLElement>('.pm-thumb');
-            if (t) goTo(Number(t.dataset.idx));
+            if (t) selectSlide(Number(t.dataset.idx));
           });
           $('#pmPrev')?.addEventListener('click', () => goTo(cur - 1));
           $('#pmNext')?.addEventListener('click', () => goTo(cur + 1));
@@ -946,12 +973,9 @@ const pdpJsonLd = [productJsonLd, breadcrumbJsonLd].filter(Boolean) as Record<st
             });
 
             // switch gallery to the variant image if it maps to a slide.
-            // Compare without query params so a CDN transform/version diff
-            // (?v=…, ?width=…) doesn't defeat the match.
             if (v?.img) {
-              const bare = (u?: string | null) => (u ? u.split('?')[0] : '');
-              const target = bare(v.img);
-              const idx = slides.findIndex((s) => bare(s.querySelector('img')?.getAttribute('src')) === target);
+              const target = bareUrl(v.img);
+              const idx = slides.findIndex((s) => bareUrl(s.querySelector('img')?.getAttribute('src')) === target);
               if (idx >= 0 && idx !== cur) goTo(idx);
             }
 
