@@ -83,16 +83,11 @@ export function createCustomerClient(cookies: AstroCookies, origin: string): Cus
         clearTokens(cookies);
         throw new NotAuthenticatedError('Customer Account API returned 401');
       }
-      if (res.status === 403) {
-        throw new Error(
-          'Customer Account API HTTP 403 Forbidden — this store\'s Customer Account API client ' +
-            'needs "Protected customer data access" enabled (Shopify Admin → Settings → Customers ' +
-            'and orders, or the Headless channel app\'s API access settings) before it can read ' +
-            'customer email/order data.',
-        );
-      }
       if (!res.ok) {
-        throw new Error(`Customer Account API HTTP ${res.status} ${res.statusText}`);
+        const bodyText = await res.text().catch(() => '');
+        throw new Error(
+          `Customer Account API HTTP ${res.status} ${res.statusText}${bodyText ? ` — ${bodyText.slice(0, 500)}` : ''}`,
+        );
       }
 
       let json: GraphQLResponse<T>;
